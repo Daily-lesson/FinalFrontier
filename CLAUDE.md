@@ -109,7 +109,8 @@ repo.
    from the real file, no quoted order text, no e-mail, no database ref.
    `tests/check.mjs` sweeps every file for those (a hashed denylist and two
    shapes) and CI fails on a hit. The DEMO ids in the prototype (WO-281 and
-   up) are invented; a fixture id below 200 is refused by the sweep.
+   up) are invented; any id below 280 is refused by the sweep, so a real
+   id cannot land here as the real file grows toward them.
 2. **Evidence is the only power source (pillar 1).** Cells come from
    `fortress.cache_by_grade` and `fortress.cache_by_kind` on evidence
    events and from nowhere else: not a kill, a tile, a night or a pickup.
@@ -121,15 +122,18 @@ repo.
 4. **Counts through the walls.** A private event is sealed; the Keep's
    attackers are a count and an engine flag; the engine refuses a private
    event with a name field (tested).
-5. **The sim reads the real task file for numbers only,** through the alys
+5. **No person's schedule.** The sim's lesson and lift cadence is a stated
+   game cadence on an invented spread, never anyone's real study or training
+   days.
+6. **The sim reads the real task file for numbers only,** through the alys
    board's own parser imported from the alys checkout at run time — never
    copied here. It keeps an order's id, dates, Pn, tier, program, two counts
    and its score, drops every title, step, option and Say line, and its
    report prints per-week counts and never an id. Never commit the task
    file, the parser or an id from it.
-6. **No Claude in the loop.** Every sentence the game speaks is in the rules
+7. **No Claude in the loop.** Every sentence the game speaks is in the rules
    file's bank; no model call, anywhere.
-7. **No secret ever lands in a file.** CI passes with no secrets set.
+8. **No secret ever lands in a file.** CI passes with no secrets set.
 
 ---
 

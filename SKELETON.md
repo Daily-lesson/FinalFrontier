@@ -52,7 +52,7 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 | File | What |
 |---|---|
 | `build.mjs` | Inlines `src/engine.js` and `rules/fieldworks.json` into `index.html`. |
-| `shots.mjs` | The Playwright walk at 375 × 667: the screenshots in both themes, the art sheet at 2×, the frame-time measurement. |
+| `shots.mjs` | The Playwright walk at 375 × 667: the screenshots in both themes, the art sheet at 2×, the frame-time measurement (`shots/perf.json`) and 21 behavioural checks (`shots/checks.json`); exits non-zero on a failure or a page error. |
 
 ## Tests (`tests/`)
 

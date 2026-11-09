@@ -95,13 +95,13 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
 .say { font-family: var(--mono); font-size: 11px; background: var(--surface-2); border-radius: 8px; padding: 8px; color: var(--fg-2); white-space: pre-wrap; }
 .input { width: 100%; min-height: 40px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font: inherit; background: var(--bg); color: var(--fg); }
 .rungs { display: flex; gap: 4px; } .rungs i { flex: 1; height: 10px; border-radius: 3px; background: var(--surface-2); } .rungs i.on { background: var(--node); }
-.parts { display: grid; gap: 6px; } .part { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
-.tiers { display: flex; gap: 3px; } .tiers i { width: 14px; height: 6px; border-radius: 2px; background: var(--surface-2); } .tiers i.on { background: var(--node); }
-.keeper { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: center; }
-.keeper svg { width: 96px; height: 120px; stroke: var(--fg); stroke-width: 1.75; fill: none; stroke-linecap: round; stroke-linejoin: round; } .keeper svg .acc { stroke: var(--node); } .keeper svg .plate { fill: var(--node-bg); }
+.parts { display: grid; gap: 6px; min-width: 0; } .part { display: grid; grid-template-columns: 54px auto minmax(0, 1fr); gap: 6px; align-items: center; font-size: 12px; } .part .chip { justify-self: end; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.tiers { display: flex; gap: 2px; } .tiers i { width: 10px; height: 6px; border-radius: 2px; background: var(--surface-2); } .tiers i.on { background: var(--node); }
+.keeper { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 10px; align-items: center; }
+.keeper svg { width: 80px; height: 100px; stroke: var(--fg); stroke-width: 1.75; fill: none; stroke-linecap: round; stroke-linejoin: round; } .keeper svg .acc { stroke: var(--node); } .keeper svg .plate { fill: var(--node-bg); }
 .plates { display: flex; flex-wrap: wrap; gap: 6px; } .plate-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 12px; background: var(--surface-2); } .plate-chip.top { border-color: var(--node); }
 .attn { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 10px; } .attn .n { font-size: 22px; font-weight: 500; }
-.tiles { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 46px; gap: 8px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 43px; gap: 6px; }
 .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px; grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; text-align: left; }
 .tile.wide { grid-column: span 2; grid-row: span 1; flex-direction: row; align-items: center; gap: 8px; }
 .tile .tt { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; } .tile .tm { font-size: 11px; color: var(--fg-2); } .tile .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--node); }
@@ -127,6 +127,14 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
 @keyframes rise { to { transform: none; opacity: 1; } }
 @keyframes rivet { 0% { transform: translateY(16px) scale(.96); opacity: 0; } 60% { transform: translateY(-4px) scale(1.02); opacity: 1; } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .dropcard, .medalpop { animation: none; transform: none; opacity: 1; } }
+.compass { min-height: 18px; display: flex; gap: 10px; justify-content: center; align-items: center; padding: 0 10px 4px; font: 600 11px/1.2 var(--game); color: var(--fg-2); flex: none; }
+.compass b { color: var(--fg); font-weight: 700; } .compass .arw { display: inline-block; width: 14px; text-align: center; color: var(--node); }
+.wpcard { position: absolute; left: 14px; right: 14px; bottom: 8px; background: var(--paper); color: var(--paper-ink); border-radius: 6px; border-top: 3px solid var(--signal); padding: 8px 10px; font: 600 12px/1.3 var(--game); display: flex; align-items: center; gap: 10px; }
+.wpcard .grow { flex: 1; } .wpcard small { display: block; color: var(--paper-muted); font-weight: 500; }
+.wpcard button { font: 700 12px/1 var(--game); background: var(--civ); color: #fff; border-radius: 4px; padding: 9px 12px; min-height: 36px; } .wpcard button:disabled { opacity: .45; }
+.statechip { font: 600 11px/1.2 var(--font); color: var(--warn); }
+.fx { font-size: 11px; color: var(--fg-2); } .fx .chip { margin-left: 4px; }
+.nums { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12px; } .nums b { font-size: 16px; font-weight: 500; display: block; }
 .live { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 @media (max-width: 420px) { .phone { height: calc(100dvh - 90px); min-height: 560px; border-radius: 16px; } }
 </style>
@@ -151,8 +159,15 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     <div class="seg" id="seg-theme"><button data-theme="light" aria-pressed="true">Light</button><button data-theme="dark" aria-pressed="false">Dark</button></div>
     <span class="lbl">Screen</span>
     <div class="seg" id="seg-screen"><button data-go="fortress" aria-pressed="true">Fortress</button><button data-go="explore" aria-pressed="false">Explore</button><button data-go="siege" aria-pressed="false">Siege</button><button data-go="keeper" aria-pressed="false">Keeper</button><button data-go="skills" aria-pressed="false">Skills</button><button data-go="archive" aria-pressed="false">Archive</button><button data-go="home" aria-pressed="false">Home</button></div>
+    <span class="lbl">Clock</span>
+    <div class="seg" id="seg-clock"><button data-clock="short" aria-pressed="true">45 s day</button><button data-clock="real" aria-pressed="false">Real day</button></div>
+    <span class="lbl">Parts act</span>
+    <div class="seg" id="seg-parts"><button data-parts="off" aria-pressed="true">Off</button><button data-parts="on" aria-pressed="false">On</button></div>
+    <span class="lbl">State</span>
+    <div class="seg" id="seg-state"><button data-state="live" aria-pressed="true">Live</button><button data-state="unlit" aria-pressed="false">Unlit edge</button><button data-state="dark" aria-pressed="false">Dark lane</button><button data-state="quiet" aria-pressed="false">Quiet week</button></div>
+    <button class="pill" id="replayOnboarding">Replay onboarding</button>
     <button class="pill" id="reset">Reset the demo</button>
-    <span class="note">DEMO data in the real grammar, no private name or number; fixed day 2026-11-09. Fortress: drag or WASD to drive the Keeper, 1–5 pick a tool, N starts the night. Cells come only from evidence (close an order from the Siege list, survey a waypoint in Explore). Explore: drag or WASD to walk, third person.</span>
+    <span class="note">DEMO data in the real grammar, no private name or number; fixed day 2026-11-09. Fortress: drag or WASD to drive the Keeper, 1–5 pick a tool, N starts the night. Cells come only from evidence (close an order from the Siege list, survey a waypoint in Explore). Explore: drag or WASD to walk, third person; the compass points to the nearest waypoint and the gate. Kept on this device only: the Keeper's name, the built map, the onboarding seen and your own numbers.</span>
   </div>
 
   <div class="phone" id="phone">
@@ -181,6 +196,22 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   const icon = (id, cls = '') => `<svg class="fm ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
   const fill = (s, o) => String(s).replace(/\{(\w+)\}/g, (_, k) => o[k] ?? '');
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // The page's own browser storage: four keys, all local to this device, never sent.
+  const KEYS = { keeper: 'fieldworks-keeper', save: 'fieldworks-save', onboarded: 'fieldworks-onboarded', telemetry: 'fieldworks-telemetry' };
+  const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} }, del(k) { try { localStorage.removeItem(k); } catch {} } };
+  const RULES_HASH = E.hash(JSON.stringify(RULES));
+  const CLOCK = RULES.clock, KFX = RULES.keeper_effects;
+  const isNightHour = (h = new Date().getHours()) => h >= CLOCK.night_hour || h < CLOCK.dawn_hour;
+  const localDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  // in-place filter with no new array: the hot loop allocates nothing
+  function keepIf(arr, pred) { let j = 0; for (let i = 0; i < arr.length; i++) if (pred(arr[i])) arr[j++] = arr[i]; arr.length = j; return arr; }
+  const live = (o) => o.t > 0, standing = (n) => n.amt > 0, hp = (z) => z.hp > 0;
+  // ── local telemetry (rules.telemetry): your own numbers, on this device ──
+  function teleLoad() { try { const t = JSON.parse(store.get(KEYS.telemetry) || 'null'); if (t && t.v === 1 && t.opens && typeof t.opens === 'object') return t; } catch {} return { v: 1, opens: {}, session_seconds: 0, closes_seen: 0, pylons: 0, nights_held: 0, regions_mapped: 0 }; }
+  let TEL = teleLoad();
+  const teleSave = () => { if (!globalThis.FIELDWORKS_ART) store.set(KEYS.telemetry, JSON.stringify(TEL)); };
+  function teleOpen() { const d = localDay(); TEL.opens[d] = (TEL.opens[d] || 0) + 1; const cut = new Date(Date.now() - RULES.telemetry.keep_days * DAY); for (const k of Object.keys(TEL.opens)) if (new Date(k) < cut) delete TEL.opens[k]; teleSave(); }
+  const teleAdd = (k, n = 1) => { TEL[k] = (TEL[k] || 0) + n; };
 
   // ── DEMO data (invented chores in the file's grammar; public program ids; the Keep as counts) ──
   const WARDS = [
@@ -236,22 +267,102 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   const PRIVATE_QUESTS = 2;
   const PLAN = { weeks: Array.from({ length: 8 }, (_, i) => ({ n: i + 1, lessons: ['a', 'b', 'c', 'd'].slice(0, i === 7 ? 3 : 4).map((l) => `w${i + 1}${l}`) })) };
   const TICKS0 = [...PLAN.weeks[0].lessons, ...PLAN.weeks[1].lessons, ...PLAN.weeks[2].lessons, 'w4a', 'w4b'];
-  const LIFT_DAYS = new Set([1, 3, 5]);
+  const LIFT_DAYS = new Set([2, 4, 6]);   // the stated game cadence (sim/economy.mjs), an invented spread
   const TODAY_DOW = new Date(utc(TODAY)).getUTCDay();
 
   // ── state: the evidence ledger (what the phone would keep) + the game sim ──
   let S, G, XW;
   function lessonEvent(id, at) { return { id: `lesson/${id}`, kind: 'lesson', at, tier: 'private', zone: null, weight: 30, facts: {}, evidence: { kind: 'tick', ref: `progress/${id}` } }; }
-  function reset() {
-    S = { events: PRIOR.slice(), open: OPEN0(), ticks: TICKS0.slice(), liftsLogged: [ago(2), ago(4)], shown: new Set(), screen: 'fortress', order: null, picked: null, proof: '', keeperName: '', region: 4, pendingModules: 0, lastLevel: 0 };
-    for (const d of S.liftsLogged) S.events.push({ id: `lift/${d}`, kind: 'lift', at: d, tier: 'private', zone: null, weight: 30, facts: {}, evidence: { kind: 'tick', ref: `body/${d}` } });
+  const liftEvent = (d) => ({ id: `lift/${d}`, kind: 'lift', at: d, tier: 'private', zone: null, weight: 30, facts: {}, evidence: { kind: 'tick', ref: `body/${d}` } });
+  /** A close or an answer as the phone would record it at the tap (the journal's facts). */
+  function closeEvent(o) {
+    const age = E.daysBetween(o.written, TODAY);
+    return { id: o.id, kind: o.options ? 'decision' : 'close', at: TODAY, tier: o.tier, zone: o.tier === 'private' ? null : o.zone, weight: wos(o), facts: { pn: o.pn, difficulty: o.difficulty, effortMin: o.effortMin, ageDays: age, band: o.band, options: o.options ? o.options.length : 0, due: o.due, verified: false }, evidence: { kind: 'commit', ref: `tasks: ${o.id} done (from SocialOS)` } };
+  }
+  // The newest evidence (the last three days) is unshown on a device's first open: its caches land by the beacon.
+  // There is no other starting grant of cells (pillar 1); scrap, the play currency, starts at a handful.
+  const FRESH_DAYS = 3;
+  function reset(opts = {}) {
+    S = { events: PRIOR.slice(), open: OPEN0(), ticks: TICKS0.slice(), liftsLogged: [ago(2), ago(4)], shown: new Set(), landed: new Set(), closed: [], modules: [], screen: S ? S.screen : 'fortress', order: null, picked: null, proof: '', keeperName: S ? S.keeperName : '', region: 4, pendingModules: 0, lastLevel: 0,
+      clock: S ? S.clock : CLOCK.default, partsAct: S ? S.partsAct : false, state: S ? S.state : 'live', started: false };
+    for (const d of S.liftsLogged) S.events.push(liftEvent(d));
     for (const id of S.ticks) S.events.push(lessonEvent(id, ago(6)));
     S.events.push({ id: `pace/${ago(5)}`, kind: 'pace', at: ago(5), tier: 'private', zone: null, weight: 0, facts: {}, evidence: { kind: 'commit', ref: 'pace' } });
-    for (const e of S.events) S.shown.add(e.id);
-    S.lastLevel = derive().player.level;
-    newFortress(); newField();
+    for (const e of S.events) if (e.at < ago(FRESH_DAYS)) { S.shown.add(e.id); S.landed.add(e.id); }
+    S.st = derive(); S.lastLevel = S.st.player.level;
+    for (const l of S.st.log) S.shown.add(l.id);   // the drop cards for history never fire; their caches still land once
+    newFortress(); newField(); applyStats();
+    if (!opts.blank) landUnlanded();
   }
   const derive = () => E.evaluate(S.events, RULES, TODAY, { plan: PLAN });
+  /** Land a cache for every evidence event this device has not landed yet (quietly: no drop card). */
+  function landUnlanded() {
+    const byId = new Map(S.st.log.map((l) => [l.id, l]));
+    for (const e of S.events) if (!S.landed.has(e.id)) landEvidence(e, byId.get(e.id)?.item || null, true);
+  }
+
+  // ── the save (rules.save): the built map, in this page's own storage, versioned ──
+  function snapshot() {
+    return { version: RULES.save.version, rules: RULES_HASH,
+      journal: { closed: S.closed.slice(), ticks: S.ticks.slice(), lifts: S.liftsLogged.slice(), modules: S.modules.slice(), pendingModules: S.pendingModules, lastLevel: S.lastLevel, landed: [...S.landed] },
+      map: { day: G.day, phase: G.phase, timer: Math.round(G.timer), scrap: G.scrap, cells: G.cells, core: Math.round(G.core.hp), tiles: Array.from(G.tiles), grid: G.grid.map((g) => (g ? [g.type, Math.round(g.hp)] : 0)), engines: G.engines.map((e) => e.id), caches: G.caches.map((c) => [Math.round(c.x), Math.round(c.y), c.scrap, c.cells, c.grade]) } };
+  }
+  let savedAt = 0;
+  function saveNow() { if (!G || !S || globalThis.FIELDWORKS_ART) return;   /* the art sheet never writes the player's save */ store.set(KEYS.save, JSON.stringify(snapshot())); savedAt = performance.now(); }
+  const isInt = (n) => Number.isInteger(n) && n >= 0;
+  function validJournal(j) {
+    return j && Array.isArray(j.closed) && j.closed.every((x) => typeof x === 'string') && Array.isArray(j.ticks) && j.ticks.every((x) => typeof x === 'string') && Array.isArray(j.lifts) && j.lifts.every((x) => /^\d{4}-\d{2}-\d{2}$/.test(x))
+      && Array.isArray(j.modules) && j.modules.every((x) => F.modules.some((m) => m.id === x)) && isInt(j.pendingModules) && isInt(j.lastLevel) && Array.isArray(j.landed);
+  }
+  const TYPES = ['wall', 'turret', 'pylon', 'habitat'];
+  function validMap(m) {
+    return m && isInt(m.day) && m.day >= 1 && (m.phase === 'day' || m.phase === 'night') && Number.isFinite(m.timer) && isInt(m.scrap) && isInt(m.cells) && Number.isFinite(m.core)
+      && Array.isArray(m.tiles) && m.tiles.length === COLS * ROWS && m.tiles.every((t) => t === WILD || t === CIV || t === BLIGHT)
+      && Array.isArray(m.grid) && m.grid.length === COLS * ROWS && m.grid.every((g) => g === 0 || (Array.isArray(g) && TYPES.includes(g[0]) && Number.isFinite(g[1])))
+      && Array.isArray(m.engines) && Array.isArray(m.caches) && m.caches.every((c) => Array.isArray(c) && c.length === 5 && c.slice(0, 4).every(Number.isFinite) && typeof c[4] === 'string');
+  }
+  /** 'none' | 'loaded' | 'migrated' | 'corrupt' | 'corrupt-map'. Never takes anything: a bad map is laid again and every unshown cache re-lands. */
+  function loadSave() {
+    const raw = store.get(KEYS.save); if (!raw) return 'none';
+    let s = null; try { s = JSON.parse(raw); } catch { s = null; }
+    if (!s || s.version !== RULES.save.version || !validJournal(s.journal)) { store.del(KEYS.save); reset(); return 'corrupt'; }
+    const j = s.journal;
+    reset({ blank: true });
+    for (const id of j.closed) { const o = S.open.find((x) => x.id === id); if (!o) continue; S.events.push(closeEvent(o)); S.open = S.open.filter((x) => x !== o); S.closed.push(id); S.shown.add(id); }
+    for (const t of j.ticks) if (!S.ticks.includes(t) && PLAN.weeks.some((w) => w.lessons.includes(t))) { S.ticks.push(t); S.events.push(lessonEvent(t, TODAY)); S.shown.add(`lesson/${t}`); }
+    for (const d of j.lifts) if (!S.liftsLogged.includes(d)) { S.liftsLogged.push(d); S.events.push(liftEvent(d)); S.shown.add(`lift/${d}`); }
+    S.modules = j.modules.slice(); S.pendingModules = j.pendingModules; S.lastLevel = j.lastLevel;
+    S.st = derive();
+    newFortress();
+    if (!validMap(s.map)) { landUnlanded(); applyStats(); saveNow(); return 'corrupt-map'; }   // the journal survived: every cache not yet picked up lands again
+    S.landed = new Set(j.landed);
+    const m = s.map;
+    Object.assign(G, { day: m.day, phase: m.phase, timer: m.timer, scrap: m.scrap, cells: m.cells });
+    G.tiles = Uint8Array.from(m.tiles);
+    G.grid = m.grid.map((g) => (g ? { type: g[0], hp: g[1], max: F.structure_hp[g[0]], cd: 0, aim: -Math.PI / 2, hit: 0 } : null));
+    const keepEng = new Set(m.engines); keepIf(G.engines, (e) => keepEng.has(e.id));
+    G.caches = m.caches.map(([x, y, scrap, cells, grade]) => ({ x, y, scrap, cells, grade, t: 0 }));
+    if (G.phase === 'night') { G.phase = 'day'; G.timer = Math.min(G.timer, F.day_seconds); }   // a night is never resumed half-fought; the map waits for the next
+    applyStats(true); G.core.hp = clamp(m.core, 60, G.core.max);
+    landUnlanded(); territory(false); computeFlow();
+    return s.rules === RULES_HASH ? 'loaded' : 'migrated';
+  }
+
+  // ── the Keeper's stats: the base, the modules (evidence levels), and, behind Parts act, the parts (D26) ──
+  const BASE = { max: 100, speed: 120, dmg: 12, rate: 2.5, range: 150, gather: 1, bonus: 0 };
+  const partTiers = () => E.keeper(S.st, { regions: E.expedition(PLAN, S.ticks, RULES).mapped }, RULES);
+  function applyStats(keepStructHp) {
+    const p = G.player, frac = p.max ? p.hp / p.max : 1, s = { ...BASE }; let struct = 1, turret = 1, pylon = F.pylon_reach;
+    for (const id of S.modules) { const e = (F.modules.find((m) => m.id === id) || {}).effect || {};
+      if (e.dmg) s.dmg *= e.dmg; if (e.rate) s.rate *= e.rate; if (e.speed) s.speed *= e.speed; if (e.hull) s.max += e.hull; if (e.gather) s.gather *= e.gather; if (e.bonus) s.bonus += e.bonus; if (e.range) s.range *= e.range; if (e.turret) turret *= e.turret; if (e.struct) struct *= e.struct; if (e.pylon) pylon += e.pylon; }
+    if (S.partsAct) for (const part of partTiers()) { const fx = KFX.parts[part.slug]; if (!fx || !part.tier) continue; const k = 1 + fx.per_tier * part.tier;
+      if (fx.stat === 'hull') s.max = Math.round(s.max * k); else if (fx.stat === 'struct') struct *= k; else s[fx.stat] *= k; }
+    Object.assign(p, s); if (p.down <= 0) p.hp = Math.max(1, Math.round(p.max * frac));
+    G.mods.turret = turret;
+    for (let i = 0; i < G.grid.length; i++) { const g = G.grid[i]; if (!g) continue; const base = F.structure_hp[g.type], f = keepStructHp ? Math.min(1, g.hp / Math.round(base * struct)) : g.hp / g.max; g.max = Math.round(base * struct); g.hp = Math.max(1, Math.round(g.max * f)); }
+    G.mods.struct = struct;
+    if (pylon !== G.mods.pylon) { G.mods.pylon = pylon; territory(false); }
+  }
   const openOrders = () => S.open.map((o) => ({ ...o, options: o.options ? o.options.length : 0, steps: o.steps.length }));
   const siegeNow = () => E.siege(openOrders(), RULES, TODAY);
 
@@ -271,7 +382,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     const blightTiles = clamp(attackers * F.blight.tiles_per_attacker, F.blight.min_tiles, F.blight.max_tiles);
     G = {
       day: 1, phase: 'day', timer: F.day_seconds, paused: true, over: false, won: false,
-      scrap: 12, cells: 4,
+      scrap: 12, cells: 0,   // cells only ever arrive as evidence caches (pillar 1)
       core: { x: (CC + .5) * T, y: (CR + .5) * T, hp: 320, max: 320, hit: 0 },
       player: { x: (CC + .5) * T, y: (CR + .5) * T + 44, r: 10, hp: 100, max: 100, speed: 120, dmg: 12, rate: 2.5, range: 150, cd: 0, aim: -Math.PI / 2, down: 0, gather: 1, bonus: 0, hit: 0, step: 0 },
       mods: { turret: 1, struct: 1, pylon: F.pylon_reach },
@@ -302,7 +413,6 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       if (cov) { if (G.tiles[i] === BLIGHT) reclaimed++; G.tiles[i] = CIV; }
       else if (G.tiles[i] === CIV) G.tiles[i] = WILD;
     }
-    G.engines = G.engines.filter((en) => G.tiles[tileOf(en)] !== CIV || (en.x = en.x, true));
     border = [];
     const civ = (cc, rr) => cc >= 0 && rr >= 0 && cc < COLS && rr < ROWS && G.tiles[idx(cc, rr)] === CIV;
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
@@ -351,19 +461,27 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     return -1;
   }
   function float(x, y, text, color = '#e6f2ec') { G.floaters.push({ x, y, text, color, t: 1.5 }); }
+  /** Centered text wrapped to the canvas: banners never run off the map. */
+  function wrapCentered(text, y, size, maxW) {
+    ctx.font = `700 ${size}px "Chakra Petch", sans-serif`; const words = String(text).split(' '), lines = []; let line = '';
+    for (const w of words) { const t = line ? line + ' ' + w : w; if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => { const ly = y + i * size * 1.2; ctx.strokeText(l, W / 2, ly); ctx.fillText(l, W / 2, ly); });
+  }
   function banner(text) { G.banner = { text, t: 2.8 }; $live.textContent = text; }
   function nearest(x, y, range) { let b = null, bd = range; for (const z of G.enemies) { if (z.hp <= 0) continue; const d = Math.hypot(z.x - x, z.y - y); if (d < bd) { bd = d; b = z; } } return b; }
   function startNight() {
     if (G.phase !== 'day' || G.over) return;
     const attackers = siegeNow().reduce((a, w) => a + w.attackers.length, 0);
-    G.phase = 'night'; G.toSpawn = F.waves.base + attackers * F.waves.per_attacker + G.day * F.waves.per_day; G.spawnGap = Math.min(1.6, 20 / G.toSpawn); G.spawnTimer = 1;
+    const w = F.waves; G.phase = 'night'; G.quietNight = false; G.toSpawn = Math.min(w.max, Math.round(w.base + attackers * w.per_attacker + Math.min(G.day, w.per_day_cap_days) * w.per_day)); G.spawnGap = Math.min(1.6, 20 / Math.max(1, G.toSpawn)); G.spawnTimer = 1;
     banner(fill(BANK.fortress.night, { n: G.day, grew: spreadBlight() }));
   }
   function dawn() {
+    if (G.phase === 'night' && !G.dim) teleAdd('nights_held');
     G.day++; G.phase = 'day'; G.timer = F.day_seconds; G.dawn = 1; spawnNodes(6); G.player.hp = Math.min(G.player.max, G.player.hp + 30); G.core.hp = Math.max(G.core.hp, 60);
     let homes = 0; G.grid.forEach((g, i) => { if (g && g.type === 'habitat' && G.tiles[i] === CIV) homes++; });
     if (homes) { G.scrap += homes * 2; float(G.core.x, G.core.y - 26, `Habitats: +${homes * 2} scrap`, '#9ff0d8'); }
-    banner(fill(BANK.fortress.day, { n: G.day }));
+    banner(fill(BANK.fortress.day, { n: G.day })); saveNow();
   }
   function spawnEnemy() {
     const d = G.day, roll = G.rnd(), blights = [];
@@ -376,7 +494,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   function shot(x1, y1, x2, y2, kind) { G.shots.push({ x1, y1, x2, y2, t: .09, kind }); }
   function updateFortress(dt) {
     const p = G.player;
-    if (G.phase === 'day') { G.timer -= dt; if (G.timer <= 0) startNight(); }
+    if (G.phase === 'day') { if (S.clock === 'real') { if (isNightHour()) startNight(); } else { G.timer -= dt; if (G.timer <= 0) startNight(); } }
     else if (G.toSpawn > 0) { G.spawnTimer -= dt; while (G.spawnTimer <= 0 && G.toSpawn > 0) { spawnEnemy(); G.toSpawn--; G.spawnTimer += G.spawnGap; } }
     G.dawn = Math.max(0, G.dawn - dt * .5);
     if (p.down > 0) { p.down -= dt; if (p.down <= 0) { p.hp = p.max; p.x = G.core.x; p.y = G.core.y + 44; float(p.x, p.y - 20, 'Rebooted', '#9ff0d8'); } }
@@ -388,23 +506,25 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       if (mx || my) { const dx = mx * p.speed * dt, dy = my * p.speed * dt; if (blockedAt(p.x + dx, p.y, p.r) === -1) p.x += dx; if (blockedAt(p.x, p.y + dy, p.r) === -1) p.y += dy; p.step += dt * 10; }
       if (G.tiles[tileOf(p)] === BLIGHT) { p.hp -= 5 * dt; p.hit = Math.max(p.hit, .05); }
       let gathering = null;
-      for (const n of G.nodes) if (Math.hypot(n.x - p.x, n.y - p.y) < 26 + p.r) { gathering = n; break; }
-      for (const n of G.nodes) if (n !== gathering) n.prog = 0;
+      for (let i = 0; i < G.nodes.length; i++) { const n = G.nodes[i]; if (Math.hypot(n.x - p.x, n.y - p.y) < 26 + p.r) { gathering = n; break; } }
+      for (let i = 0; i < G.nodes.length; i++) if (G.nodes[i] !== gathering) G.nodes[i].prog = 0;
       if (gathering) { gathering.prog += dt * p.gather; if (gathering.prog >= .6) { gathering.prog = 0; gathering.amt--; const amt = 1 + p.bonus; G.scrap += amt; float(gathering.x, gathering.y - 14, '+' + amt + ' scrap'); } }
-      G.nodes = G.nodes.filter((n) => n.amt > 0);
-      // caches (evidence) are picked up by walking over them
-      G.caches = G.caches.filter((c) => { if (Math.hypot(c.x - p.x, c.y - p.y) < 22 + p.r) { G.scrap += c.scrap; G.cells += c.cells; float(c.x, c.y - 14, `+${c.scrap} scrap · +${c.cells} cells`, '#9ff0d8'); return false; } return true; });
+      keepIf(G.nodes, standing);
+      // caches (evidence) are picked up by walking over them: the one place cells arrive
+      let j = 0;
+      for (let i = 0; i < G.caches.length; i++) { const c = G.caches[i]; if (Math.hypot(c.x - p.x, c.y - p.y) < 22 + p.r) { G.scrap += c.scrap; G.cells += c.cells; float(c.x, c.y - 14, `+${c.scrap} scrap · +${c.cells} cells`, '#9ff0d8'); } else G.caches[j++] = c; }
+      if (j !== G.caches.length) { G.caches.length = j; saveNow(); }
       p.cd -= dt;
       const tgt = nearest(p.x, p.y, p.range);
       if (tgt) { p.aim = Math.atan2(tgt.y - p.y, tgt.x - p.x); if (p.cd <= 0) { p.cd = 1 / p.rate; tgt.hp -= p.dmg; shot(p.x + Math.cos(p.aim) * 16, p.y + Math.sin(p.aim) * 16, tgt.x, tgt.y, 'p'); } }
       else if (mx || my) p.aim = Math.atan2(my, mx);
     }
     p.hit = Math.max(0, p.hit - dt);
-    G.grid.forEach((g, i) => {
-      if (!g) return; g.hit = Math.max(0, (g.hit || 0) - dt); if (g.type !== 'turret') return;
+    for (let i = 0; i < G.grid.length; i++) {
+      const g = G.grid[i]; if (!g) continue; g.hit = Math.max(0, (g.hit || 0) - dt); if (g.type !== 'turret') continue;
       g.cd -= dt; const x = (i % COLS + .5) * T, y = (Math.floor(i / COLS) + .5) * T, tgt = nearest(x, y, 135);
       if (tgt) { g.aim = Math.atan2(tgt.y - y, tgt.x - x); if (g.cd <= 0) { g.cd = 1 / 1.6; tgt.hp -= 10 * G.mods.turret; shot(x + Math.cos(g.aim) * 13, y + Math.sin(g.aim) * 13, tgt.x, tgt.y, 't'); } }
-    });
+    }
     const zs = G.enemies;
     for (const z of zs) { z.px = 0; z.py = 0; }
     for (let i = 0; i < zs.length; i++) for (let j = i + 1; j < zs.length; j++) { const a = zs[i], b = zs[j], dx = b.x - a.x, dy = b.y - a.y, dd = Math.hypot(dx, dy), min = a.r + b.r; if (dd < min && dd > .01) { const f = (min - dd) * 9 / dd; a.px -= dx * f; a.py -= dy * f; b.px += dx * f; b.py += dy * f; } }
@@ -412,7 +532,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     for (const z of zs) {
       z.wob += dt * 8; let tx, ty, chase = false; const dp = Math.hypot(p.x - z.x, p.y - z.y);
       if (p.down <= 0 && dp < z.aggro) { tx = p.x; ty = p.y; chase = true; }
-      else { const here = tileOf(z), c = here % COLS, r = Math.floor(here / COLS); let bi = here, bv = flow[here]; for (const [dc, dr] of DIRS) { const nc = c + dc, nr = r + dr; if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue; const j = idx(nc, nr); if (flow[j] < bv) { bv = flow[j]; bi = j; } } if (bi === here) { tx = G.core.x; ty = G.core.y; } else { tx = (bi % COLS + .5) * T; ty = (Math.floor(bi / COLS) + .5) * T; } }
+      else { const here = tileOf(z), c = here % COLS, r = Math.floor(here / COLS); let bi = here, bv = flow[here]; for (let q = 0; q < 4; q++) { const nc = c + DIRS[q][0], nr = r + DIRS[q][1]; if (nc < 0 || nr < 0 || nc >= COLS || nr >= ROWS) continue; const j = idx(nc, nr); if (flow[j] < bv) { bv = flow[j]; bi = j; } } if (bi === here) { tx = G.core.x; ty = G.core.y; } else { tx = (bi % COLS + .5) * T; ty = (Math.floor(bi / COLS) + .5) * T; } }
       const dx = tx - z.x, dy = ty - z.y, d = Math.hypot(dx, dy) || 1; z.dir = Math.atan2(dy, dx);
       if (chase && dp < z.r + p.r + 3) { p.hp -= z.dps * dt; p.hit = .15; continue; }
       const slow = G.tiles[tileOf(z)] === CIV ? .8 : 1, mx = dx / d * z.speed * slow * dt + z.px * dt, my = dy / d * z.speed * slow * dt + z.py * dt, b = blockedAt(z.x + mx, z.y + my, z.r);
@@ -423,18 +543,20 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     }
     if (changed) computeFlow();
     if (lostPylon) { territory(false); banner(BANK.fortress.pylon_fell); }
-    const alive = [];
-    for (const z of zs) { if (z.hp > 0) { alive.push(z); continue; } for (let n = 0; n < 6; n++) G.debris.push({ x: z.x, y: z.y, vx: (G.rnd() - .5) * 90, vy: (G.rnd() - .5) * 90, t: .5 + G.rnd() * .4 }); if (G.rnd() < .3) { G.scrap++; float(z.x, z.y - 8, '+1 scrap'); } }   // a kill pays scrap, never XP (rule 1)
-    G.enemies = alive;
+    for (let i = 0; i < zs.length; i++) { const z = zs[i]; if (z.hp > 0) continue; for (let n = 0; n < 6; n++) G.debris.push({ x: z.x, y: z.y, vx: (G.rnd() - .5) * 90, vy: (G.rnd() - .5) * 90, t: .5 + G.rnd() * .4 }); if (G.rnd() < .3) { G.scrap++; float(z.x, z.y - 8, '+1 scrap'); } }   // a kill pays scrap, never XP or cells (pillar 1)
+    keepIf(zs, hp);
     if (p.hp <= 0 && p.down <= 0) { p.hp = 0; p.down = 6; float(p.x, p.y - 18, 'Offline. Rebooting in 6s', '#ff9bb8'); }
     G.core.hit = Math.max(0, G.core.hit - dt);
-    for (const sh of G.shots) sh.t -= dt; G.shots = G.shots.filter((sh) => sh.t > 0);
-    for (const f of G.floaters) { f.t -= dt; f.y -= 22 * dt; } G.floaters = G.floaters.filter((f) => f.t > 0);
-    for (const d of G.debris) { d.t -= dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vx *= .9; d.vy *= .9; } G.debris = G.debris.filter((d) => d.t > 0);
+    for (let i = 0; i < G.shots.length; i++) G.shots[i].t -= dt; keepIf(G.shots, live);
+    for (let i = 0; i < G.floaters.length; i++) { const f = G.floaters[i]; f.t -= dt; f.y -= 22 * dt; } keepIf(G.floaters, live);
+    for (let i = 0; i < G.debris.length; i++) { const d = G.debris[i]; d.t -= dt; d.x += d.vx * dt; d.y += d.vy * dt; d.vx *= .9; d.vy *= .9; } keepIf(G.debris, live);
     for (const en of G.engines) en.wob += dt * 2;
     if (G.banner) { G.banner.t -= dt; if (G.banner.t <= 0) G.banner = null; }
     if (G.core.hp <= 0) { G.core.hp = 0; G.dim = true; G.enemies = []; G.toSpawn = 0; banner(BANK.fortress.dark); dawn(); G.dim = false; }   // the beacon dims; nothing is lost (rule 4)
-    if (G.phase === 'night' && G.toSpawn === 0 && G.enemies.length === 0) dawn();
+    if (G.phase === 'night' && G.toSpawn === 0 && G.enemies.length === 0) {
+      if (S.clock !== 'real' || !isNightHour()) dawn();
+      else if (!G.quietNight) { G.quietNight = true; banner(fill(BANK.fortress.night_quiet, { dawn: String(CLOCK.dawn_hour).padStart(2, '0') })); }
+    }
     if (S.pendingModules > 0 && !document.querySelector('.paper')) showModule();
   }
   function invalidSpot(c, r, tool) {
@@ -454,7 +576,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   function tryBuild(w) {
     const c = Math.floor(w.x / T), r = Math.floor(w.y / T); if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return;
     const i = idx(c, r), g = G.grid[i], cx = (c + .5) * T, cy = (r + .5) * T;
-    if (g) { if (g.hp >= g.max) { float(cx, cy - 10, g.type + ' is at full health'); return; } if (G.scrap < 1) { float(cx, cy - 10, 'Repairs need 1 scrap', '#ff9bb8'); return; } G.scrap--; g.hp = g.max; float(cx, cy - 10, 'Repaired'); return; }
+    if (g) { if (g.hp >= g.max) { float(cx, cy - 10, g.type + ' is at full health'); return; } if (G.scrap < 1) { float(cx, cy - 10, 'Repairs need 1 scrap', '#ff9bb8'); return; } G.scrap--; g.hp = g.max; float(cx, cy - 10, 'Repaired'); saveNow(); return; }
     const why = invalidSpot(c, r, G.tool); if (why) { float(cx, cy - 10, why, '#ff9bb8'); return; }
     const cost = F.costs[G.tool];
     if (G.scrap < cost.scrap) { float(cx, cy - 10, 'Not enough scrap', '#ff9bb8'); return; }
@@ -462,22 +584,25 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     G.scrap -= cost.scrap; G.cells -= cost.cells;
     const hp = Math.round(F.structure_hp[G.tool] * G.mods.struct);
     G.grid[i] = { type: G.tool, hp, max: hp, cd: 0, aim: -Math.PI / 2, hit: 0 };
-    computeFlow(); if (G.tool === 'pylon') territory(true);
+    computeFlow(); if (G.tool === 'pylon') { territory(true); teleAdd('pylons'); } saveNow();
   }
   function setTool(t) { G.tool = t; joy = null; document.querySelectorAll('[data-tool]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t))); }
   /** The evidence economy: an event's item becomes a cache by the beacon; an engine order's close scraps its machine. */
-  function landEvidence(ev, item) {
-    const by = item ? F.cache_by_grade[item.grade] : F.cache_by_kind[ev.kind];
-    if (by && (by.scrap || by.cells)) { const a = G.rnd() * Math.PI * 2; G.caches.push({ x: G.core.x + Math.cos(a) * 52, y: G.core.y + Math.sin(a) * 52, scrap: by.scrap, cells: by.cells, grade: item ? item.grade : 'plain', t: 0 }); toast(fill(BANK.fortress.cache, by)); }
+  // The one rule (and the sim's, sim/economy.mjs cacheFor): a lesson, a lift or a pace entry lands its kind's cache; any other drop lands its grade's.
+  function landEvidence(ev, item, quiet) {
+    if (S.landed.has(ev.id)) return; S.landed.add(ev.id);
+    const by = F.cache_by_kind[ev.kind] || (item ? F.cache_by_grade[item.grade] : null);
+    if (by && (by.scrap || by.cells)) { const a = G.rnd() * Math.PI * 2; G.caches.push({ x: G.core.x + Math.cos(a) * 52, y: G.core.y + Math.sin(a) * 52, scrap: by.scrap, cells: by.cells, grade: item ? item.grade : 'plain', t: 0 }); if (!quiet) toast(fill(BANK.fortress.cache, by)); }
     const en = G.engines.find((e) => e.id === ev.id);
     if (en) { G.engines = G.engines.filter((e) => e !== en); for (let n = 0; n < 14; n++) G.debris.push({ x: en.x, y: en.y, vx: (G.rnd() - .5) * 140, vy: (G.rnd() - .5) * 140, t: .6 + G.rnd() * .6 }); const c = tileOf(en); G.tiles[c] = WILD; banner(fill(BANK.fortress.engine_down, { id: en.keep ? 'A private order' : en.id })); }
   }
   function applyModule(id) {
-    const m = F.modules.find((x) => x.id === id); if (!m) return; const e = m.effect, p = G.player;
-    if (e.dmg) p.dmg *= e.dmg; if (e.rate) p.rate *= e.rate; if (e.speed) p.speed *= e.speed; if (e.hull) { p.max += e.hull; p.hp = p.max; }
-    if (e.gather) p.gather *= e.gather; if (e.bonus) p.bonus += e.bonus; if (e.turret) G.mods.turret *= e.turret; if (e.range) p.range *= e.range;
-    if (e.struct) { G.mods.struct *= e.struct; G.grid.forEach((g) => { if (g) { g.max = Math.round(g.max * e.struct); g.hp = g.max; } }); } if (e.pylon) { G.mods.pylon += e.pylon; territory(true); }
-    S.modules = S.modules || []; S.modules.push(id);
+    const m = F.modules.find((x) => x.id === id); if (!m) return; const e = m.effect;
+    S.modules.push(id); applyStats();
+    if (e.hull) G.player.hp = G.player.max;
+    if (e.struct) for (let i = 0; i < G.grid.length; i++) if (G.grid[i]) G.grid[i].hp = G.grid[i].max;
+    if (e.pylon) territory(true);
+    saveNow();
   }
 
   // ── fortress drawing ──
@@ -527,7 +652,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     ctx.fillStyle = '#2e2a33'; rr(en.x - 15, en.y - 13, 30, 26, 4); ctx.fill(); ctx.fillStyle = '#17151a'; ctx.fillRect(en.x - 12, en.y - 9, 24, 5); ctx.fillRect(en.x - 12, en.y + 4, 24, 5);
     ctx.fillStyle = `rgba(255,77,94,${.5 + .5 * pulse})`; ctx.beginPath(); ctx.arc(en.x, en.y, 4, 0, Math.PI * 2); ctx.fill();
     ctx.font = '700 9px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.85)'; ctx.fillStyle = '#ffd1dc';
-    const label = en.keep ? 'private' : `${en.id} · ${en.hp} HP`; ctx.strokeText(label, en.x, en.y - 18); ctx.fillText(label, en.x, en.y - 18);
+    const label = en.keep ? 'private' : `${en.id} · ${en.hp} HP`, lx = clamp(en.x, 34, W - 34), ly = en.y - 18 < 22 ? en.y + 28 : en.y - 18; ctx.strokeText(label, lx, ly); ctx.fillText(label, lx, ly);
   }
   function drawRobot(p) {
     if (p.down > 0) { ctx.globalAlpha = .5; shadow(p.x, p.y, 11, 6); ctx.fillStyle = '#9b988f'; rr(p.x - 10, p.y - 8, 20, 16, 4); ctx.fill(); ctx.globalAlpha = 1; ctx.font = '700 12px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#ff9bb8'; ctx.fillText(Math.ceil(p.down) + 's', p.x, p.y - 14); return; }
@@ -536,7 +661,16 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     ctx.fillStyle = p.hit > 0 ? '#ffc2cf' : '#e9e4d6'; rr(-10, -9, 20, 18, 5); ctx.fill(); ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = '#3DBFA6'; ctx.fillRect(-8, -9, 4, 18); ctx.restore();
     ctx.fillStyle = '#3fd0c0'; ctx.beginPath(); ctx.arc(p.x + ex * 4, p.y + ey * 4, 3.5, 0, Math.PI * 2); ctx.fill();
   }
-  function hole(x, y, r) { const g = lctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.55, 'rgba(0,0,0,.75)'); g.addColorStop(1, 'rgba(0,0,0,0)'); lctx.fillStyle = g; lctx.beginPath(); lctx.arc(x, y, r, 0, Math.PI * 2); lctx.fill(); }
+  // one pre-painted light, stamped per source: no gradient object per frame
+  const lightSprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(.55, 'rgba(0,0,0,.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return c; })();
+  function hole(x, y, r) { lctx.drawImage(lightSprite, x - r, y - r, r * 2, r * 2); }
+  function drawCache(c) { const bob = Math.sin(c.t * 2) * 2; shadow(c.x, c.y + 4, 10, 5); ctx.fillStyle = '#3b4247'; rr(c.x - 10, c.y - 8 + bob, 20, 16, 3); ctx.fill(); ctx.fillStyle = GRADE_RGB[c.grade] || '#fff'; ctx.fillRect(c.x - 7, c.y - 5 + bob, 14, 3); ctx.fillStyle = '#5fd6c0'; ctx.fillRect(c.x - 6, c.y + bob, 12, 4); ctx.strokeStyle = `rgba(95,214,192,${.5 + .5 * Math.sin(c.t * 3)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(c.x, c.y, 16, 0, Math.PI * 2); ctx.stroke(); }
+  function drawBeacon(cx, cy, t, dim) {
+    const pulse = dim ? .15 : .5 + .5 * Math.sin(t * 3);
+    ctx.fillStyle = 'rgba(20,20,22,.35)'; hexPath(cx + 3, cy + 4, 18, Math.PI / 6); ctx.fill(); ctx.fillStyle = '#3a4146'; hexPath(cx, cy, 18, Math.PI / 6); ctx.fill(); ctx.fillStyle = '#596268'; hexPath(cx, cy, 12, Math.PI / 6); ctx.fill();
+    ctx.fillStyle = `rgba(61,191,166,${dim ? .3 : .6 + .4 * pulse})`; ctx.beginPath(); ctx.arc(cx, cy, 5.5, 0, Math.PI * 2); ctx.fill(); if (!dim) { ctx.strokeStyle = `rgba(61,191,166,${.5 * pulse})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, 9 + pulse * 3, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  function hatch(x, y, w, h) { ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip(); ctx.fillStyle = 'rgba(150,150,142,.82)'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = 'rgba(60,60,56,.5)'; ctx.lineWidth = 1; ctx.beginPath(); for (let d = -h; d < w + h; d += 8) { ctx.moveTo(x + d, y); ctx.lineTo(x + d + h, y + h); } ctx.stroke(); ctx.restore(); }
   function renderFortress(t) {
     const p = G.player;
     ctx.setTransform(k, 0, 0, k, 0, 0); ctx.drawImage(ground, 0, 0, W, H);
@@ -544,21 +678,22 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     for (let i = 0; i < G.tiles.length; i++) { const st = G.tiles[i]; if (st === WILD) continue; const x = (i % COLS) * T, y = Math.floor(i / COLS) * T; ctx.drawImage(st === CIV ? civTex[G.tvar[i]] : blightTex[G.tvar[i]], x, y, T, T); if (st === BLIGHT) { ctx.fillStyle = `rgba(194,54,107,${.05 + .1 * vein * ((i * 7) % 3) / 2})`; ctx.fillRect(x, y, T, T); } }
     ctx.strokeStyle = 'rgba(47,143,122,.9)'; ctx.lineWidth = 2; ctx.beginPath(); for (const [a, b, c, d] of border) { ctx.moveTo(a, b); ctx.lineTo(c, d); } ctx.stroke();
     // the edges name their wards: the blight on each side is that program's aged work
-    ctx.font = '600 10px "Chakra Petch", sans-serif'; ctx.fillStyle = 'rgba(255,220,235,.9)'; ctx.textAlign = 'center';
+    // honest states (rules.states): an unread lane's edge is unlit, never drawn as a zero
+    if (S.state === 'unlit') { hatch(0, 0, T * 2, H); }
+    ctx.font = '600 12px "Chakra Petch", sans-serif'; ctx.fillStyle = 'rgba(255,220,235,.95)'; ctx.textAlign = 'center';
     const wn = (z) => z ? (wardOf(z).keep ? 'the Keep' : wardOf(z).name) : '';
     ctx.fillText(wn(G.edges.N), W / 2, 12); ctx.fillText(wn(G.edges.S), W / 2, H - 5);
-    ctx.save(); ctx.translate(10, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(wn(G.edges.W), 0, 0); ctx.restore(); ctx.save(); ctx.translate(W - 4, H / 2); ctx.rotate(Math.PI / 2); ctx.fillText(wn(G.edges.E), 0, 0); ctx.restore();
+    ctx.save(); ctx.translate(12, H / 2); ctx.rotate(-Math.PI / 2); if (S.state === 'unlit') { ctx.fillStyle = '#2b2b28'; ctx.fillText(fill(BANK.states.unlit, { ward: wn(G.edges.W) || 'an edge' }), 0, 0); ctx.fillStyle = 'rgba(255,220,235,.95)'; } else ctx.fillText(wn(G.edges.W), 0, 0); ctx.restore(); ctx.save(); ctx.translate(W - 4, H / 2); ctx.rotate(Math.PI / 2); ctx.fillText(wn(G.edges.E), 0, 0); ctx.restore();
     if (G.tool !== 'move' && !G.paused) {
       ctx.strokeStyle = 'rgba(29,34,38,.14)'; ctx.lineWidth = 1; ctx.beginPath(); for (let c = 1; c < COLS; c++) { ctx.moveTo(c * T, 0); ctx.lineTo(c * T, H); } for (let r = 1; r < ROWS; r++) { ctx.moveTo(0, r * T); ctx.lineTo(W, r * T); } ctx.stroke();
       if (hover && hover.c >= 0 && hover.r >= 0 && hover.c < COLS && hover.r < ROWS) { const ex = G.grid[idx(hover.c, hover.r)]; const ok = ex ? ex.hp < ex.max : !invalidSpot(hover.c, hover.r, G.tool); ctx.fillStyle = ok ? 'rgba(95,214,192,.4)' : 'rgba(194,54,107,.4)'; ctx.fillRect(hover.c * T, hover.r * T, T, T); if (G.tool === 'pylon' && ok && !ex) { ctx.strokeStyle = 'rgba(95,214,192,.8)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc((hover.c + .5) * T, (hover.r + .5) * T, (G.mods.pylon + .5) * T, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); } }
     }
     for (const n of G.nodes) { ctx.save(); ctx.translate(n.x, n.y); shadow(0, 2, 14, 8); ctx.rotate(n.rot); ctx.fillStyle = '#6d6a64'; ctx.fillRect(-12, -6, 14, 10); ctx.fillStyle = '#85817a'; ctx.fillRect(-3, -9, 13, 9); ctx.fillStyle = '#4f4c47'; ctx.fillRect(1, 1, 11, 7); ctx.restore(); for (let i = 0; i < n.amt; i++) { ctx.fillStyle = '#1d2226'; ctx.beginPath(); ctx.arc(n.x - 6 + i * 6, n.y + 15, 1.8, 0, Math.PI * 2); ctx.fill(); } if (n.prog > 0) { ctx.strokeStyle = '#5fd6c0'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(n.x, n.y, 17, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (n.prog / .6)); ctx.stroke(); } }
-    for (const c of G.caches) { c.t += .05; const bob = Math.sin(c.t * 2) * 2; shadow(c.x, c.y + 4, 10, 5); ctx.fillStyle = '#3b4247'; rr(c.x - 10, c.y - 8 + bob, 20, 16, 3); ctx.fill(); ctx.fillStyle = GRADE_RGB[c.grade] || '#fff'; ctx.fillRect(c.x - 7, c.y - 5 + bob, 14, 3); ctx.fillStyle = '#5fd6c0'; ctx.fillRect(c.x - 6, c.y + bob, 12, 4); ctx.strokeStyle = `rgba(95,214,192,${.5 + .5 * Math.sin(c.t * 3)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(c.x, c.y, 16, 0, Math.PI * 2); ctx.stroke(); }
+    for (let i = 0; i < G.caches.length; i++) { const c = G.caches[i]; c.t += .05; drawCache(c); }
     const pulse = .5 + .5 * Math.sin(t * 3), cx = G.core.x, cy = G.core.y;
-    ctx.fillStyle = 'rgba(20,20,22,.35)'; hexPath(cx + 3, cy + 4, 18, Math.PI / 6); ctx.fill(); ctx.fillStyle = '#3a4146'; hexPath(cx, cy, 18, Math.PI / 6); ctx.fill(); ctx.fillStyle = '#596268'; hexPath(cx, cy, 12, Math.PI / 6); ctx.fill();
-    ctx.fillStyle = `rgba(61,191,166,${.6 + .4 * pulse})`; ctx.beginPath(); ctx.arc(cx, cy, 5.5, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = `rgba(61,191,166,${.5 * pulse})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, 9 + pulse * 3, 0, Math.PI * 2); ctx.stroke();
+    drawBeacon(cx, cy, t, S.state === 'quiet');
     if (G.core.hit > 0) { ctx.fillStyle = 'rgba(255,70,110,.4)'; hexPath(cx, cy, 18, Math.PI / 6); ctx.fill(); }
-    G.grid.forEach((g, i) => { if (g) drawStruct(g, i, t); });
+    for (let i = 0; i < G.grid.length; i++) if (G.grid[i]) drawStruct(G.grid[i], i, t);
     for (const en of G.engines) drawEngine(en, t);
     for (const d of G.debris) { ctx.fillStyle = `rgba(255,170,120,${d.t * 1.6})`; ctx.fillRect(d.x - 1.5, d.y - 1.5, 3, 3); }
     for (const z of G.enemies) drawEnemy(z);
@@ -567,15 +702,16 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     let dark = 0; if (G.phase === 'night') dark = .74; else { if (G.timer < 10) dark = (1 - G.timer / 10) * .74; dark = Math.max(dark, G.dawn * .74); }
     if (dark > .01) {
       lctx.setTransform(k, 0, 0, k, 0, 0); lctx.globalCompositeOperation = 'source-over'; lctx.clearRect(0, 0, W, H); lctx.fillStyle = `rgba(16,10,30,${dark})`; lctx.fillRect(0, 0, W, H); lctx.globalCompositeOperation = 'destination-out';
-      hole(cx, cy, 100 + pulse * 6); if (p.down <= 0) hole(p.x, p.y, 110);
-      G.grid.forEach((g, i) => { if (!g) return; const gx = (i % COLS + .5) * T, gy = (Math.floor(i / COLS) + .5) * T; if (g.type === 'pylon') hole(gx, gy, 92); else if (g.type === 'habitat') hole(gx, gy, 54); else if (g.type === 'turret') hole(gx, gy, 50); });
+      hole(cx, cy, S.state === 'quiet' ? 60 : 100 + pulse * 6); if (p.down <= 0) hole(p.x, p.y, 110);
+      for (let i = 0; i < G.grid.length; i++) { const g = G.grid[i]; if (!g) continue; const gx = (i % COLS + .5) * T, gy = (Math.floor(i / COLS) + .5) * T; if (g.type === 'pylon') hole(gx, gy, 92); else if (g.type === 'habitat') hole(gx, gy, 54); else if (g.type === 'turret') hole(gx, gy, 50); }
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(light, 0, 0); ctx.setTransform(k, 0, 0, k, 0, 0);
       for (const z of G.enemies) { ctx.fillStyle = '#ff4d5e'; ctx.beginPath(); ctx.arc(z.x + Math.cos(z.dir) * z.r * .5, z.y + Math.sin(z.dir) * z.r * .5, 2.2, 0, Math.PI * 2); ctx.fill(); }
     }
+    if (S.state === 'dark') { ctx.fillStyle = 'rgba(40,40,44,.38)'; ctx.fillRect(0, 0, W, H); }
     ctx.textAlign = 'center'; ctx.font = '700 12px "Chakra Petch", sans-serif';
     for (const f of G.floaters) { ctx.globalAlpha = Math.min(1, f.t); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.85)'; ctx.strokeText(f.text, f.x, f.y); ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y); }
     ctx.globalAlpha = 1;
-    if (G.banner) { ctx.globalAlpha = Math.min(1, G.banner.t); ctx.font = '700 20px "Chakra Petch", sans-serif'; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(12,14,16,.75)'; ctx.strokeText(G.banner.text, W / 2, H * .3); ctx.fillStyle = '#e6f2ec'; ctx.fillText(G.banner.text, W / 2, H * .3); ctx.globalAlpha = 1; }
+    if (G.banner) { ctx.globalAlpha = Math.min(1, G.banner.t); ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(12,14,16,.75)'; ctx.fillStyle = '#e6f2ec'; ctx.textAlign = 'center'; wrapCentered(G.banner.text, H * .3, 20, W - 60); ctx.globalAlpha = 1; }
     if (joy) { const dx = joy.x - joy.ox, dy = joy.y - joy.oy, m = Math.hypot(dx, dy), cl = Math.min(m, 34) / (m || 1); ctx.strokeStyle = 'rgba(230,242,236,.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 34, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = 'rgba(230,242,236,.5)'; ctx.beginPath(); ctx.arc(joy.ox + dx * cl, joy.oy + dy * cl, 12, 0, Math.PI * 2); ctx.fill(); }
   }
 
@@ -585,7 +721,9 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     const regions = PLAN.weeks.map((w, i) => ({ week: w.n, lessons: w.lessons, z0: 20 + i * X.region_depth_m, z1: 20 + (i + 1) * X.region_depth_m, x0: -X.region_width_m / 2, x1: X.region_width_m / 2, hue: [200, 160, 40, 280, 20, 120, 320, 60][i % 8] }));
     const waypoints = []; regions.forEach((r) => r.lessons.forEach((id, j) => waypoints.push({ id, week: r.week, x: (j - (r.lessons.length - 1) / 2) * 9 + (rnd() - .5) * 4, z: r.z0 + 12 + j * ((X.region_depth_m - 24) / Math.max(1, r.lessons.length - 1)) + (rnd() - .5) * 6 })));
     const props = Array.from({ length: 80 }, () => ({ x: (rnd() - .5) * 120, z: rnd() * (regions[regions.length - 1].z1 + 40), s: .6 + rnd() * 1.2, kind: rnd() < .5 ? 'rock' : 'post' })).filter((p) => Math.abs(p.x) > X.region_width_m / 2 - 4 || p.kind === 'rock');
-    XW = { x: 0, z: 2, heading: 0, step: 0, regions, waypoints, props, near: null, floaters: [] };
+    // provinces: the plan's weeks grouped by province_weeks, markers on the horizon (positions, never titles)
+    const provinces = []; for (let i = 0; i < regions.length; i += X.province_weeks) { const grp = regions.slice(i, i + X.province_weeks); provinces.push({ n: provinces.length + 1, from: grp[0].week, to: grp[grp.length - 1].week, z: grp[grp.length - 1].z1 }); }
+    XW = { x: 0, z: 2, heading: 0, step: 0, regions, waypoints, props, provinces, near: null, card: null, floaters: [], armed: false };
   }
   function updateExplore(dt) {
     let turn = 0, fwd = 0;
@@ -595,9 +733,13 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     if (fwd) { XW.x += Math.sin(XW.heading) * fwd * X.walk_speed_mps * dt; XW.z += Math.cos(XW.heading) * fwd * X.walk_speed_mps * dt; XW.step += dt * 8; }
     const last = XW.regions[XW.regions.length - 1];
     XW.x = clamp(XW.x, -60, 60); XW.z = clamp(XW.z, -6, last.z1 + 30);
-    XW.near = null;
-    for (const w of XW.waypoints) if (Math.hypot(w.x - XW.x, w.z - XW.z) < X.waypoint_radius_m) { XW.near = w; break; }
-    for (const f of XW.floaters) f.t -= dt; XW.floaters = XW.floaters.filter((f) => f.t > 0);
+    XW.near = null; XW.card = null; let best = X.card_radius_m;
+    for (let i = 0; i < XW.waypoints.length; i++) { const w = XW.waypoints[i], d = Math.hypot(w.x - XW.x, w.z - XW.z); if (d < X.waypoint_radius_m && !XW.near) XW.near = w; if (d < best) { best = d; XW.card = w; } }
+    for (let i = 0; i < XW.floaters.length; i++) XW.floaters[i].t -= dt; keepIf(XW.floaters, live);
+    // the gate is a door: walking back through it returns to the fortress
+    const gd = Math.hypot(XW.x - X.gate.x_m, XW.z - X.gate.z_m);
+    if (gd > X.gate.radius_m + 2) XW.armed = true;
+    else if (XW.armed && gd < X.gate.radius_m) { XW.armed = false; XW.x = 0; XW.z = 2; XW.heading = 0; S.screen = 'fortress'; joy = null; render(); toast(BANK.explore.gate_home); }
     if (G.banner) { G.banner.t -= dt; if (G.banner.t <= 0) G.banner = null; }
   }
   /** world (x,z) → screen, camera behind and above the Keeper, looking along its heading */
@@ -607,6 +749,32 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     if (rz <= .3) return null;
     const sx = W / 2 + rx * X.focal / rz, sy = H * .42 + (X.camera_height_m - wy) * X.focal / rz;
     return { x: sx, y: sy, z: rz, scale: X.focal / rz };
+  }
+  function drawKeeperBehind(kx, ky, bob) {
+    ctx.fillStyle = 'rgba(20,20,22,.35)'; ctx.beginPath(); ctx.ellipse(kx, ky + 22, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(kx - 9, ky + 6); ctx.lineTo(kx - 11, ky + 20 + bob); ctx.moveTo(kx + 9, ky + 6); ctx.lineTo(kx + 11, ky + 20 - bob); ctx.stroke();   // legs
+    ctx.fillStyle = '#e9e4d6'; rr(kx - 16, ky - 18, 32, 28, 6); ctx.fill(); ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 1.5; ctx.stroke();   // torso
+    ctx.fillStyle = '#3DBFA6'; ctx.fillRect(kx - 14, ky - 16, 28, 4);   // the plate
+    ctx.fillStyle = '#2a2f33'; rr(kx - 11, ky - 36, 22, 16, 5); ctx.fill(); ctx.fillStyle = '#3fd0c0'; ctx.fillRect(kx - 8, ky - 34, 16, 3);   // head, visor seen from behind
+    ctx.beginPath(); ctx.moveTo(kx - 16, ky - 10 - bob); ctx.lineTo(kx - 26, ky + 2 + bob); ctx.moveTo(kx + 16, ky - 10 + bob); ctx.lineTo(kx + 26, ky + 2 - bob); ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 3; ctx.stroke();   // arms
+  }
+  function drawWaypointAt(x, y, sc, done, phase, ring) {
+    const pulse = .5 + .5 * Math.sin(phase * 2.5); ctx.fillStyle = 'rgba(20,20,22,.3)'; ctx.beginPath(); ctx.ellipse(x, y + .05 * sc, .7 * sc, .3 * sc, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#d7dcd6'; ctx.fillRect(x - .15 * sc, y - 2 * sc, .3 * sc, 2 * sc);
+    ctx.fillStyle = done ? '#3DBFA6' : `rgba(201,138,18,${.6 + .4 * pulse})`; ctx.beginPath(); ctx.arc(x, y - 2.3 * sc, .4 * sc, 0, Math.PI * 2); ctx.fill();
+    if (!done && ring) { ctx.strokeStyle = `rgba(201,138,18,${.25 * pulse})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, X.waypoint_radius_m * sc, X.waypoint_radius_m * sc * .45, 0, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  /** The gate as a door: two posts, a lintel, the beacon's light through it. */
+  function drawGateAt(x, y, sc, t) {
+    const w = X.gate.radius_m * sc, h = 3.4 * sc; ctx.fillStyle = 'rgba(20,20,22,.3)'; ctx.fillRect(x - w - .3 * sc, y - .1 * sc, 2 * w + .6 * sc, .3 * sc);
+    ctx.fillStyle = '#3a4146'; ctx.fillRect(x - w - .5 * sc, y - h, .6 * sc, h); ctx.fillRect(x + w - .1 * sc, y - h, .6 * sc, h); ctx.fillRect(x - w - .7 * sc, y - h - .5 * sc, 2 * w + 1.4 * sc, .6 * sc);
+    ctx.fillStyle = `rgba(61,191,166,${.18 + .12 * Math.sin(t * 3)})`; ctx.fillRect(x - w + .1 * sc, y - h + .1 * sc, 2 * w - .2 * sc, h - .1 * sc);
+    ctx.font = '600 11px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.6)'; ctx.fillStyle = 'rgba(230,242,236,.95)'; ctx.strokeText('the gate · the fortress', x, y - h - .9 * sc); ctx.fillText('the gate · the fortress', x, y - h - .9 * sc);
+  }
+  function drawProvinceAt(x, y, sc, label) {
+    ctx.strokeStyle = 'rgba(201,138,18,.9)'; ctx.lineWidth = Math.max(1.5, .2 * sc); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 6 * sc); ctx.stroke();
+    ctx.fillStyle = 'rgba(201,138,18,.9)'; ctx.beginPath(); ctx.moveTo(x, y - 6 * sc); ctx.lineTo(x + 2.4 * sc, y - 5.2 * sc); ctx.lineTo(x, y - 4.4 * sc); ctx.closePath(); ctx.fill();
+    if (label) { ctx.font = '600 10px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.6)'; ctx.fillStyle = 'rgba(255,224,170,.95)'; ctx.strokeText(label, x, y - 6.6 * sc); ctx.fillText(label, x, y - 6.6 * sc); }
   }
   function renderExplore(t) {
     ctx.setTransform(k, 0, 0, k, 0, 0);
@@ -623,19 +791,13 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     for (let gz = Math.floor(XW.z / 10) * 10 - 20; gz < XW.z + 160; gz += 10) { const a = project(XW.x - 80, gz), b = project(XW.x + 80, gz); if (a && b) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); } }
     // the fortress behind (a beacon at z = -4)
     const items = [];
-    items.push({ z: -4, draw: () => { const p = project(0, -4, 0); if (!p) return; const sc = p.scale; ctx.fillStyle = '#3a4146'; ctx.fillRect(p.x - 5 * sc, p.y - 4 * sc, 10 * sc, 4 * sc); ctx.fillStyle = `rgba(61,191,166,${.6 + .4 * Math.sin(t * 3)})`; ctx.beginPath(); ctx.arc(p.x, p.y - 4.8 * sc, .6 * sc, 0, Math.PI * 2); ctx.fill(); ctx.font = '600 10px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(230,242,236,.85)'; ctx.fillText('the fortress · gate', p.x, p.y - 5.6 * sc); } });
+    items.push({ z: X.gate.z_m, draw: () => { const p = project(X.gate.x_m, X.gate.z_m, 0); if (!p) return; drawGateAt(p.x, p.y, p.scale, t); } });
+    for (const pv of XW.provinces) for (const side of [-1, 1]) items.push({ z: pv.z, draw: () => { const p = project(side * (X.region_width_m / 2 + 4), pv.z, 0); if (!p || p.z > 400) return; drawProvinceAt(p.x, p.y, Math.max(p.scale, 1.2), side > 0 ? fill(BANK.explore.province, pv) : ''); } });
     for (const pr of XW.props) items.push({ z: pr.z, draw: () => { const p = project(pr.x, pr.z, 0); if (!p || p.z > 140) return; const sc = p.scale * pr.s; if (pr.kind === 'rock') { ctx.fillStyle = dark ? '#3b4043' : '#6d6a64'; ctx.beginPath(); ctx.ellipse(p.x, p.y, .9 * sc, .45 * sc, 0, 0, Math.PI * 2); ctx.fill(); } else { ctx.fillStyle = dark ? '#5a6168' : '#4f4c47'; ctx.fillRect(p.x - .12 * sc, p.y - 1.5 * sc, .24 * sc, 1.5 * sc); } } });
-    for (const w of XW.waypoints) items.push({ z: w.z, draw: () => { const p = project(w.x, w.z, 0); if (!p || p.z > 160) return; const sc = p.scale; const done = S.ticks.includes(w.id); const pulse = .5 + .5 * Math.sin(t * 2.5 + w.z); ctx.fillStyle = 'rgba(20,20,22,.3)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + .05 * sc, .7 * sc, .3 * sc, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#d7dcd6'; ctx.fillRect(p.x - .15 * sc, p.y - 2 * sc, .3 * sc, 2 * sc); ctx.fillStyle = done ? '#3DBFA6' : `rgba(201,138,18,${.6 + .4 * pulse})`; ctx.beginPath(); ctx.arc(p.x, p.y - 2.3 * sc, .4 * sc, 0, Math.PI * 2); ctx.fill(); if (!done && p.z < 60) { ctx.strokeStyle = `rgba(201,138,18,${.25 * pulse})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(p.x, p.y, X.waypoint_radius_m * sc, X.waypoint_radius_m * sc * .45, 0, 0, Math.PI * 2); ctx.stroke(); } if (p.z < 45) { ctx.font = '600 10px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.6)'; ctx.fillStyle = 'rgba(230,242,236,.9)'; const lb = `w${w.week} · ${done ? 'surveyed' : 'waypoint'}`; ctx.strokeText(lb, p.x, p.y - 3 * sc); ctx.fillText(lb, p.x, p.y - 3 * sc); } } });
+    for (const w of XW.waypoints) items.push({ z: w.z, draw: () => { const p = project(w.x, w.z, 0); if (!p || p.z > 160) return; const sc = p.scale; if (p.z < 2) return; const done = S.ticks.includes(w.id); drawWaypointAt(p.x, p.y, sc, done, t + w.z, p.z < 60); if (p.z < 45) { ctx.font = '600 10px "Chakra Petch", sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.6)'; ctx.fillStyle = 'rgba(230,242,236,.9)'; const lb = `w${w.week} · ${done ? 'surveyed' : 'waypoint'}`; ctx.strokeText(lb, p.x, p.y - 3 * sc); ctx.fillText(lb, p.x, p.y - 3 * sc); } } });
     items.sort((a, b) => b.z - a.z); for (const it of items) it.draw();
     // the Keeper, from behind, in the lower third
-    const kp = project(XW.x, XW.z, 0) || { x: W / 2, y: H * .78 }; const kx = kp.x, ky = kp.y - 22, bob = Math.sin(XW.step) * 1.5;
-    ctx.fillStyle = 'rgba(20,20,22,.35)'; ctx.beginPath(); ctx.ellipse(kx, ky + 22, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(kx - 9, ky + 6); ctx.lineTo(kx - 11, ky + 20 + bob); ctx.moveTo(kx + 9, ky + 6); ctx.lineTo(kx + 11, ky + 20 - bob); ctx.stroke();   // legs
-    ctx.fillStyle = '#e9e4d6'; rr(kx - 16, ky - 18, 32, 28, 6); ctx.fill(); ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 1.5; ctx.stroke();   // torso
-    ctx.fillStyle = '#3DBFA6'; ctx.fillRect(kx - 14, ky - 16, 28, 4);   // the plate
-    ctx.fillStyle = '#2a2f33'; rr(kx - 11, ky - 36, 22, 16, 5); ctx.fill(); ctx.fillStyle = '#3fd0c0'; ctx.fillRect(kx - 8, ky - 34, 16, 3);   // head, visor seen from behind
-    ctx.beginPath(); ctx.moveTo(kx - 16, ky - 10 - bob); ctx.lineTo(kx - 26, ky + 2 + bob); ctx.moveTo(kx + 16, ky - 10 + bob); ctx.lineTo(kx + 26, ky + 2 - bob); ctx.strokeStyle = '#1d2226'; ctx.lineWidth = 3; ctx.stroke();   // arms
+    const kp = project(XW.x, XW.z, 0) || { x: W / 2, y: H * .78 }; drawKeeperBehind(kp.x, kp.y - 22, Math.sin(XW.step) * 1.5);
     // HUD text in the world
     ctx.textAlign = 'center'; ctx.font = '700 12px "Chakra Petch", sans-serif';
     for (const f of XW.floaters) { ctx.globalAlpha = Math.min(1, f.t); ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.85)'; ctx.strokeText(f.text, W / 2, H * .6 - (1.5 - f.t) * 30); ctx.fillStyle = '#e6f2ec'; ctx.fillText(f.text, W / 2, H * .6 - (1.5 - f.t) * 30); }
@@ -643,27 +805,29 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     const here = XW.regions.find((r) => XW.z >= r.z0 && XW.z < r.z1);
     ctx.font = '600 11px "Chakra Petch", sans-serif'; ctx.fillStyle = 'rgba(230,242,236,.9)'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(12,14,16,.7)';
     const line = here ? `Region W${here.week} · ${x.regions[here.week - 1].done}/${x.regions[here.week - 1].total} surveyed${x.regions[here.week - 1].mapped ? ' · mapped' : ''}` : XW.z < 20 ? 'The gate. The field is ahead.' : 'Beyond the roadmap.'; ctx.strokeText(line, W / 2, 16); ctx.fillText(line, W / 2, 16);
-    if (G.banner) { ctx.globalAlpha = Math.min(1, G.banner.t); ctx.font = '700 18px "Chakra Petch", sans-serif'; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(12,14,16,.75)'; ctx.strokeText(G.banner.text, W / 2, H * .3); ctx.fillStyle = '#e6f2ec'; ctx.fillText(G.banner.text, W / 2, H * .3); ctx.globalAlpha = 1; }
+    if (G.banner) { ctx.globalAlpha = Math.min(1, G.banner.t); ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(12,14,16,.75)'; ctx.fillStyle = '#e6f2ec'; ctx.textAlign = 'center'; wrapCentered(G.banner.text, H * .28, 18, W - 60); ctx.globalAlpha = 1; }
     if (joy) { ctx.strokeStyle = 'rgba(230,242,236,.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 34, 0, Math.PI * 2); ctx.stroke(); const dx = joy.x - joy.ox, dy = joy.y - joy.oy, m = Math.hypot(dx, dy), cl = Math.min(m, 34) / (m || 1); ctx.fillStyle = 'rgba(230,242,236,.5)'; ctx.beginPath(); ctx.arc(joy.ox + dx * cl, joy.oy + dy * cl, 12, 0, Math.PI * 2); ctx.fill(); }
   }
   function survey() {
     const w = XW.near; if (!w || S.ticks.includes(w.id)) return;
     S.ticks.push(w.id);
     const before = E.expedition(PLAN, S.ticks.filter((t) => t !== w.id), RULES).mapped;
-    fire([lessonEvent(w.id, TODAY)], () => { const c = F.cache_by_kind.lesson.cells; G.cells += c; XW.floaters.push({ text: fill(BANK.explore.survey, { cells: c }), t: 1.5 }); if (E.expedition(PLAN, S.ticks, RULES).mapped > before) banner(BANK.explore.mapped); });
+    // the survey is the lesson's tick (an event); its cells land as a cache by the beacon, like every other piece of evidence
+    fire([lessonEvent(w.id, TODAY)], () => { XW.floaters.push({ text: fill(BANK.explore.survey, { cells: F.cache_by_kind.lesson.cells }), t: 1.5 }); if (E.expedition(PLAN, S.ticks, RULES).mapped > before) { banner(BANK.explore.mapped); teleAdd('regions_mapped'); } });
   }
 
   // ══════════════════════ the moment: close → event → drop card → medal → cache ══════════════════════
   function fire(newEvents, after) {
     const before = derive();
     for (const e of newEvents) S.events.push(e);
-    const st = derive();
+    const st = derive(); S.st = st;
     const fresh = st.log.filter((l) => !S.shown.has(l.id) && !l.voided); fresh.forEach((l) => S.shown.add(l.id));
     const medals = fresh.flatMap((l) => l.medals); const item = fresh.map((l) => l.item).find(Boolean);
     const gain = st.player.xp - before.player.xp;
     if (st.player.level > S.lastLevel) { S.pendingModules += st.player.level - S.lastLevel; S.lastLevel = st.player.level; }
     for (const e of newEvents) landEvidence(e, fresh.find((l) => l.id === e.id)?.item || null);
-    updateHud(st);
+    if (S.partsAct) applyStats();
+    updateHud(st); saveNow(); teleSave();
     const seq = [];
     if (item) seq.push((next) => showDrop(item, gain, next));
     for (const m of medals) seq.push((next) => showMedal(m, next));
@@ -686,12 +850,11 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   }
   function closeOrder(id) {
     const o = S.open.find((x) => x.id === id); if (!o) return;
-    const age = E.daysBetween(o.written, TODAY);
-    const ev = { id: o.id, kind: o.options ? 'decision' : 'close', at: TODAY, tier: o.tier, zone: o.tier === 'private' ? null : o.zone, weight: wos(o), facts: { pn: o.pn, difficulty: o.difficulty, effortMin: o.effortMin, ageDays: age, band: o.band, options: o.options ? o.options.length : 0, due: o.due, verified: false }, evidence: { kind: 'commit', ref: `tasks: ${o.id} done (from SocialOS)` } };
+    const ev = closeEvent(o); S.closed.push(o.id); teleAdd('closes_seen');
     S.open = S.open.filter((x) => x.id !== id); S.order = null; S.picked = null; S.proof = ''; renderOverlay();
     fire([ev], () => { if (S.screen === 'siege') render(); });
   }
-  function logLift() { if (S.liftsLogged.includes(TODAY)) return; S.liftsLogged.push(TODAY); fire([{ id: `lift/${TODAY}`, kind: 'lift', at: TODAY, tier: 'private', zone: null, weight: 30, facts: {}, evidence: { kind: 'tick', ref: `body/${TODAY}` } }], () => { G.cells += F.cache_by_kind.lift.cells; render(); }); }
+  function logLift() { if (S.liftsLogged.includes(TODAY)) return; S.liftsLogged.push(TODAY); fire([{ id: `lift/${TODAY}`, kind: 'lift', at: TODAY, tier: 'private', zone: null, weight: 30, facts: {}, evidence: { kind: 'tick', ref: `body/${TODAY}` } }], () => render()); }
 
   // ══════════════════════ rendering the screens ══════════════════════
   const $screen = document.getElementById('screen'), $overlay = document.getElementById('overlay'), $live = document.getElementById('live'), $mode = document.getElementById('modepill');
@@ -703,30 +866,55 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   let hudEls = null;
   function gameShell(mode) {
     const tools = mode === 'fortress'
-      ? `<button data-tool="move" aria-pressed="true">Move<small>drag · WASD</small></button><button data-tool="wall">Wall<small>3 scrap</small></button><button data-tool="turret">Turret<small>5 s · 2 c</small></button><button data-tool="pylon">Pylon<small>6 s · 4 c</small></button><button data-tool="habitat">Habitat<small>4 s · 2 c</small></button><button class="night" id="nightBtn">Night<small>skip the wait</small></button>`
+      ? `<button data-tool="move" aria-pressed="true">Move<small>drag · WASD</small></button>${['wall', 'turret', 'pylon', 'habitat'].map((k) => { const c = F.costs[k]; return `<button data-tool="${k}">${k[0].toUpperCase() + k.slice(1)}<small>${c.cells ? `${c.scrap} s · ${c.cells} c` : `${c.scrap} scrap`}</small></button>`; }).join('')}<button class="night" id="nightBtn">Night<small>start it now</small></button>`
       : `<button data-tool="move" aria-pressed="true">Walk<small>drag · WASD</small></button><button class="go" id="surveyBtn" disabled>Survey<small>reach a waypoint</small></button><button data-go="fortress">Gate<small>back inside</small></button>`;
     const strip = mode === 'fortress'
       ? `<button class="pri" data-go="siege">${icon('engine')} Close an order (evidence)</button><button data-go="explore">${icon('field')} Out the gate</button>`
       : `<button class="pri" data-go="siege">${icon('engine')} The siege</button><button data-go="keeper">${icon('keeper')} The Keeper</button>`;
-    return `<div class="hud" id="hud"><div class="clock"><b id="dayLabel"></b><span id="daySub"></span></div><div class="meter"><span>Hull</span><div class="bar"><i id="hpBar"></i></div></div><div class="meter"><span>Beacon</span><div class="bar core"><i id="coreBar"></i></div></div><div class="meter"><span>Ground <b id="civPct"></b></span><div class="bar civ"><i id="civBar"></i></div></div><div class="meter"><b id="scrap"></b>&nbsp;scrap&nbsp;<b id="cells"></b>&nbsp;cells</div><div class="meter"><span>L<b id="lvl"></b></span><div class="bar xp"><i id="xpBar"></i></div></div></div>
-      <div class="stage" id="stage"><canvas class="game" id="game" aria-label="${mode === 'fortress' ? 'Fortress map. Drag to drive the Keeper, or pick a tool and tap a tile.' : 'The field, third person. Drag to walk.'}"></canvas></div>
+    return `<div class="hud" id="hud"><div class="clock"><b id="dayLabel"></b><span id="daySub"></span></div><div class="meter"><span class="chip" id="clockMode"></span></div><div class="statechip" id="stateChip"></div><div class="meter"><span>Hull</span><div class="bar"><i id="hpBar"></i></div></div><div class="meter"><span>Beacon</span><div class="bar core"><i id="coreBar"></i></div></div><div class="meter"><span>Ground <b id="civPct"></b></span><div class="bar civ"><i id="civBar"></i></div></div><div class="meter"><b id="scrap"></b>&nbsp;scrap&nbsp;<b id="cells"></b>&nbsp;cells</div><div class="meter"><span>L<b id="lvl"></b></span><div class="bar xp"><i id="xpBar"></i></div></div></div>
+      ${mode === 'explore' ? '<div class="compass" id="compass" aria-live="off"></div>' : ''}
+      <div class="stage" id="stage"><canvas class="game" id="game" aria-label="${mode === 'fortress' ? 'Fortress map. Drag to drive the Keeper, or pick a tool and tap a tile.' : 'The field, third person. Drag to walk.'}"></canvas>${mode === 'explore' ? '<div class="wpcard" id="wpcard" hidden></div>' : ''}</div>
       <nav class="tools" aria-label="Tools">${tools}</nav><div class="strip">${strip}</div>`;
   }
   function updateHud(st) {
     if (!hudEls || !document.getElementById('hud')) return;
-    st = st || derive(); const p = G.player, pct = civPct(), pr = st.player.progress;
+    st = st || S.st; const p = G.player, pct = civPct(), pr = st.player.progress;
     const set = (el, v) => { v = String(v); if (el && el.textContent !== v) el.textContent = v; };
-    if (S.screen === 'fortress') { set(hudEls.day, (G.phase === 'day' ? 'Day ' : 'Night ') + G.day); set(hudEls.sub, G.phase === 'day' ? Math.max(0, Math.ceil(G.timer)) + 's to dark' : (G.toSpawn + G.enemies.length) + ' machines'); }
+    const hh = (n) => String(n).padStart(2, '0');
+    if (S.screen === 'fortress') {
+      set(hudEls.day, (G.phase === 'day' ? 'Day ' : 'Night ') + G.day);
+      const spent = G.phase === 'night' && G.toSpawn + G.enemies.length === 0;
+      set(hudEls.sub, G.phase === 'day' ? (S.clock === 'real' ? fill(BANK.fortress.until_night, { night: hh(CLOCK.night_hour) }) : Math.max(0, Math.ceil(G.timer)) + 's to dark') : spent ? fill(BANK.fortress.until_dawn, { dawn: hh(CLOCK.dawn_hour) }) : (G.toSpawn + G.enemies.length) + ' machines');
+    }
     else { const x = E.expedition(PLAN, S.ticks, RULES); set(hudEls.day, x.rank.label); set(hudEls.sub, `${x.mapped} regions mapped`); }
+    set(hudEls.mode, S.clock === 'real' ? fill(BANK.fortress.clock_real, { night: hh(CLOCK.night_hour) }) : BANK.fortress.clock_short);
+    set(hudEls.state, S.state === 'dark' ? fill(BANK.states.dark, { days: RULES.states.dark_days }) : S.state === 'quiet' ? BANK.states.quiet : S.state === 'unlit' ? fill(BANK.states.unlit, { ward: G.edges.W ? wardOf(G.edges.W).name : 'an edge' }) : '');
+    if (S.screen === 'explore') updateCompass();
     hudEls.hp.style.width = (p.hp / p.max * 100) + '%'; hudEls.core.style.width = (G.core.hp / G.core.max * 100) + '%'; hudEls.civ.style.width = Math.min(100, pct / F.goal_ground * 50) + '%';
     set(hudEls.civPct, Math.round(pct * 100) + '%'); set(hudEls.scrap, G.scrap); set(hudEls.cells, G.cells); set(hudEls.lvl, st.player.level); hudEls.xp.style.width = Math.round(100 * pr.into / pr.need) + '%';
     const nb = document.getElementById('nightBtn'); if (nb) nb.disabled = G.phase !== 'day' || G.paused;
     const sb = document.getElementById('surveyBtn'); if (sb) { const can = !!(XW.near && !S.ticks.includes(XW.near.id)); sb.disabled = !can; sb.querySelector('small').textContent = XW.near ? (S.ticks.includes(XW.near.id) ? 'already surveyed' : `w${XW.near.week} waypoint`) : 'reach a waypoint'; }
   }
+  // the compass strip (D29): heading, the nearest unsurveyed waypoint, the gate; arrows relative to where the Keeper faces
+  const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+  function rel(dx, dz) { const a = Math.atan2(dx, dz) - XW.heading; const k = ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8; return ARROWS[k]; }
+  function updateCompass() {
+    const el = document.getElementById('compass'); if (!el) return;
+    const deg = ((Math.round(XW.heading * 180 / Math.PI) % 360) + 360) % 360;
+    let wp = null, wd = Infinity; for (const w of XW.waypoints) { if (S.ticks.includes(w.id)) continue; const d = Math.hypot(w.x - XW.x, w.z - XW.z); if (d < wd) { wd = d; wp = w; } }
+    const gd = Math.hypot(X.gate.x_m - XW.x, X.gate.z_m - XW.z);
+    const html = `<span>Heading <b>${deg}°</b></span>` + (wp ? `<span><span class="arw">${rel(wp.x - XW.x, wp.z - XW.z)}</span>${esc(fill(BANK.explore.compass_waypoint, { dist: Math.round(wd) }))}</span>` : '<span>every waypoint surveyed</span>') + `<span><span class="arw">${rel(X.gate.x_m - XW.x, X.gate.z_m - XW.z)}</span>${esc(fill(BANK.explore.compass_gate, { dist: Math.round(gd) }))}</span>`;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    const card = document.getElementById('wpcard'); if (!card) return;
+    const w = XW.card; card.hidden = !w;
+    if (w) { const reg = XW.regions.find((r) => r.week === w.week), pos = reg.lessons.indexOf(w.id) + 1, done = S.ticks.includes(w.id), inRange = XW.near === w;
+      const ch = `<div class="grow">${esc(fill(BANK.explore.card, { week: w.week, pos, of: reg.lessons.length }))}<small>${esc(done ? BANK.explore.card_done : BANK.explore.card_open)} · ${Math.round(Math.hypot(w.x - XW.x, w.z - XW.z))} m</small></div><button data-survey="1" ${done || !inRange ? 'disabled' : ''}>${done ? 'Surveyed' : inRange ? 'Survey' : 'Walk closer'}</button>`;
+      if (card.dataset.k !== ch) { card.innerHTML = ch; card.dataset.k = ch; } }
+  }
   function mountCanvas() {
     cv = document.getElementById('game'); if (!cv) return; ctx = cv.getContext('2d');
-    hudEls = { day: document.getElementById('dayLabel'), sub: document.getElementById('daySub'), hp: document.getElementById('hpBar'), core: document.getElementById('coreBar'), civ: document.getElementById('civBar'), civPct: document.getElementById('civPct'), scrap: document.getElementById('scrap'), cells: document.getElementById('cells'), lvl: document.getElementById('lvl'), xp: document.getElementById('xpBar') };
-    resize();
+    hudEls = { mode: document.getElementById('clockMode'), state: document.getElementById('stateChip'), day: document.getElementById('dayLabel'), sub: document.getElementById('daySub'), hp: document.getElementById('hpBar'), core: document.getElementById('coreBar'), civ: document.getElementById('civBar'), civPct: document.getElementById('civPct'), scrap: document.getElementById('scrap'), cells: document.getElementById('cells'), lvl: document.getElementById('lvl'), xp: document.getElementById('xpBar') };
+    resize(); stageObs.disconnect(); stageObs.observe(document.getElementById('stage'));
     cv.addEventListener('pointerdown', (e) => { if (G.paused && S.screen === 'fortress') return; const w = toWorld(e); if (G.tool === 'move' || S.screen === 'explore') { joy = { id: e.pointerId, ox: w.x, oy: w.y, x: w.x, y: w.y }; cv.setPointerCapture(e.pointerId); } else tryBuild(w); e.preventDefault(); });
     cv.addEventListener('pointermove', (e) => { const w = toWorld(e); if (joy && e.pointerId === joy.id) { joy.x = w.x; joy.y = w.y; } hover = { c: Math.floor(w.x / T), r: Math.floor(w.y / T) }; });
     ['pointerup', 'pointercancel'].forEach((t) => cv.addEventListener(t, (e) => { if (joy && e.pointerId === joy.id) joy = null; }));
@@ -740,14 +928,15 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     const dpr = Math.min(window.devicePixelRatio || 1, 2); k = size / W * dpr; cv.width = light.width = Math.round(W * k); cv.height = light.height = Math.round(H * k);
   }
   new ResizeObserver(() => resize()).observe(document.getElementById('phone'));
+  const stageObs = new ResizeObserver(() => resize());
 
   function render() {
-    const st = derive(); const wards = siegeNow(); const x = E.expedition(PLAN, S.ticks, RULES);
+    const st = S.st; const wards = siegeNow(); const x = E.expedition(PLAN, S.ticks, RULES);
     $mode.textContent = `Fieldworks · ${S.screen}`;
     document.querySelectorAll('#seg-screen button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.go === S.screen)));
     document.getElementById('homebtn').setAttribute('aria-current', S.screen === 'home' ? 'page' : 'false');
     let html = '';
-    if (S.screen === 'fortress' || S.screen === 'explore') { html = gameShell(S.screen); $screen.innerHTML = html; mountCanvas(); G.paused = false; if (S.screen === 'explore' && !S.exploreSeen) { S.exploreSeen = true; banner(BANK.explore.enter); } updateHud(st); if (S.screen === 'fortress' && !S.started) { S.started = true; showStart(); } renderOverlay(); return; }
+    if (S.screen === 'fortress' || S.screen === 'explore') { html = gameShell(S.screen); $screen.innerHTML = html; mountCanvas(); G.paused = false; if (S.screen === 'explore' && !S.exploreSeen) { S.exploreSeen = true; banner(BANK.explore.enter); } updateHud(st); if (S.screen === 'fortress' && !S.started) { S.started = true; if (store.get(KEYS.onboarded) === '1') showStart(); else showOnboarding(0); } renderOverlay(); return; }
     G.paused = true; hudEls = null;
     if (S.screen === 'siege') {
       html += head('The siege', `${wards.reduce((a, w) => a + w.attackers.length, 0)} at the walls · close one to scrap its machine`, 'fortress');
@@ -768,9 +957,12 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       html += `</div>`;
     } else if (S.screen === 'keeper') {
       const parts = E.keeper(st, { regions: x.mapped }, RULES);
-      html += head(S.keeperName || 'The Keeper', `L${st.player.level} · ${st.medals.length} plates · ${st.items.length} items · ${(S.modules || []).length} modules`, 'fortress');
-      html += `<div class="content"><section class="card"><div class="keeper">${keeperSvg(parts)}<div class="parts">${parts.map((p) => `<div class="part"><span>${esc(p.label)}</span><div class="tiers">${[1, 2, 3, 4, 5].map((t) => `<i class="${p.tier >= t ? 'on' : ''}"></i>`).join('')}</div><span class="chip">${esc(p.from.replace('_', ' '))} ${p.value}</span></div>`).join('')}</div></div><div style="margin-top:10px;display:flex;gap:8px"><input class="input" id="kname" placeholder="Name the Keeper (kept on this device)" value="${esc(S.keeperName)}" aria-label="Keeper's name"><button class="btn" data-name="1">Save</button></div></section>`;
-      html += `<section class="card"><h2>Modules <span class="more">installed in play</span></h2>${(S.modules || []).map((id) => { const m = F.modules.find((x) => x.id === id); return `<div class="row"><div class="t"><div class="name">${esc(m.label)}</div><div class="meta">${esc(m.line)}</div></div></div>`; }).join('') || '<div class="empty">None yet. A level earned by evidence installs one.</div>'}</section>`;
+      html += head(S.keeperName || 'The Keeper', `L${st.player.level} · ${st.medals.length} plates · ${st.items.length} items · ${S.modules.length} modules`, 'fortress');
+      html += `<div class="content"><section class="card"><div class="keeper">${keeperSvg(parts)}<div class="parts">${parts.map((p) => { const fx = KFX.parts[p.slug]; return `<div class="part"><span>${esc(p.label)}</span><div class="tiers">${[1, 2, 3, 4, 5].map((t) => `<i class="${p.tier >= t ? 'on' : ''}"></i>`).join('')}</div><span class="chip">${esc(p.from.replace('_', ' '))} ${p.value}</span></div><div class="fx" data-fx="${p.slug}">${esc(fill(BANK.keeper_effects.line, { pct: Math.round(fx.per_tier * p.tier * 100), label: fx.label }))}<span class="chip dash">${esc(BANK.keeper_effects.proposed)}</span>${S.partsAct ? '' : `<span class="chip">${esc(BANK.keeper_effects.off.split(' · ')[0])}</span>`}</div>`; }).join('')}</div></div><div style="margin-top:10px;display:flex;gap:8px"><input class="input" id="kname" placeholder="Name the Keeper (kept on this device)" value="${esc(S.keeperName)}" aria-label="Keeper's name"><button class="btn" data-name="1">Save</button></div></section>`;
+      const last7 = Object.entries(TEL.opens).filter(([d]) => d >= new Date(Date.now() - 6 * DAY).toLocaleDateString('en-CA')).reduce((a, [, n]) => a + n, 0);
+      html += `<section class="card" id="yournumbers"><h2>${esc(BANK.telemetry.heading)} <span class="more">${esc(BANK.telemetry.note)}</span></h2><div class="nums">${[['opens', last7], ['session_seconds', Math.round(TEL.session_seconds / 60)], ['closes_seen', TEL.closes_seen], ['pylons', TEL.pylons], ['nights_held', TEL.nights_held], ['regions_mapped', TEL.regions_mapped]].map(([k, v]) => `<div><b>${v}</b>${esc(BANK.telemetry[k])}</div>`).join('')}</div></section>`;
+      html += `<section class="card"><h2>${esc(BANK.keeper_effects.heading)} <span class="more">${esc(BANK.keeper_effects.proposed)} · D26</span></h2><div class="empty">${S.partsAct ? 'The parts act in play now, each by the line beside it.' : esc(BANK.keeper_effects.off)}</div></section>`;
+      html += `<section class="card"><h2>Modules <span class="more">installed in play</span></h2>${S.modules.map((id) => { const m = F.modules.find((x) => x.id === id); return `<div class="row"><div class="t"><div class="name">${esc(m.label)}</div><div class="meta">${esc(m.line)}</div></div></div>`; }).join('') || '<div class="empty">None yet. A level earned by evidence installs one.</div>'}</section>`;
       html += `<section class="card"><h2>Plates <span class="more">${st.medals.length} medals · never lost</span></h2><div class="plates">${st.medals.map((m) => `<span class="plate-chip ${m.top ? 'top' : ''}" title="${esc(BANK.medal[m.slug])}">${icon('medal')}${esc(m.label)}<small>${m.at}</small></span>`).join('') || '<div class="empty">No plates yet.</div>'}</div></section>`;
       html += `<section class="card"><h2>The forge <span class="more">${st.items.length} items</span></h2>${st.items.slice().reverse().map((it) => `<div class="row"><span class="chip g g-${it.grade}">${it.grade}</span><div class="t"><div class="name">${esc(it.name)}${it.provisional ? ' <span class="chip dash">unverified</span>' : ''}</div><div class="meta">${it.sealed ? 'sealed · a count, never a name' : esc(it.receipt)}</div></div></div>`).join('')}</section></div>`;
     } else if (S.screen === 'skills') {
@@ -781,7 +973,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       html += `<div class="content">${QUESTS.map((q) => { const leaves = q.tasks, done = leaves.filter((t) => t[2] === 'done').length, complete = done === leaves.length; return `<section class="card"><h2>${esc(q.name)} <span class="more">${q.program ? esc(wardOf(q.program).name) : 'standalone'}</span></h2>${complete ? `<div class="row"><span class="chip g g-masterwork">campaign</span><div class="t"><div class="name">Quest complete</div><div class="meta">every objective done with evidence</div></div></div>` : ''}${leaves.map((t) => `<div class="row" style="min-height:36px;padding:6px 0"><span class="chip ${t[2] === 'done' ? 'g g-fine' : t[2] === 'blocked' ? 'dash' : ''}">${t[2] === 'done' ? '✓' : t[2] === 'blocked' ? 'lock' : t[2] === 'in_progress' ? '…' : '·'}</span><div class="t"><div class="name">${esc(t[1])}</div><div class="meta">${t[2] === 'blocked' ? `requires ${t[4]}` : t[2] === 'done' ? `evidence · ${t[3]}` : t[2]}</div></div></div>`).join('')}</section>`; }).join('')}<section class="card"><div class="row"><span class="chip dash">private</span><div class="t"><div class="name">${PRIVATE_QUESTS} quests in the Keep</div><div class="meta">counted, never named</div></div></div></section></div>`;
     } else if (S.screen === 'home') {
       const atWalls = wards.reduce((a, w) => a + w.attackers.length, 0);
-      html += `<div class="shead"><div class="grow"><h1>Home</h1><div class="sub">Sunday · what needs you</div></div>${icon('sliders')}</div>`;
+      html += `<div class="shead"><div class="grow"><h1>Home</h1><div class="sub">${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][TODAY_DOW]} · what needs you</div></div>${icon('sliders')}</div>`;
       html += `<div class="content"><div class="attn"><span class="n">7</span><div><b>things need you</b><div class="empty">4 drafts · 2 orders in Now · 1 reply</div></div></div><div class="tiles">
         <div class="tile wide" style="--node:var(--n-inbox)"><span class="dot"></span><span class="tt">Inbox</span><span class="tm">4 drafts waiting</span></div>
         <button class="tile play" data-go="fortress"><span class="tt">${icon('fort')} Fieldworks</span><canvas class="mini" id="minimap" width="140" height="34" aria-hidden="true"></canvas><span class="tm">${G.phase === 'night' ? 'night' : 'day'} ${G.day} · ${Math.round(civPct() * 100)}% ground · ${atWalls} at the walls</span></button>
@@ -817,6 +1009,13 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       <div class="empty">The drop rolls from this order's own facts; a cache lands by the beacon; its engine, if it is one, is scrapped.</div></div>`;
     $overlay.appendChild(el); setTimeout(() => document.getElementById('proof')?.focus(), 0);
   }
+  function showOnboarding(i) {
+    const ids = RULES.onboarding.cards, c = BANK.onboarding[ids[i]]; G.paused = true;
+    const el = document.createElement('div'); el.className = 'scrim center';
+    el.innerHTML = `<div class="paper" role="dialog" aria-label="${esc(c.title)}" data-onboard="${i}"><div class="keys">${i + 1} of ${ids.length}</div><h2>${esc(c.title)}</h2><p>${esc(c.body)}</p><button class="primary" data-act="next">${i + 1 < ids.length ? 'Next' : 'Got it'}</button></div>`;
+    $overlay.appendChild(el); el.querySelector('button').focus();
+    el.addEventListener('click', (e) => { if (!e.target.closest('[data-act="next"]')) return; el.remove(); if (i + 1 < ids.length) showOnboarding(i + 1); else { store.set(KEYS.onboarded, '1'); showStart(); } });
+  }
   function showStart() {
     G.paused = true; const el = document.createElement('div'); el.className = 'scrim center';
     el.innerHTML = `<div class="paper" role="dialog"><h2>Fieldworks</h2><p>${esc(BANK.fortress.start)}</p><p>By day, drive the Keeper, salvage scrap, raise pylons at the edge of your ground to push the blight back, build walls and turrets to hold it, habitats for income. Each edge of the map is one program's aged work; the parked engines are your oldest orders, and only closing one scraps it.</p><p>Each night the blight surges and its machines march on the beacon. Nothing is ever lost: a dark beacon relights at dawn.</p><p class="keys">Drag or WASD to move. Keys 1–5 pick a tool, N starts the night. Cells come only from evidence: close an order from the Siege list, or survey a waypoint out in the field.</p><button class="primary" data-act="start">Power on</button></div>`;
@@ -826,7 +1025,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
 
   // ══════════════════════ events and the loop ══════════════════════
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-tool],#reset,#nightBtn,#surveyBtn');
+    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-tool],[data-clock],[data-parts],[data-state],[data-survey],#reset,#replayOnboarding,#nightBtn,#surveyBtn');
     if (!t) return;
     if (t.dataset.go) { S.screen = t.dataset.go; S.order = null; joy = null; render(); return; }
     if (t.dataset.order) { S.order = t.dataset.order; S.picked = null; S.proof = ''; renderOverlay(); return; }
@@ -834,33 +1033,90 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     if (t.dataset.pick) { S.picked = t.dataset.pick; S.proof = document.getElementById('proof')?.value || ''; renderOverlay(); return; }
     if (t.dataset.done) { closeOrder(t.dataset.done); return; }
     if (t.dataset.lift) { logLift(); return; }
-    if (t.dataset.name) { S.keeperName = (document.getElementById('kname')?.value || '').slice(0, 24); try { localStorage.setItem('fieldworks-keeper', S.keeperName); } catch {} render(); return; }
+    if (t.dataset.name) { S.keeperName = (document.getElementById('kname')?.value || '').slice(0, 24); store.set(KEYS.keeper, S.keeperName); render(); return; }
+    if (t.dataset.clock) { S.clock = t.dataset.clock; G.quietNight = false; pressSeg('seg-clock', 'clock', S.clock); updateHud(); return; }
+    if (t.dataset.parts) { S.partsAct = t.dataset.parts === 'on'; pressSeg('seg-parts', 'parts', t.dataset.parts); applyStats(); saveNow(); render(); return; }
+    if (t.dataset.state) { S.state = t.dataset.state; pressSeg('seg-state', 'state', S.state); updateHud(); return; }
+    if (t.dataset.survey) { survey(); return; }
+    if (t.id === 'replayOnboarding') { $overlay.querySelectorAll('.scrim').forEach((x) => x.remove()); S.screen = 'fortress'; S.started = true; render(); showOnboarding(0); return; }
     if (t.dataset.theme) { document.documentElement.setAttribute('data-theme', t.dataset.theme); document.querySelectorAll('#seg-theme button').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); return; }
     if (t.dataset.tool) { setTool(t.dataset.tool); return; }
     if (t.id === 'nightBtn') { startNight(); return; }
     if (t.id === 'surveyBtn') { survey(); return; }
-    if (t.id === 'reset') { reset(); render(); }
+    if (t.id === 'reset') { store.del(KEYS.save); $overlay.innerHTML = ''; reset(); S.started = false; render(); saveNow(); }
   });
   document.addEventListener('input', (e) => { if (e.target.id === 'proof') { S.proof = e.target.value; const b = document.querySelector('[data-done]'); if (b) b.disabled = !S.proof.trim(); } });
   const MOVE_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'], TOOL_KEYS = { 1: 'move', 2: 'wall', 3: 'turret', 4: 'pylon', 5: 'habitat' };
   addEventListener('keydown', (e) => { if (e.target.matches('input')) return; const key = e.key.toLowerCase(); if (MOVE_KEYS.includes(key)) { keys[key] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); } if (S.screen !== 'fortress' || G.paused) { if (key === 'e' && S.screen === 'explore') survey(); return; } if (TOOL_KEYS[key]) setTool(TOOL_KEYS[key]); if (key === 'n') startNight(); });
   addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
   addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; joy = null; });
+  function pressSeg(id, key, v) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[key] === v))); }
 
-  let last = performance.now(), hudTick = 0;
+  // The loop: paused while a sheet or a card is open, stopped while the page is hidden.
+  let last = performance.now(), hudTick = 0, running = false;
+  const blocking = () => $overlay.childElementCount > 0 && !!$overlay.querySelector('.scrim, .dropwrap');
   function frame(now) {
+    if (document.hidden) { running = false; return; }
     const dt = Math.min(.05, (now - last) / 1000); last = now;
-    if (cv && (S.screen === 'fortress' || S.screen === 'explore')) {
-      if (!G.paused) { if (S.screen === 'fortress') updateFortress(dt); else updateExplore(dt); }
+    if (cv && (S.screen === 'fortress' || S.screen === 'explore') && !blocking()) {
+      if (!G.paused) { if (S.screen === 'fortress') updateFortress(dt); else updateExplore(dt); TEL.session_seconds += dt; }
       if (S.screen === 'fortress') renderFortress(now / 1000); else renderExplore(now / 1000);
       hudTick += dt; if (hudTick > .2) { hudTick = 0; updateHud(); }
+      if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
     }
     requestAnimationFrame(frame);
   }
-  paintTextures(); reset();
-  try { S.keeperName = localStorage.getItem('fieldworks-keeper') || ''; } catch {}
+  function startLoop() { if (running) return; running = true; last = performance.now(); requestAnimationFrame(frame); }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { saveNow(); teleSave(); } else startLoop(); });
+  addEventListener('pagehide', () => { saveNow(); teleSave(); });
+  // ── the art sheet (prototype/art-sheet.html): every sprite, drawn by the functions above ──
+  function renderArtSheet() {
+    document.querySelector('.wrap').innerHTML = `<div class="dev" style="max-width:760px"><span class="lbl">Fieldworks · the art sheet</span><span class="note">Every sprite the renderers draw, by the prototype's own drawing functions, on a 4-column grid. Canvas only: no image asset. Theme follows the page.</span></div><canvas id="sheet" aria-label="The Fieldworks art sheet"></canvas>`;
+    const cell = 150, cols = 4, now = 1.3;
+    const cells = [
+      ['Tile · reclaimed', (x, y) => { ctx.drawImage(civTex[0], x - 24, y - 24, 48, 48); }],
+      ['Tile · blight', (x, y) => { ctx.drawImage(blightTex[1], x - 24, y - 24, 48, 48); }],
+      ['Tile · wild', (x, y) => { ctx.drawImage(ground, 0, 0, T * 2, T * 2, x - 24, y - 24, 48, 48); }],
+      ['Scrap node', (x, y) => { ctx.save(); ctx.translate(x, y); shadow(0, 2, 14, 8); ctx.fillStyle = '#6d6a64'; ctx.fillRect(-12, -6, 14, 10); ctx.fillStyle = '#85817a'; ctx.fillRect(-3, -9, 13, 9); ctx.fillStyle = '#4f4c47'; ctx.fillRect(1, 1, 11, 7); ctx.restore(); }],
+      ...['wall', 'turret', 'pylon', 'habitat'].map((type) => [`Structure · ${type}`, (x, y) => { ctx.save(); ctx.translate(x - T / 2, y - T / 2); drawStruct({ type, hp: 1, max: 1, aim: -Math.PI / 4, hit: 0 }, 0, now); ctx.restore(); }]),
+      ...['crawler', 'skitter', 'juggernaut'].map((type) => [`Machine · ${type}`, (x, y) => { const st = F.machines[type]; drawEnemy({ x, y, type, r: st.r, hp: 1, max: 1, dir: -Math.PI / 2, wob: 1 }); }]),
+      ['Siege engine', (x, y) => { drawEngine({ id: 'WO-304', hp: 4, x, y: y + 6, wob: 1, keep: false }, now); }],
+      ['The Keeper · map', (x, y) => { drawRobot({ x, y, r: 10, down: 0, aim: -Math.PI / 2, step: 0, hit: 0 }); }],
+      ['The Keeper · field', (x, y) => { drawKeeperBehind(x, y + 6, 0); }],
+      ['Cache', (x, y) => { drawCache({ x, y, grade: 'masterwork', t: 0 }); }],
+      ['The beacon', (x, y) => { drawBeacon(x, y, now, false); }],
+      ['The beacon · dim', (x, y) => { drawBeacon(x, y, now, true); }],
+      ['Waypoint · open', (x, y) => { drawWaypointAt(x, y + 28, 13, false, 0, true); }],
+      ['Waypoint · surveyed', (x, y) => { drawWaypointAt(x, y + 28, 13, true, 0, false); }],
+      ['The gate', (x, y) => { drawGateAt(x, y + 34, 10, now); }],
+      ['Province marker', (x, y) => { drawProvinceAt(x - 10, y + 40, 10, 'Province 1'); }],
+    ];
+    const rows = Math.ceil(cells.length / cols), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv = document.getElementById('sheet'); cv.style.width = cols * cell + 'px'; cv.style.height = rows * cell + 'px'; cv.width = cols * cell * dpr; cv.height = rows * cell * dpr; ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    cells.forEach(([label, draw], i) => {
+      const cx = (i % cols) * cell, cy = Math.floor(i / cols) * cell;
+      ctx.fillStyle = dark ? '#1C1D21' : '#FFFFFF'; ctx.fillRect(cx + 4, cy + 4, cell - 8, cell - 8); ctx.strokeStyle = dark ? '#30323A' : '#E7E7E1'; ctx.lineWidth = 1; ctx.strokeRect(cx + 4.5, cy + 4.5, cell - 9, cell - 9);
+      ctx.fillStyle = dark ? '#2b2f33' : '#8d887c'; ctx.fillRect(cx + 20, cy + 20, cell - 40, cell - 54);
+      ctx.save(); draw(cx + cell / 2, cy + cell / 2 - 14); ctx.restore();
+      ctx.font = '500 12px "Albert Sans", system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = dark ? '#ECECE8' : '#1C1C1A'; ctx.fillText(label, cx + cell / 2, cy + cell - 16);
+    });
+    document.documentElement.dataset.ready = '1';
+  }
+  // A read-only window onto the sim for the screenshot walk (prototype/shots.mjs); it changes nothing but the Keeper's place.
+  globalThis.FieldworksDebug = { player: () => ({ max: G.player.max, speed: G.player.speed, range: G.player.range, gather: G.player.gather }), phase: () => G.phase, day: () => G.day, cells: () => G.cells, screen: () => S.screen, field: () => ({ x: XW.x, z: XW.z, heading: XW.heading, near: XW.near && XW.near.id }), place(x, z, heading = 0) { XW.x = x; XW.z = z; XW.heading = heading; XW.armed = true; }, keeperAt(x, y) { G.player.x = x; G.player.y = y; }, beacon: () => ({ x: G.core.x, y: G.core.y }), caches: () => G.caches.length, mapHash: () => E.hash(Array.from(G.tiles).join('') + '|' + G.grid.map((g) => (g ? g.type : '-')).join(',')) };
+  paintTextures();
+  if (globalThis.FIELDWORKS_ART) { reset(); renderArtSheet(); return; }
+  S = undefined;
+  const loaded = loadSave();
+  if (loaded === 'none') reset();
+  S.keeperName = store.get(KEYS.keeper) || '';
+  teleOpen();
   if (matchMedia('(prefers-color-scheme: dark)').matches && !document.documentElement.getAttribute('data-theme')) document.querySelectorAll('#seg-theme button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.theme === 'dark')));
   render();
-  requestAnimationFrame(frame);
+  if (loaded === 'migrated') { toast(BANK.fortress.save_migrated); saveNow(); }
+  if (loaded === 'corrupt' || loaded === 'corrupt-map') toast(BANK.fortress.save_corrupt);
+  if (loaded === 'corrupt') saveNow();
+  startLoop();
 })();
 </script>

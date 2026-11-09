@@ -79,7 +79,7 @@
       "masterwork": 2,
       "heirloom": 3
     },
-    "player_step": 100,
+    "player_step": 200,
     "skill_step": 50
   },
   "skills": {
@@ -614,13 +614,62 @@
       "pylon_fell": "A pylon fell. The ground is wild again, never lost.",
       "reclaimed": "{n} tiles reclaimed.",
       "dark": "The beacon dimmed. Nothing is lost; the lamps relight at dawn.",
-      "won": "Half the ground glows. The siege thinned."
+      "won": "Half the ground glows. The siege thinned.",
+      "save_migrated": "This map was built under older rules. It loads under today's rules; nothing was taken.",
+      "save_corrupt": "The saved map could not be read. The map is laid again and every cache you had not picked up is back by the beacon.",
+      "clock_short": "45 s day",
+      "clock_real": "real day · night at {night}:00",
+      "until_night": "until {night}:00",
+      "until_dawn": "night until {dawn}:00",
+      "night_quiet": "The wave is spent. The night holds until {dawn}:00."
     },
     "explore": {
       "enter": "Out through the gate. The field is the roadmap; walk to a waypoint to survey it.",
       "survey": "Waypoint surveyed. +{cells} cells.",
       "mapped": "Region mapped. The fog lifts here.",
-      "fog": "Unmapped. The lessons here are still ahead."
+      "fog": "Unmapped. The lessons here are still ahead.",
+      "compass_waypoint": "waypoint {dist} m",
+      "compass_gate": "gate {dist} m",
+      "card": "Week {week} · lesson {pos} of {of}",
+      "card_done": "Surveyed",
+      "card_open": "Not surveyed yet",
+      "province": "Province {n} · weeks {from}–{to}",
+      "gate_home": "Through the gate. The fortress."
+    },
+    "keeper_effects": {
+      "heading": "Parts in play",
+      "proposed": "proposed",
+      "off": "off · the dev switch Parts act turns it on",
+      "line": "+{pct}% {label}"
+    },
+    "states": {
+      "unlit": "{ward} · unread",
+      "dark": "Lanes last read {days} days ago. The fortress draws from that read.",
+      "quiet": "A quiet week. The Office kept the lights on."
+    },
+    "onboarding": {
+      "map": {
+        "title": "The map is your work",
+        "body": "The beacon at the centre is the Office. The blight at the edges is work that aged: each edge is one program, and the parked engines are your oldest orders."
+      },
+      "cells": {
+        "title": "Cells come from finished work",
+        "body": "Scrap you salvage by driving around. Cells, which raise pylons and win back ground, come only from real evidence: a closed order, a lesson, a lift. Play spends; it never earns them."
+      },
+      "night": {
+        "title": "The night comes, and nothing is lost",
+        "body": "At night the blight sends machines at the beacon. Hold it with walls and turrets. If the beacon goes dark it relights at dawn; no ground, item or level is ever taken."
+      }
+    },
+    "telemetry": {
+      "heading": "Your numbers",
+      "note": "Kept on this device, never sent.",
+      "opens": "opens, last 7 days",
+      "session_seconds": "minutes played",
+      "closes_seen": "closes seen",
+      "pylons": "pylons raised",
+      "nights_held": "nights held",
+      "regions_mapped": "regions mapped"
     }
   },
   "fortress": {
@@ -640,7 +689,7 @@
       },
       "pylon": {
         "scrap": 6,
-        "cells": 4
+        "cells": 8
       },
       "habitat": {
         "scrap": 4,
@@ -653,7 +702,7 @@
       "pylon": 90,
       "habitat": 80
     },
-    "pylon_reach": 2.6,
+    "pylon_reach": 1.6,
     "core_reach": 3.2,
     "cache_by_grade": {
       "plain": {
@@ -692,7 +741,7 @@
       }
     },
     "blight": {
-      "tiles_per_attacker": 5,
+      "tiles_per_attacker": 2,
       "min_tiles": 24,
       "max_tiles": 180,
       "spread_base": 0.14,
@@ -701,8 +750,10 @@
     },
     "waves": {
       "base": 4,
-      "per_attacker": 1,
-      "per_day": 2
+      "per_attacker": 0.25,
+      "per_day": 2,
+      "max": 40,
+      "per_day_cap_days": 7
     },
     "machines": {
       "crawler": {
@@ -814,6 +865,89 @@
     "fog_unmapped": 0.6,
     "camera_height_m": 3.2,
     "camera_back_m": 7,
-    "focal": 300
+    "focal": 300,
+    "gate": {
+      "x_m": 0,
+      "z_m": -4,
+      "radius_m": 2.5
+    },
+    "province_weeks": 4,
+    "card_radius_m": 9
+  },
+  "save": {
+    "$note": "The prototype keeps its built map in the device's own storage (key fieldworks-save). A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; an unreadable save is discarded and the map laid again with every unshown cache re-landed (pillar 2).",
+    "version": 1,
+    "autosave_seconds": 5
+  },
+  "clock": {
+    "$note": "D25 (a proposal): a game day is a real day, night at night_hour and dawn at dawn_hour in the device's own zone, with Start night allowed early. The prototype keeps the 45 s day behind a dev switch.",
+    "modes": [
+      "short",
+      "real"
+    ],
+    "default": "short",
+    "night_hour": 21,
+    "dawn_hour": 7
+  },
+  "keeper_effects": {
+    "$note": "D26 (a proposal, off by default behind the dev switch Parts act): each of the Keeper's five parts adds a small multiplier per tier to one stat in play. The engine's keeper() reads rules.keeper; only the sims read this block.",
+    "proposed": true,
+    "parts": {
+      "chassis": {
+        "stat": "hull",
+        "per_tier": 0.06,
+        "label": "hull"
+      },
+      "arm": {
+        "stat": "gather",
+        "per_tier": 0.08,
+        "label": "gather speed"
+      },
+      "sensor": {
+        "stat": "range",
+        "per_tier": 0.05,
+        "label": "range"
+      },
+      "battery": {
+        "stat": "speed",
+        "per_tier": 0.04,
+        "label": "move speed"
+      },
+      "plating": {
+        "stat": "struct",
+        "per_tier": 0.05,
+        "label": "structure health"
+      }
+    }
+  },
+  "states": {
+    "$note": "Honest states the fortress can be in, each reachable from the dev bar: an edge whose lane was not read is drawn unlit; a dark lane draws from its last read and says how old it is; a quiet week dims the beacon. Never a zero the game did not measure.",
+    "kinds": [
+      "live",
+      "unlit",
+      "dark",
+      "quiet"
+    ],
+    "dark_days": 3
+  },
+  "onboarding": {
+    "$note": "Three cards on the first open (key fieldworks-onboarded), replayable from the dev bar. The words are in the bank.",
+    "cards": [
+      "map",
+      "cells",
+      "night"
+    ]
+  },
+  "telemetry": {
+    "$note": "Local only (key fieldworks-telemetry): opens by day, session seconds, closes seen, pylons, nights held, regions mapped. Shown on the Keeper screen; never sent.",
+    "fields": [
+      "opens",
+      "session_seconds",
+      "closes_seen",
+      "pylons",
+      "nights_held",
+      "regions_mapped"
+    ],
+    "keep_days": 28
   }
 }

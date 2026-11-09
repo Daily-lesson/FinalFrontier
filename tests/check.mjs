@@ -173,12 +173,12 @@ test('prototype/index.html inlines src/engine.js and rules/fieldworks.json byte 
 const DENY = new Set(['ccb71b663e383032', '3fe52df0c21fa28f', 'ea5e5cdbccb765e0', 'a67f8eb35b59c847', '576ba7c2e4abb718', '5ecec73dd71edcbb', '7772e1e25e61f131']);
 const h16 = (w) => createHash('sha256').update(w).digest('hex').slice(0, 16);
 const EMAIL = new RegExp('[^\\s@<>"\'(]+' + '@' + '[^\\s@<>"\')]+\\.[a-z]{2,}', 'i');
-const REAL_ID = new RegExp('WO-' + '[01]\\d');
+const REAL_ID = new RegExp('WO-' + '(?:[01]\\d\\d|2[0-7]\\d)\\b');
 export function sweep(text) {
   const hits = [];
   for (const w of new Set(text.toLowerCase().match(/[a-z0-9]+/g) || [])) if (DENY.has(h16(w))) hits.push(`denied word (${w.length} chars)`);
   const m = EMAIL.exec(text); if (m) hits.push(`an e-mail shape: ${m[0].slice(0, 6)}…`);
-  const r = REAL_ID.exec(text); if (r) hits.push(`a real-range order id: ${r[0]}…`);
+  const r = REAL_ID.exec(text); if (r) hits.push(`a real-range order id (below the invented 280s): ${r[0]}`);
   return hits;
 }
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.code-review-graph']);
@@ -199,6 +199,7 @@ test('walls: the sweep catches what it guards (a name, an e-mail, a real id) and
   assert.ok(sweep(`for ${name} to read`).length, 'a name is caught');
   assert.ok(sweep('mail ' + ['someone', 'example.com'].join('@')).length, 'an e-mail shape is caught');
   assert.ok(sweep('see ' + 'WO-' + '042').length, 'a real-range id is caught');
+  assert.ok(sweep('see ' + 'WO-' + '245').length, 'and one the real file will reach soon');
   assert.equal(sweep('WO-304 · P1 · a DEMO chore; family=Albert+Sans:wght@300;500').length, 0, 'invented ids and font URLs pass');
 });
 
@@ -206,4 +207,98 @@ test('walls: no file in the tree carries a name, an e-mail, a database ref or a 
   const found = [];
   for (const f of files(root)) { const hits = sweep(readFileSync(f, 'utf8')); if (hits.length) found.push(`${relative(root, f)}: ${hits.join('; ')}`); }
   assert.deepEqual(found, []);
+});
+
+// ── prototype 3: the new rule blocks, each with its own test ─────────────────
+test('rules.save: a version and an autosave period', () => {
+  assert.ok(Number.isInteger(RULES.save.version) && RULES.save.version >= 1);
+  assert.ok(RULES.save.autosave_seconds > 0 && RULES.save.autosave_seconds <= 60);
+});
+
+test('rules.clock (D25): two modes, a night hour after the dawn hour, both on the clock', () => {
+  const c = RULES.clock;
+  assert.deepEqual([...c.modes].sort(), ['real', 'short']); assert.ok(c.modes.includes(c.default));
+  assert.ok(Number.isInteger(c.night_hour) && Number.isInteger(c.dawn_hour) && c.dawn_hour >= 0 && c.night_hour <= 23 && c.dawn_hour < c.night_hour);
+  for (const k of ['clock_short', 'clock_real', 'until_night', 'until_dawn', 'night_quiet']) assert.ok(RULES.bank.fortress[k], `bank fortress.${k}`);
+});
+
+test('rules.keeper_effects (D26): one small multiplier per part, on a closed set of stats, marked proposed', () => {
+  const fx = RULES.keeper_effects;
+  assert.equal(fx.proposed, true);
+  assert.deepEqual(Object.keys(fx.parts).sort(), RULES.keeper.parts.map((p) => p.slug).sort(), 'every part has exactly one effect');
+  for (const [slug, e] of Object.entries(fx.parts)) {
+    assert.ok(['hull', 'gather', 'range', 'speed', 'struct'].includes(e.stat), `${slug}.stat`);
+    assert.ok(e.per_tier > 0 && e.per_tier <= 0.1, `${slug} is small (≤ 10% a tier)`);
+    assert.ok(e.label, `${slug}.label`);
+  }
+  assert.equal(new Set(Object.values(fx.parts).map((e) => e.stat)).size, 5, 'five parts, five stats');
+});
+
+test('rules.explore (D29): the gate, provinces and the card radius', () => {
+  const X = RULES.explore;
+  assert.ok(X.gate.radius_m > 0 && X.gate.z_m < 0, 'the gate stands behind the start');
+  assert.ok(Number.isInteger(X.province_weeks) && X.province_weeks >= 1);
+  assert.ok(X.card_radius_m > X.waypoint_radius_m, 'the card shows before the survey is in reach');
+  for (const k of ['compass_waypoint', 'compass_gate', 'card', 'card_done', 'card_open', 'province', 'gate_home']) assert.ok(RULES.bank.explore[k], `bank explore.${k}`);
+});
+
+test('rules.states: the honest states, each with its words', () => {
+  assert.deepEqual(RULES.states.kinds, ['live', 'unlit', 'dark', 'quiet']);
+  for (const k of ['unlit', 'dark', 'quiet']) assert.ok(RULES.bank.states[k], `bank states.${k}`);
+  assert.ok(RULES.states.dark_days >= 1);
+});
+
+test('rules.onboarding: three cards, each with a title and a body in the bank', () => {
+  assert.equal(RULES.onboarding.cards.length, 3);
+  for (const c of RULES.onboarding.cards) { assert.ok(RULES.bank.onboarding[c]?.title); assert.ok(RULES.bank.onboarding[c]?.body); }
+});
+
+test('rules.telemetry: the six local fields, their labels, and the sentence that says they stay', () => {
+  assert.deepEqual(RULES.telemetry.fields, ['opens', 'session_seconds', 'closes_seen', 'pylons', 'nights_held', 'regions_mapped']);
+  for (const f of RULES.telemetry.fields) assert.ok(RULES.bank.telemetry[f], `bank telemetry.${f}`);
+  assert.equal(RULES.bank.telemetry.note, 'Kept on this device, never sent.');
+});
+
+test('rules.fortress.waves: the cap and the day cap the sim tuned are present and sane', () => {
+  const w = RULES.fortress.waves;
+  assert.ok(w.max >= w.base && w.max <= 40, 'a night stays inside the 40-machine budget');
+  assert.ok(Number.isInteger(w.per_day_cap_days) && w.per_day_cap_days >= 1);
+});
+
+// ── prototype 3: the page itself ────────────────────────────────────────────
+const SRC = read('prototype/prototype.src.html');
+const scripts = (html) => [...html.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+
+test('the built pages parse: every inline script of index.html and art-sheet.html compiles', () => {
+  for (const f of ['prototype/index.html', 'prototype/art-sheet.html']) {
+    const ss = scripts(read(f)); assert.ok(ss.length >= 2, f);
+    for (const code of ss) assert.doesNotThrow(() => new vm.Script(code), f);
+  }
+  const art = read('prototype/art-sheet.html');
+  assert.ok(art.includes(read('src/engine.js')) && art.includes(read('rules/fieldworks.json').trim()), 'the art sheet inlines the same engine and rules');
+});
+
+test('pillar 1: cells arrive in one place (a cache picked up), start at zero, and nothing in the page writes XP', () => {
+  const adds = SRC.split('\n').filter((l) => /G\.cells\s*\+=/.test(l));
+  assert.equal(adds.length, 1, 'one line adds cells');
+  assert.match(adds[0], /G\.cells \+= c\.cells/, 'and it is the cache pickup');
+  assert.match(SRC, /scrap: 12, cells: 0,/, 'a new map starts with no cells');
+  assert.ok(!/G\.cells\s*=[^=]/.test(SRC), 'no line sets cells outright (a save restores them through Object.assign of its own map)');
+  const subs = SRC.split('\n').filter((l) => /G\.cells\s*-=/.test(l));
+  assert.equal(subs.length, 1); assert.match(subs[0], /G\.cells -= cost\.cells/, 'and the one line that takes cells is a build the player chose');
+  assert.ok(!/\.xp\s*[+\-*]?=(?!=)/.test(SRC.replace(/hudEls\.xp/g, '')), 'no XP write outside the engine');
+  assert.match(SRC, /const by = F\.cache_by_kind\[ev\.kind\] \|\| \(item \? F\.cache_by_grade\[item\.grade\] : null\);/, 'one cache rule, the sim\'s');
+});
+
+test('storage: the page touches localStorage only through its helper, under exactly four keys', () => {
+  assert.equal((SRC.match(/localStorage\./g) || []).length, 3, 'get, set and remove, in the helper');
+  const keys = [...new Set(SRC.match(/'fieldworks-[a-z]+'/g))].sort();
+  assert.deepEqual(keys, ["'fieldworks-keeper'", "'fieldworks-onboarded'", "'fieldworks-save'", "'fieldworks-telemetry'"]);
+  assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon|WebSocket/.test(SRC), 'nothing is sent anywhere');
+});
+
+test('the bank: every sentence the page reads exists in the rules', () => {
+  const refs = [...new Set([...SRC.matchAll(/BANK\.([a-z_]+)\.([a-z_]+)/g)].map((m) => `${m[1]}.${m[2]}`))];
+  assert.ok(refs.length > 20);
+  for (const r of refs) { const [a, b] = r.split('.'); assert.ok(RULES.bank[a] && RULES.bank[a][b] != null, `bank ${r}`); }
 });

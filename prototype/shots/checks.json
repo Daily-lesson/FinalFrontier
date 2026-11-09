@@ -1,0 +1,107 @@
+[
+  {
+    "name": "Home fits the 375 × 667 frame without scrolling (light)",
+    "ok": true,
+    "detail": "528 ≤ 528 px"
+  },
+  {
+    "name": "Home fits the 375 × 667 frame without scrolling (dark)",
+    "ok": true,
+    "detail": "528 ≤ 528 px"
+  },
+  {
+    "name": "the newest evidence lands as caches and pays cells only when picked up",
+    "ok": true,
+    "detail": "7 cells after walking the caches"
+  },
+  {
+    "name": "a reload keeps the map (the live tiles and structures, not only the stored copy)",
+    "ok": true,
+    "detail": "1 wall(s); the map after reload matches; a fresh map differs"
+  },
+  {
+    "name": "onboarding shows once (not again after a reload)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a save from other rules loads under the current rules and says so",
+    "ok": true,
+    "detail": "Fieldworks The blight is the work that aged. Every cell you spend came from some"
+  },
+  {
+    "name": "… once",
+    "ok": true,
+    "detail": "Fieldworks The blight is the work that aged. Every cell you spend came from some"
+  },
+  {
+    "name": "a corrupt save is discarded with a toast and every unshown cache lands again",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the page keeps exactly its four named keys",
+    "ok": true,
+    "detail": "fieldworks-onboarded, fieldworks-save, fieldworks-telemetry"
+  },
+  {
+    "name": "Parts act: a part's effect acts (hull, range, speed or gather rises)",
+    "ok": true,
+    "detail": "hull 100→112 · range 150→173 · speed 120→125"
+  },
+  {
+    "name": "the Keeper screen shows each part's effect and the word proposed",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the Keeper screen shows Your numbers, kept on this device",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the compass shows the heading, the nearest waypoint and the gate",
+    "ok": true,
+    "detail": "Heading 0° ↑waypoint 237 m ↓gate 6 m"
+  },
+  {
+    "name": "… and it turns with the Keeper (the waypoint is behind after a half turn)",
+    "ok": true,
+    "detail": "Heading 180° ↓waypoint 237 m ↑gate 6 m"
+  },
+  {
+    "name": "a waypoint card shows on approach",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the gate returns to the fortress",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the real-day clock at 10:00 reads day",
+    "ok": true,
+    "detail": "Day 1until 21:00 real day · night at 21:00 Hull Beacon Ground 9% 12 scrap 0 cells L2"
+  },
+  {
+    "name": "the real-day clock at 22:30 reads night",
+    "ok": true,
+    "detail": "Night 110 machines real day · night at 21:00 Hull Beacon Ground 9% 12 scrap 0 cells L2"
+  },
+  {
+    "name": "a frame stays inside the 16.7 ms budget on the main thread",
+    "ok": true,
+    "detail": "4.9 ms"
+  },
+  {
+    "name": "the art sheet renders in both themes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page error anywhere in the walk",
+    "ok": true,
+    "detail": ""
+  }
+]
