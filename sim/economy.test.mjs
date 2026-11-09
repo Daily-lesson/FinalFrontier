@@ -46,7 +46,7 @@ test('a Back Office open row and a back-office Done row come out as counts, neve
 test('no title, step or option text survives the parse; a private title is counted and never printed', { skip }, async () => {
   const { rows, report } = await run();
   const kept = JSON.stringify(rows);
-  for (const word of ['SECRET-FIXTURE', 'hinge', 'paint', 'errand', 'floor', 'green', 'example.com']) {
+  for (const word of ['SECRET-FIXTURE', 'hinge', 'paint', 'errand', 'attic', 'green', 'example.com']) {
     assert.ok(!kept.includes(word), `the rows keep no text: ${word}`);
     assert.ok(!report.includes(word), `the report prints no text: ${word}`);
   }
@@ -89,4 +89,14 @@ test('the tuning record ends where the rules file is', () => {
 test('the script refuses to run without --alys', () => {
   const r = spawnSync(process.execPath, [join(here, 'economy.mjs')], { encoding: 'utf8' });
   assert.equal(r.status, 2); assert.match(r.stderr, /--alys/);
+});
+
+test('target 3 counts a day held at either clamp, or squeezed, as illegible', () => {
+  const F = rules.fortress.blight; const day = (attackers, blight, blightSiege) => ({ date: '2026-11-01', day: 1, attackers, blight, blightSiege, cells: 4, pylons: 0, ground: 40, level: 0, xp: 0, regions: 0, closes: 0, decisions: 0, lessons: 0, lifts: 0, scrap: 0, wave: 4 });
+  const mk = (d) => ({ from: '2026-10-01', to: '2026-11-01', days: Array.from({ length: 8 }, () => d) });
+  const low = Math.max(0, Math.floor((F.min_tiles - 1) / F.tiles_per_attacker));   // a siege below the floor
+  assert.equal(S.targets(mk(day(low, F.min_tiles, F.min_tiles)), rules)[2].value, 8, 'held at the lower clamp');
+  assert.equal(S.targets(mk(day(200, F.max_tiles, F.max_tiles)), rules)[2].value, 8, 'held at the upper clamp');
+  assert.equal(S.targets(mk(day(30, 40, 60)), rules)[2].value, 8, 'squeezed by a full map');
+  assert.equal(S.targets(mk(day(30, 60, 60)), rules)[2].value, 0, 'following the backlog');
 });

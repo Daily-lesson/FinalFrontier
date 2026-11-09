@@ -42,7 +42,17 @@
   {
     "name": "the page keeps exactly its four named keys",
     "ok": true,
-    "detail": "fieldworks-onboarded, fieldworks-save, fieldworks-telemetry"
+    "detail": "fieldworks-keeper, fieldworks-onboarded, fieldworks-save, fieldworks-telemetry"
+  },
+  {
+    "name": "a reload keeps the Parts act switch",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a reload during a night opens a fresh day, not the night again",
+    "ok": true,
+    "detail": ""
   },
   {
     "name": "Parts act: a part's effect acts (hull, range, speed or gather rises)",
@@ -92,7 +102,7 @@
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread",
     "ok": true,
-    "detail": "4.9 ms"
+    "detail": "5.61 ms"
   },
   {
     "name": "the art sheet renders in both themes",

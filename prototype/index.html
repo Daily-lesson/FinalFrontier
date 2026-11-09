@@ -815,13 +815,16 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       "card_done": "Surveyed",
       "card_open": "Not surveyed yet",
       "province": "Province {n} · weeks {from}–{to}",
-      "gate_home": "Through the gate. The fortress."
+      "gate_home": "Through the gate. The fortress.",
+      "survey_button": "Survey",
+      "walk_closer": "Walk closer"
     },
     "keeper_effects": {
       "heading": "Parts in play",
       "proposed": "proposed",
       "off": "off · the dev switch Parts act turns it on",
-      "line": "+{pct}% {label}"
+      "line": "+{pct}% {label}",
+      "on": "The parts act in play now, each by the line beside it."
     },
     "states": {
       "unlit": "{ward} · unread",
@@ -923,7 +926,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     },
     "blight": {
       "tiles_per_attacker": 2,
-      "min_tiles": 24,
+      "min_tiles": 8,
       "max_tiles": 180,
       "spread_base": 0.14,
       "spread_per_day": 0.03,
@@ -1529,7 +1532,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   // ── the save (rules.save): the built map, in this page's own storage, versioned ──
   function snapshot() {
     return { version: RULES.save.version, rules: RULES_HASH,
-      journal: { closed: S.closed.slice(), ticks: S.ticks.slice(), lifts: S.liftsLogged.slice(), modules: S.modules.slice(), pendingModules: S.pendingModules, lastLevel: S.lastLevel, landed: [...S.landed] },
+      journal: { clock: S.clock, partsAct: S.partsAct, closed: S.closed.slice(), ticks: S.ticks.slice(), lifts: S.liftsLogged.slice(), modules: S.modules.slice(), pendingModules: S.pendingModules, lastLevel: S.lastLevel, landed: [...S.landed] },
       map: { day: G.day, phase: G.phase, timer: Math.round(G.timer), scrap: G.scrap, cells: G.cells, core: Math.round(G.core.hp), tiles: Array.from(G.tiles), grid: G.grid.map((g) => (g ? [g.type, Math.round(g.hp)] : 0)), engines: G.engines.map((e) => e.id), caches: G.caches.map((c) => [Math.round(c.x), Math.round(c.y), c.scrap, c.cells, c.grade]) } };
   }
   let savedAt = 0;
@@ -1557,6 +1560,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     for (const t of j.ticks) if (!S.ticks.includes(t) && PLAN.weeks.some((w) => w.lessons.includes(t))) { S.ticks.push(t); S.events.push(lessonEvent(t, TODAY)); S.shown.add(`lesson/${t}`); }
     for (const d of j.lifts) if (!S.liftsLogged.includes(d)) { S.liftsLogged.push(d); S.events.push(liftEvent(d)); S.shown.add(`lift/${d}`); }
     S.modules = j.modules.slice(); S.pendingModules = j.pendingModules; S.lastLevel = j.lastLevel;
+    if (CLOCK.modes.includes(j.clock)) S.clock = j.clock; if (typeof j.partsAct === 'boolean') S.partsAct = j.partsAct;
     S.st = derive();
     newFortress();
     if (!validMap(s.map)) { landUnlanded(); applyStats(); saveNow(); return 'corrupt-map'; }   // the journal survived: every cache not yet picked up lands again
@@ -1567,7 +1571,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     G.grid = m.grid.map((g) => (g ? { type: g[0], hp: g[1], max: F.structure_hp[g[0]], cd: 0, aim: -Math.PI / 2, hit: 0 } : null));
     const keepEng = new Set(m.engines); keepIf(G.engines, (e) => keepEng.has(e.id));
     G.caches = m.caches.map(([x, y, scrap, cells, grade]) => ({ x, y, scrap, cells, grade, t: 0 }));
-    if (G.phase === 'night') { G.phase = 'day'; G.timer = Math.min(G.timer, F.day_seconds); }   // a night is never resumed half-fought; the map waits for the next
+    if (G.phase === 'night' || G.timer <= 0) { G.phase = 'day'; G.timer = F.day_seconds; }   // a night is never resumed half-fought or replayed: a reload opens a fresh day, and the night's spread is not run again
     applyStats(true); G.core.hp = clamp(m.core, 60, G.core.max);
     landUnlanded(); territory(false); computeFlow();
     return s.rules === RULES_HASH ? 'loaded' : 'migrated';
@@ -2133,7 +2137,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     const card = document.getElementById('wpcard'); if (!card) return;
     const w = XW.card; card.hidden = !w;
     if (w) { const reg = XW.regions.find((r) => r.week === w.week), pos = reg.lessons.indexOf(w.id) + 1, done = S.ticks.includes(w.id), inRange = XW.near === w;
-      const ch = `<div class="grow">${esc(fill(BANK.explore.card, { week: w.week, pos, of: reg.lessons.length }))}<small>${esc(done ? BANK.explore.card_done : BANK.explore.card_open)} · ${Math.round(Math.hypot(w.x - XW.x, w.z - XW.z))} m</small></div><button data-survey="1" ${done || !inRange ? 'disabled' : ''}>${done ? 'Surveyed' : inRange ? 'Survey' : 'Walk closer'}</button>`;
+      const ch = `<div class="grow">${esc(fill(BANK.explore.card, { week: w.week, pos, of: reg.lessons.length }))}<small>${esc(done ? BANK.explore.card_done : BANK.explore.card_open)} · ${Math.round(Math.hypot(w.x - XW.x, w.z - XW.z))} m</small></div><button data-survey="1" ${done || !inRange ? 'disabled' : ''}>${esc(done ? BANK.explore.card_done : inRange ? BANK.explore.survey_button : BANK.explore.walk_closer)}</button>`;
       if (card.dataset.k !== ch) { card.innerHTML = ch; card.dataset.k = ch; } }
   }
   function mountCanvas() {
@@ -2186,7 +2190,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
       html += `<div class="content"><section class="card"><div class="keeper">${keeperSvg(parts)}<div class="parts">${parts.map((p) => { const fx = KFX.parts[p.slug]; return `<div class="part"><span>${esc(p.label)}</span><div class="tiers">${[1, 2, 3, 4, 5].map((t) => `<i class="${p.tier >= t ? 'on' : ''}"></i>`).join('')}</div><span class="chip">${esc(p.from.replace('_', ' '))} ${p.value}</span></div><div class="fx" data-fx="${p.slug}">${esc(fill(BANK.keeper_effects.line, { pct: Math.round(fx.per_tier * p.tier * 100), label: fx.label }))}<span class="chip dash">${esc(BANK.keeper_effects.proposed)}</span>${S.partsAct ? '' : `<span class="chip">${esc(BANK.keeper_effects.off.split(' · ')[0])}</span>`}</div>`; }).join('')}</div></div><div style="margin-top:10px;display:flex;gap:8px"><input class="input" id="kname" placeholder="Name the Keeper (kept on this device)" value="${esc(S.keeperName)}" aria-label="Keeper's name"><button class="btn" data-name="1">Save</button></div></section>`;
       const last7 = Object.entries(TEL.opens).filter(([d]) => d >= new Date(Date.now() - 6 * DAY).toLocaleDateString('en-CA')).reduce((a, [, n]) => a + n, 0);
       html += `<section class="card" id="yournumbers"><h2>${esc(BANK.telemetry.heading)} <span class="more">${esc(BANK.telemetry.note)}</span></h2><div class="nums">${[['opens', last7], ['session_seconds', Math.round(TEL.session_seconds / 60)], ['closes_seen', TEL.closes_seen], ['pylons', TEL.pylons], ['nights_held', TEL.nights_held], ['regions_mapped', TEL.regions_mapped]].map(([k, v]) => `<div><b>${v}</b>${esc(BANK.telemetry[k])}</div>`).join('')}</div></section>`;
-      html += `<section class="card"><h2>${esc(BANK.keeper_effects.heading)} <span class="more">${esc(BANK.keeper_effects.proposed)} · D26</span></h2><div class="empty">${S.partsAct ? 'The parts act in play now, each by the line beside it.' : esc(BANK.keeper_effects.off)}</div></section>`;
+      html += `<section class="card"><h2>${esc(BANK.keeper_effects.heading)} <span class="more">${esc(BANK.keeper_effects.proposed)} · D26</span></h2><div class="empty">${esc(S.partsAct ? BANK.keeper_effects.on : BANK.keeper_effects.off)}</div></section>`;
       html += `<section class="card"><h2>Modules <span class="more">installed in play</span></h2>${S.modules.map((id) => { const m = F.modules.find((x) => x.id === id); return `<div class="row"><div class="t"><div class="name">${esc(m.label)}</div><div class="meta">${esc(m.line)}</div></div></div>`; }).join('') || '<div class="empty">None yet. A level earned by evidence installs one.</div>'}</section>`;
       html += `<section class="card"><h2>Plates <span class="more">${st.medals.length} medals · never lost</span></h2><div class="plates">${st.medals.map((m) => `<span class="plate-chip ${m.top ? 'top' : ''}" title="${esc(BANK.medal[m.slug])}">${icon('medal')}${esc(m.label)}<small>${m.at}</small></span>`).join('') || '<div class="empty">No plates yet.</div>'}</div></section>`;
       html += `<section class="card"><h2>The forge <span class="more">${st.items.length} items</span></h2>${st.items.slice().reverse().map((it) => `<div class="row"><span class="chip g g-${it.grade}">${it.grade}</span><div class="t"><div class="name">${esc(it.name)}${it.provisional ? ' <span class="chip dash">unverified</span>' : ''}</div><div class="meta">${it.sealed ? 'sealed · a count, never a name' : esc(it.receipt)}</div></div></div>`).join('')}</section></div>`;
@@ -2259,7 +2263,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
     if (t.dataset.done) { closeOrder(t.dataset.done); return; }
     if (t.dataset.lift) { logLift(); return; }
     if (t.dataset.name) { S.keeperName = (document.getElementById('kname')?.value || '').slice(0, 24); store.set(KEYS.keeper, S.keeperName); render(); return; }
-    if (t.dataset.clock) { S.clock = t.dataset.clock; G.quietNight = false; pressSeg('seg-clock', 'clock', S.clock); updateHud(); return; }
+    if (t.dataset.clock) { S.clock = t.dataset.clock; G.quietNight = false; pressSeg('seg-clock', 'clock', S.clock); updateHud(); saveNow(); return; }
     if (t.dataset.parts) { S.partsAct = t.dataset.parts === 'on'; pressSeg('seg-parts', 'parts', t.dataset.parts); applyStats(); saveNow(); render(); return; }
     if (t.dataset.state) { S.state = t.dataset.state; pressSeg('seg-state', 'state', S.state); updateHud(); return; }
     if (t.dataset.survey) { survey(); return; }
@@ -2336,6 +2340,7 @@ canvas.game { display: block; touch-action: none; border-radius: 4px; box-shadow
   const loaded = loadSave();
   if (loaded === 'none') reset();
   S.keeperName = store.get(KEYS.keeper) || '';
+  pressSeg('seg-clock', 'clock', S.clock); pressSeg('seg-parts', 'parts', S.partsAct ? 'on' : 'off');
   teleOpen();
   if (matchMedia('(prefers-color-scheme: dark)').matches && !document.documentElement.getAttribute('data-theme')) document.querySelectorAll('#seg-theme button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.theme === 'dark')));
   render();

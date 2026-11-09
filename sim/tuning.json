@@ -5,7 +5,7 @@
       "key": "fortress.blight.tiles_per_attacker",
       "before": 5,
       "after": 2,
-      "why": "With 78 attackers today the clamp bound on 26 of 60 days, so a close did not visibly move the blight; at 2 the clamp binds on no day (the map filling up still squeezes it until step 7)."
+      "why": "With 78 attackers today the upper clamp held the blight on 26 of 60 days, so a close did not visibly move it; at 2 the upper clamp binds on no day, though the lower clamp still holds the thin early weeks (step 8) and a filling map squeezes it (step 7)."
     },
     {
       "key": "fortress.waves.per_attacker",
@@ -29,7 +29,7 @@
       "key": "xp.player_step",
       "before": 100,
       "after": 200,
-      "why": "At 100 the Keeper reached level 10 on day 42, a level every five days; at 200 level 5 lands on day 18 and level 10 is projected for day 90, the quarter."
+      "why": "At 100 the Keeper reached level 10 on day 43, about a level every four days; at 200 level 5 lands on day 18 and level 10 is projected for day 90, the quarter."
     },
     {
       "key": "fortress.costs.pylon.cells",
@@ -42,6 +42,12 @@
       "before": 2.6,
       "after": 1.6,
       "why": "With the cost doubled the map still filled by day 22. A shorter reach makes each pylon about 4 new tiles, so half the ground (the run's win, D30) arrives around day 30 and the free ground lasts to day 51."
+    },
+    {
+      "key": "fortress.blight.min_tiles",
+      "before": 24,
+      "after": 8,
+      "why": "Counted honestly, the lower clamp held the blight on 13 of the early days, when only a handful of orders were old enough to attack, so a close there moved nothing. At 8 the floor still draws a thin edge of blight and the blight follows the backlog on 49 of 60 days."
     }
   ]
 }

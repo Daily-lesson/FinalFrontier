@@ -175,7 +175,9 @@ export function cadenceEvents(from, to) {
     }
     if (CADENCE.liftDays.includes(dow(d))) ev.push({ id: `lift/${d}`, kind: 'lift', at: d, tier: 'private', zone: null, weight: 30, facts: {}, evidence: { kind: 'tick', ref: `stated/${d}` } });
   }
-  const plan = { weeks: [...weeks.entries()].map(([, lessons], i) => ({ n: i + 1, lessons })) };
+  // only whole stated weeks are regions: a window's partial first or last week maps nothing
+  const perWeek = Object.values(CADENCE.lessonsByDay).reduce((a, n) => a + n, 0);
+  const plan = { weeks: [...weeks.entries()].filter(([, lessons]) => lessons.length === perWeek).map(([, lessons], i) => ({ n: i + 1, lessons })) };
   return { events: ev, plan };
 }
 
@@ -193,10 +195,11 @@ export function cacheFor(ev, item, rules) {
 }
 
 /** The day-by-day replay. Pure over (rows, rules, today). */
-export function simulate(rows, rules, today, E, days = 60) {
+export function simulate(rows, rules, today, E, days = 60, opts = {}) {
   const F = rules.fortress; const from = addDays(today, -(days - 1));
   const closes = rows.filter((r) => r.done && r.done >= from && r.done <= today).map(closeEvent);
-  const { events: cadence, plan } = cadenceEvents(from, today);
+  const { events: cadence0, plan: plan0 } = cadenceEvents(from, today);
+  const cadence = opts.closesOnly ? [] : cadence0, plan = opts.closesOnly ? { weeks: [] } : plan0;
   const all = [...closes, ...cadence].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
   const pylonCost = F.costs.pylon.cells; const tiles = F.cols * F.rows;
   const reachTiles = (r) => Math.PI * r * r;
@@ -221,7 +224,9 @@ export function simulate(rows, rules, today, E, days = 60) {
     const blightSiege = clamp(Math.round(attackers * F.blight.tiles_per_attacker), F.blight.min_tiles, F.blight.max_tiles);
     const w = F.waves; const wave = Math.min(w.max ?? Infinity, Math.round(w.base + w.per_attacker * attackers + w.per_day * Math.min(day, w.per_day_cap_days ?? Infinity)));
     const pylons = Math.floor((carry + cells) / pylonCost); carry = (carry + cells) - pylons * pylonCost;
-    // Ground is never taken (pillar 2): it only grows, up to the tiles the siege's blight leaves free;
+    // An upper bound: every pylon is taken to stand. In the prototype a machine can still destroy a pylon at night,
+    // which turns its ground wild again (v2's rule, a design question, D33's neighbour); the sim does not model it.
+    // Ground grows up to the tiles the siege's blight leaves free;
     // the blight drawn is the siege's size where free tiles allow it.
     ground = Math.max(ground, Math.min(tiles - blightSiege, ground + pylons * newPerPylon));
     const blightTarget = Math.min(blightSiege, tiles - Math.round(ground));
@@ -229,8 +234,8 @@ export function simulate(rows, rules, today, E, days = 60) {
     const wild = Math.max(0, tiles - ground - blightTarget - spreadAcc);
     const side = Math.sqrt(Math.max(0, tiles - blightTarget - spreadAcc)); const frontier = Math.min(wild, Math.max(0, 4 * side - 4));
     spreadAcc += p * frontier;   // the night takes wild ground only, never a built tile
-    out.push({ date: D, day, closes: todays.filter((l) => l.kind === 'close' && !String(l.id).startsWith('private-')).length + 0,
-      decisions: todays.filter((l) => l.kind === 'decision').length, privateCloses: todays.filter((l) => String(l.id).startsWith('private-')).length,
+    out.push({ date: D, day, closes: todays.filter((l) => l.kind === 'close').length,   // private closes are in this count and never shown apart
+      decisions: todays.filter((l) => l.kind === 'decision').length,
       lessons: todays.filter((l) => l.kind === 'lesson').length, lifts: todays.filter((l) => l.kind === 'lift').length,
       cells, scrap, xp: st.player.xp, level: st.player.level, pylons, turretsHabitats: Math.floor(cells / (F.costs.turret.cells + F.costs.habitat.cells)),
       attackers, engines, blight: blightTarget, blightSiege, wave, ground: Math.round(ground), wildLost: Math.round(spreadAcc), medals: st.medals.length, regions: st.regions });
@@ -245,7 +250,7 @@ export function weeks(sim) {
   for (const d of sim.days) { const k = mondayOf(d.date); if (!by.has(k)) by.set(k, []); by.get(k).push(d); }
   return [...by.entries()].map(([monday, ds]) => {
     const sum = (f) => ds.reduce((a, d) => a + d[f], 0); const last = ds[ds.length - 1];
-    return { monday, days: ds.length, closes: sum('closes'), decisions: sum('decisions'), privateCloses: sum('privateCloses'), lessons: sum('lessons'), lifts: sum('lifts'), cells: sum('cells'), scrap: sum('scrap'), level: last.level, pylons: sum('pylons'), blight: last.blight, wave: last.wave, ground: last.ground, groundStart: ds[0].ground - ds[0].pylons * 0 };
+    return { monday, days: ds.length, closes: sum('closes'), decisions: sum('decisions'), lessons: sum('lessons'), lifts: sum('lifts'), cells: sum('cells'), scrap: sum('scrap'), level: last.level, pylons: sum('pylons'), blight: last.blight, wave: last.wave, ground: last.ground, groundStart: ds[0].ground - ds[0].pylons * 0 };
   });
 }
 
@@ -263,11 +268,11 @@ export function targets(sim, rules) {
   const ringMet = growth.length > 0 && growth.every((g) => g.grew >= g.ring || g.capped);
   const capped = growth.some((g) => g.capped && g.grew < g.ring);
   const fillDay = (ds.find((d) => d.blight < d.blightSiege || d.ground >= F.cols * F.rows - d.blightSiege) || {}).day ?? null;
-  const t2 = { capped, fillDay, name: 'A good week grows the ground by a ring; a quiet week takes no built tile', value: growth.length ? Math.min(...growth.map((g) => g.grew - g.ring)) : null, good: good.length, met: ringMet, unit: 'tiles over a ring in the leanest good week', quiet: wk.filter((w) => w.closes + w.decisions + w.privateCloses === 0).length };
+  const t2 = { capped, fillDay, name: 'A good week grows the ground by a ring; a quiet week takes no built tile', value: growth.length ? Math.min(...growth.map((g) => g.grew - g.ring)) : null, good: good.length, met: ringMet, unit: 'tiles over a ring in the leanest good week', quiet: wk.filter((w) => w.closes + w.decisions === 0).length };
   // 3. the siege is legible: the clamp does not bind on most days, so a close moves the blight
   // illegible on a day the blight cannot follow the backlog: held at the clamp, or squeezed by a full map
-  const bound = ds.filter((d) => d.blightSiege >= F.blight.max_tiles || d.blight < d.blightSiege).length;
-  const t3 = { name: 'The siege is legible: the blight follows the backlog (clamped or squeezed by a full map on under a quarter of the days)', value: bound, of: ds.length, met: bound < ds.length / 4, unit: 'days the clamp binds', attackersToday: ds[ds.length - 1].attackers, attackersRange: [Math.min(...ds.map((d) => d.attackers)), Math.max(...ds.map((d) => d.attackers))], waveMax: Math.max(...ds.map((d) => d.wave)) };
+  const bound = ds.filter((d) => d.blightSiege >= F.blight.max_tiles || Math.round(d.attackers * F.blight.tiles_per_attacker) < F.blight.min_tiles || d.blight < d.blightSiege).length;
+  const t3 = { name: 'The siege is legible: the blight follows the backlog (held at either clamp or squeezed by a full map on under a quarter of the days)', value: bound, of: ds.length, met: bound < ds.length / 4, unit: 'days the clamp binds', attackersToday: ds[ds.length - 1].attackers, attackersRange: [Math.min(...ds.map((d) => d.attackers)), Math.max(...ds.map((d) => d.attackers))], waveMax: Math.max(...ds.map((d) => d.wave)) };
   // 4. level 5 within the first month, level 10 within the quarter (projected from the 60-day rate)
   const l30 = ds[Math.min(29, ds.length - 1)].level; const rate = ds[ds.length - 1].xp / ds.length; const E2 = (xp) => { const s = rules.xp.player_step; return Math.floor((Math.sqrt(8 * xp / s + 1) - 1) / 2); };
   const l90 = E2(rate * 90); const l5day = (ds.find((d) => d.level >= 5) || {}).day ?? null; const l10day = (ds.find((d) => d.level >= 10) || {}).day ?? null;
@@ -284,7 +289,7 @@ export function applyTuning(rules, tuning, n, side = 'after') {
 
 const fmtTarget = (t) => {
   if (t.unit === 'level at day 30 · projected at day 90') return `level ${t.value.l30} at day 30 · ${t.value.l90} projected at day 90 · level 5 on day ${t.value.l5day ?? '—'} · level 10 on day ${t.value.l10day ?? '—'}`;
-  if (t.unit === 'days the clamp binds') return `${t.value} of ${t.of} days clamped or squeezed · attackers ${t.attackersRange[0]}–${t.attackersRange[1]} (${t.attackersToday} today) · largest wave ${t.waveMax}`;
+  if (t.unit === 'days the clamp binds') return `${t.value} of ${t.of} days held at a clamp or squeezed · attackers ${t.attackersRange[0]}–${t.attackersRange[1]} (${t.attackersToday} today) · largest wave ${t.waveMax}`;
   if (t.unit === 'tiles over a ring in the leanest good week') return t.good ? `${t.good} good weeks (ten or more closes and decisions); the leanest grew ${t.value >= 0 ? t.value + ' tiles more than' : -t.value + ' tiles short of'} a ring${t.capped ? ' because the free ground ran out' : ''} · the map's free ground is used up ${t.fillDay ? `on day ${t.fillDay}` : 'on no day of the window'} · ${t.quiet} weeks with no close (the spread takes wild tiles only, by rule)` : 'no week reached ten closes';
   return `${t.value} ${t.unit} (needs ${t.need})`;
 };
@@ -297,7 +302,7 @@ export function sourceAudit() {
   return hits;
 }
 
-export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef }) {
+export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef, closesOnly }) {
   const W = weeks(sim); const T = targets(sim, rules);
   const L = [];
   L.push('# Economy sim — report', '');
@@ -305,15 +310,17 @@ export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, 
   L.push(`- **Input:** the task file at alys \`${alysRef}\` (${ref}), commit \`${sha}\`, read through the board's own parser from that checkout; per-week counts only.`);
   L.push(`- **Window:** ${sim.days.length} days, ${sim.from} to ${sim.to}; the game is taken to start on the first day.`);
   L.push(`- **Kept per order:** dates, Pn, tier, program, the Options and Steps counts, difficulty, the board's score. Every title, step, option and Say line was dropped at the parse; a private row kept its dates and Pn only, so a private decision is modelled as a close.`);
-  L.push(`- **Rows:** ${stats.open} open and ${stats.done} done (the file keeps a pruned Done list); ${stats.privateOpen} open and ${stats.privateDone} done rows are private, counted and never named; ${stats.doneNoDate} done rows had no readable date and were skipped.`);
+  L.push(`- **Rows:** ${stats.open} open and ${stats.done} done (no Done row has left the file; its first ticks fall in the window's third week, so the first weeks show no close); ${stats.privateOpen + stats.privateDone} rows are private, counted in the totals and never shown apart or named; ${stats.doneNoDate} done rows had no readable date and were skipped.`);
   L.push(`- **Ambiguous rows:** ${stats.ambiguous} done rows carry neither a \`Project:\` line nor a private mark (ticked before stamping began). ${stats.ambiguousResolvedPublic} were resolved public from the sections they sat in across ${stats.historyVersions} versions of the file${stats.historyShallow ? ' (a shallow history: some may be missing)' : ''}; ${stats.ambiguousCountedPrivate} never showed in a public section, or sat in a private one, and are counted private.`);
   L.push(`- **Stated cadence:** ${CADENCE.source}. It is a schedule the sim assumes, not a read of anyone's learning record, and it assumes every lesson and lift lands; a region is a stated week of ten lessons.`);
   L.push(`- **Ground model:** expected value, not the map: a pylon adds half its disc (${(Math.PI * rules.fortress.pylon_reach ** 2 * 0.5).toFixed(1)} tiles); the blight is the siege's size (\`tiles_per_attacker\`, clamped); the night spread (\`spread_base + spread_per_day × day\`, capped) takes wild tiles only. Scrap from play (ambient nodes, kills, habitats) is not modelled; only evidence caches are.`, '');
   L.push('## The four targets (GDD §2.4)', '', '| # | Target | Result | Number |', '|---|---|---|---|');
   T.forEach((t, i) => L.push(`| ${i + 1} | ${t.name} | **${t.met ? 'met' : 'not met'}** | ${fmtTarget(t)} |`));
+  if (closesOnly) { const c = closesOnly; L.push('', `**On real closes alone** (no stated lessons or lifts): target 1 ${c[0].met ? 'met' : 'not met'} (${c[0].value} cells on the median day), target 4 ${c[3].met ? 'met' : 'not met'} (level ${c[3].value.l30} at day 30, ${c[3].value.l90} projected at day 90). Targets 1 and 4 lean on the stated cadence; 2 and 3 are the backlog's.`); }
+  L.push('', '**Ground is an upper bound.** The sim takes every pylon to stand. In the prototype a machine can destroy a pylon at night and its ground goes wild again (version 2\'s rule, kept): that is a design question, recorded with D33 in the design repo.');
   L.push('', '## Per week', '', 'Weeks run Monday to Sunday; the first and last may be partial (the days column). Cells and scrap are the evidence caches landed that week; pylons are what the week\'s cells buy at the pylon\'s cost, with the remainder carried; level, blight, wave and ground are as of the week\'s last day.', '');
-  L.push('| Week of | Days | Closes | Decisions | Private closes | Lessons | Lifts | Cells | Scrap | Level | Pylons | Blight tiles | Wave | Ground tiles |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
-  for (const w of W) L.push(`| ${w.monday} | ${w.days} | ${w.closes} | ${w.decisions} | ${w.privateCloses} | ${w.lessons} | ${w.lifts} | ${w.cells} | ${w.scrap} | ${w.level} | ${w.pylons} | ${w.blight} | ${w.wave} | ${w.ground} |`);
+  L.push('| Week of | Days | Closes | Decisions | Lessons | Lifts | Cells | Scrap | Level | Pylons | Blight tiles | Wave | Ground tiles |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  for (const w of W) L.push(`| ${w.monday} | ${w.days} | ${w.closes} | ${w.decisions} | ${w.lessons} | ${w.lifts} | ${w.cells} | ${w.scrap} | ${w.level} | ${w.pylons} | ${w.blight} | ${w.wave} | ${w.ground} |`);
   L.push('', '## The arc, in plain words', '', arc(sim, W, T, rules), '');
   L.push('## Tuning', '', 'Every change is a rules-file edit (`rules/fieldworks.json`), never the engine. Each row was applied in order and the whole sim re-run; the columns are the four targets after that row (✓ met, ✗ not).', '');
   L.push('| Step | Key | Before → after | Why | T1 | T2 | T3 | T4 |', '|---|---|---|---|---|---|---|---|');
@@ -358,7 +365,8 @@ async function main(argv) {
   const tuningRuns = [];
   for (let n = 0; n <= tuning.length; n++) tuningRuns.push(targets(simulate(rows, applyTuning(rules, tuning, n), today, E), applyTuning(rules, tuning, n)));
   const sim = simulate(rows, rules, today, E);
-  const report = renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef: ref.replace(/^origin\//, '') });
+  const closesOnly = targets(simulate(rows, rules, today, E, 60, { closesOnly: true }), rules);
+  const report = renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef: ref.replace(/^origin\//, ''), closesOnly });
   guardReport(report, md, index);
   if (argv.includes('--stdout')) process.stdout.write(report); else { writeFileSync(join(here, 'REPORT.md'), report); console.log(`sim/REPORT.md written — ${sim.days.length} days, ${stats.done} done rows, targets ${targets(sim, rules).map((t) => (t.met ? 'met' : 'not met')).join(' / ')}`); }
 }

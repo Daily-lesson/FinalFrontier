@@ -113,8 +113,17 @@ async function behaviours() {
   check('… once', !/older rules/.test(ov2), ov2.replace(/\s+/g, ' ').slice(0, 80));
   await tamperAndLoad(() => localStorage.setItem('fieldworks-save', '{not json'));
   check('a corrupt save is discarded with a toast and every unshown cache lands again', /could not be read/.test(await p.locator('#overlay').innerText()) && (await p.evaluate(() => FieldworksDebug.caches())) > 0);
-  const keys = await p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('fieldworks')).sort());
-  check('the page keeps exactly its four named keys', JSON.stringify(keys.filter((k) => !['fieldworks-keeper', 'fieldworks-onboarded', 'fieldworks-save', 'fieldworks-telemetry'].includes(k))) === '[]' && keys.includes('fieldworks-save') && keys.includes('fieldworks-telemetry'), keys.join(', '));
+  // name the Keeper so the fourth key exists, then every key in this origin's storage must be one of the four
+  await clearCards(p); await go(p, 'keeper'); await p.fill('#kname', 'Unit seven'); await p.click('[data-name]'); await go(p, 'fortress'); await clearCards(p);
+  const keys = await p.evaluate(() => Object.keys(localStorage).sort());
+  check('the page keeps exactly its four named keys', JSON.stringify(keys) === JSON.stringify(['fieldworks-keeper', 'fieldworks-onboarded', 'fieldworks-save', 'fieldworks-telemetry']), keys.join(', '));
+  // a reload keeps the two dev switches, and a reload mid-night opens a fresh day rather than replaying the night
+  await p.click('[data-parts="on"]'); await p.click('[data-clock="real"]'); await wait(p, 100); await p.click('[data-clock="short"]'); await p.click('[data-parts="on"]');
+  await p.keyboard.press('n'); await wait(p, 400);
+  await p.reload(); await wait(p, 400); await clearCards(p);
+  check('a reload keeps the Parts act switch', (await p.locator('[data-parts="on"]').getAttribute('aria-pressed')) === 'true');
+  check('a reload during a night opens a fresh day, not the night again', (await p.evaluate(() => FieldworksDebug.phase())) === 'day' && /s to dark/.test(await p.locator('#hud').innerText()));
+  await p.click('[data-parts="off"]');
 
   // 2. the parts act (D26, behind its switch)
   await clearCards(p);

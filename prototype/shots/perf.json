@@ -1,10 +1,10 @@
 {
   "viewport": "375 × 667 @2×",
   "seconds": 6,
-  "frames": 361,
+  "frames": 359,
   "fps": 60,
-  "main_thread_ms_per_frame": 4.9,
-  "script_ms_per_frame": 1.42,
+  "main_thread_ms_per_frame": 5.61,
+  "script_ms_per_frame": 1.64,
   "heap_mb": 5.4,
   "scene": "a fortress night with machines on the map"
 }

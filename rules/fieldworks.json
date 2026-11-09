@@ -634,13 +634,16 @@
       "card_done": "Surveyed",
       "card_open": "Not surveyed yet",
       "province": "Province {n} · weeks {from}–{to}",
-      "gate_home": "Through the gate. The fortress."
+      "gate_home": "Through the gate. The fortress.",
+      "survey_button": "Survey",
+      "walk_closer": "Walk closer"
     },
     "keeper_effects": {
       "heading": "Parts in play",
       "proposed": "proposed",
       "off": "off · the dev switch Parts act turns it on",
-      "line": "+{pct}% {label}"
+      "line": "+{pct}% {label}",
+      "on": "The parts act in play now, each by the line beside it."
     },
     "states": {
       "unlit": "{ward} · unread",
@@ -742,7 +745,7 @@
     },
     "blight": {
       "tiles_per_attacker": 2,
-      "min_tiles": 24,
+      "min_tiles": 8,
       "max_tiles": 180,
       "spread_base": 0.14,
       "spread_per_day": 0.03,

@@ -123,8 +123,8 @@ repo.
    attackers are a count and an engine flag; the engine refuses a private
    event with a name field (tested).
 5. **No person's schedule.** The sim's lesson and lift cadence is a stated
-   game cadence on an invented spread, never anyone's real study or training
-   days.
+   game cadence: weekly totals in the order of the design's own budget, laid
+   on invented days, never anyone's real study or training days or times.
 6. **The sim reads the real task file for numbers only,** through the alys
    board's own parser imported from the alys checkout at run time — never
    copied here. It keeps an order's id, dates, Pn, tier, program, two counts

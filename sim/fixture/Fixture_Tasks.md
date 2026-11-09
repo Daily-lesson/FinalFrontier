@@ -50,7 +50,7 @@ sim can be tested without the real file.
 
 ## Done
 
-- [x] 2026-10-01 — WO-904 · P2 · Sweep the invented floor · done 2026-10-30
+- [x] 2026-10-01 — WO-904 · P2 · Sweep the invented attic · done 2026-10-30
   - Project: workshop-line
 - [x] 2026-10-05 — WO-905 · P1 · SECRET-FIXTURE-DONE an invented private errand · done 2026-11-02
   - Project: back-office
