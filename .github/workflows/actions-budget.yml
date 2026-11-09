@@ -1,0 +1,38 @@
+name: actions budget
+
+# Guards the portfolio Actions quota at AUTHORING time, which is where the
+# 2026-08-20 blowout was actually introduced: six repos each picked a locally
+# sensible cadence and nobody summed them (scheduled jobs alone were using
+# 2,206 of the 3,000-minute quota before a single commit).
+#
+# Costs ~0 minutes in steady state: the path filter means it only runs on a PR
+# that actually touches a workflow file.
+#
+# The ledger, the per-repo caps, and the rule for what belongs on pg_cron
+# instead of Actions all live in Daily-lesson/alys -> ACTIONS_BUDGET.md.
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/scripts/actions-budget-check.py'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  budget:
+    name: Scheduled-minutes budget
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BUDGET_MINUTES: 100
+    steps:
+      - uses: actions/checkout@v4
+      - name: Price this repo's scheduled workflows
+        run: python3 .github/scripts/actions-budget-check.py

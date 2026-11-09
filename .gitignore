@@ -1,0 +1,29 @@
+# ── Never commit secrets ─────────────────────────────────────────────────────
+# Names of env vars live in .env.example (tracked); values live in the host
+# (Vercel / Supabase / Actions secrets) and nowhere in this repo.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+credentials*.json
+*service-account*.json
+.envrc
+.dev.vars
+.vercel/
+
+# ── Dependencies / OS / editor ───────────────────────────────────────────────
+node_modules/
+.DS_Store
+Thumbs.db
+.idea/
+*.log
+
+# ── Tooling ──────────────────────────────────────────────────────────────────
+# Added by code-review-graph
+.code-review-graph/
+
+# ── Static PWA ───────────────────────────────────────────────────────────────
+config.local.js
+.wrangler/

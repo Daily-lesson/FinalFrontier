@@ -1,0 +1,75 @@
+name: CI
+
+# Static-PWA checks (Daily-lesson/alys templates/repo/, stack "vanilla-js" —
+# the SocialOS shape: no build step, no npm, so CI is syntax + JSON + the PWA
+# core files).
+on:
+  push:
+    branches: [main]
+  # No branch filter: a PR stacked on another PR's branch still has to run
+  # these checks (the alys ci.yml lesson, run 053).
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Workflow standards (concurrency, timeouts, permissions, pinned actions)
+        run: node .github/scripts/workflow-lint.mjs
+
+      - name: Check JS syntax
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(git ls-files -z '*.js' '*.mjs')
+          for f in "${files[@]}"; do node --check "$f"; done
+          echo "${#files[@]} script(s) checked"
+
+      - name: Validate JSON
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(git ls-files -z '*.json')
+          for f in "${files[@]}"; do
+            node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$f"
+          done
+          echo "${#files[@]} JSON file(s) valid"
+
+      # All three or none: a freshly stamped repo has no shell yet and stays
+      # green; once any one exists, the other two are required.
+      - name: PWA core files exist
+        run: |
+          set -euo pipefail
+          present=0
+          for f in index.html manifest.json sw.js; do [ -f "$f" ] && present=$((present+1)); done
+          if [ "$present" -eq 0 ]; then echo "::notice::No app shell yet — PWA core check skipped."; exit 0; fi
+          for f in index.html manifest.json sw.js; do
+            test -f "$f" || { echo "::error::missing $f"; exit 1; }
+          done
+
+      - name: Engine, rules and the wall sweep
+        run: node --test tests/check.mjs
+
+      # The sim imports the alys board's parser from an alys checkout beside this
+      # one; CI has none (alys is private and no token is granted), so the sim's
+      # test skips here and says why. It runs in every build session.
+      - name: Economy sim tests (skip without an alys checkout)
+        run: |
+          set -euo pipefail
+          if [ ! -f sim/economy.test.mjs ]; then echo "No sim yet."; exit 0; fi
+          node --test sim/economy.test.mjs

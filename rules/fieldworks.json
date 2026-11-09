@@ -1,0 +1,819 @@
+{
+  "$note": "FIELDWORKS rules, version 1 — the owner's instance as the first of the template (docs/FIELDWORKS.md §7.4). Every number the engine reads lives here; the engine (engine.js) carries none of its own except the hash. Re-theme by writing another file; re-balance by editing this one. The bank is the game's every sentence, seeded once for the owner's review (D14) and then data. Public-tier text only: ward names come from js/projects-seed.js at run time, never from here.",
+  "game": {
+    "version": 1,
+    "site": "fieldworks",
+    "name": "Fieldworks",
+    "enterprise": "daily-lesson"
+  },
+  "rarity": {
+    "grades": [
+      "plain",
+      "fine",
+      "tempered",
+      "masterwork",
+      "heirloom"
+    ],
+    "colours": {
+      "plain": "white",
+      "fine": "green",
+      "tempered": "blue",
+      "masterwork": "purple",
+      "heirloom": "orange"
+    },
+    "thresholds": {
+      "fine": 35,
+      "tempered": 55,
+      "masterwork": 72,
+      "heirloom": 86
+    },
+    "weight_factor": 0.35,
+    "default_weight": {
+      "close": 50,
+      "task": 50,
+      "lesson": 30,
+      "lift": 30,
+      "decision": 50
+    },
+    "pn": {
+      "P0": 30,
+      "P1": 22,
+      "P2": 12,
+      "P3": 6,
+      "none": 10
+    },
+    "difficulty": {
+      "low": 0,
+      "medium": 8,
+      "high": 16,
+      "none": 0
+    },
+    "age_divisor": 3,
+    "age_cap": 20,
+    "decision_bonus": 12,
+    "variance": 6,
+    "kind_by_event": {
+      "close": "tool",
+      "task": "plan",
+      "lesson": "chart",
+      "lift": "plate",
+      "decision": "seal"
+    },
+    "sealed_kind": "sealed"
+  },
+  "xp": {
+    "base": {
+      "close": 40,
+      "task": 20,
+      "lesson": 15,
+      "lift": 20,
+      "decision": 60,
+      "pace": 5,
+      "verify": 10,
+      "contradict": 0
+    },
+    "mult": {
+      "plain": 1,
+      "fine": 1.25,
+      "tempered": 1.5,
+      "masterwork": 2,
+      "heirloom": 3
+    },
+    "player_step": 100,
+    "skill_step": 50
+  },
+  "skills": {
+    "rungs": 5,
+    "perks": [
+      {
+        "rung": 1,
+        "hook": "banner_hue",
+        "label": "Banner: pick the ward's hue"
+      },
+      {
+        "rung": 2,
+        "hook": "lamp",
+        "label": "A lamp on the ward's wall"
+      },
+      {
+        "rung": 3,
+        "hook": "plate",
+        "label": "A plate on the Keeper"
+      },
+      {
+        "rung": 4,
+        "hook": "codex_line",
+        "label": "A line in the ward's codex"
+      },
+      {
+        "rung": 5,
+        "hook": "crest",
+        "label": "The ward's crest over its gate"
+      }
+    ],
+    "hooks": [
+      "banner_hue",
+      "lamp",
+      "plate",
+      "codex_line",
+      "crest"
+    ]
+  },
+  "siege": {
+    "attacker_min_age_days": 21,
+    "engine_min_age_days": 60,
+    "decision_engine_min_age_days": 45,
+    "pn_weight": {
+      "P0": 3,
+      "P1": 2,
+      "P2": 1,
+      "P3": 0.5,
+      "none": 1
+    },
+    "decision_factor": 2,
+    "age_week_days": 7,
+    "figure_divisor": 10,
+    "figure_cap": 12
+  },
+  "expedition": {
+    "region_bonus_xp": 60,
+    "ranks": [
+      {
+        "slug": "scout",
+        "label": "Scout",
+        "regions": 0
+      },
+      {
+        "slug": "surveyor",
+        "label": "Surveyor",
+        "regions": 2
+      },
+      {
+        "slug": "cartographer",
+        "label": "Cartographer",
+        "regions": 5
+      },
+      {
+        "slug": "pathfinder",
+        "label": "Pathfinder",
+        "regions": 9
+      },
+      {
+        "slug": "wayfinder",
+        "label": "Wayfinder",
+        "regions": 14
+      }
+    ]
+  },
+  "weather": {
+    "quiet_days": 7,
+    "return_grade": "fine"
+  },
+  "medals": [
+    {
+      "slug": "answered",
+      "label": "Answered",
+      "type": "kind_count",
+      "kind": "decision",
+      "n": 1,
+      "window": "day",
+      "top": true
+    },
+    {
+      "slug": "double-clear",
+      "label": "Double clear",
+      "type": "kind_count",
+      "kind": "close",
+      "n": 2,
+      "window": "day"
+    },
+    {
+      "slug": "lane-sweep",
+      "label": "Lane sweep",
+      "type": "same_band",
+      "n": 3,
+      "window": "day"
+    },
+    {
+      "slug": "clutch",
+      "label": "Clutch",
+      "type": "on_due",
+      "kind": "close"
+    },
+    {
+      "slug": "lift-week",
+      "label": "Lift week",
+      "type": "kind_count",
+      "kind": "lift",
+      "n": 3,
+      "window": "week"
+    },
+    {
+      "slug": "receipts",
+      "label": "Receipts",
+      "type": "verified",
+      "n": 1
+    },
+    {
+      "slug": "return",
+      "label": "Return",
+      "type": "after_quiet",
+      "quiet_days": 7
+    },
+    {
+      "slug": "pace",
+      "label": "Pace",
+      "type": "kind_count",
+      "kind": "pace",
+      "n": 1,
+      "window": "week"
+    },
+    {
+      "slug": "engine-down",
+      "label": "Engine down",
+      "type": "age_at_close",
+      "min_days": 60
+    },
+    {
+      "slug": "region-mapped",
+      "label": "Region mapped",
+      "type": "week_complete"
+    },
+    {
+      "slug": "campaign",
+      "label": "Campaign",
+      "type": "quest_complete"
+    }
+  ],
+  "challenges": {
+    "daily": [
+      {
+        "slug": "quick-clear",
+        "needs": "quick_order",
+        "target": 1,
+        "xp": 30
+      },
+      {
+        "slug": "answer-one",
+        "needs": "open_decision",
+        "target": 1,
+        "xp": 60
+      },
+      {
+        "slug": "two-lessons",
+        "needs": "lessons_today",
+        "target": 2,
+        "xp": 30
+      },
+      {
+        "slug": "todays-lift",
+        "needs": "lift_day",
+        "target": 1,
+        "xp": 30
+      },
+      {
+        "slug": "oldest-now",
+        "needs": "now_order",
+        "target": 1,
+        "xp": 45
+      }
+    ],
+    "weekly": [
+      {
+        "slug": "clear-five",
+        "needs": "open_order",
+        "target": 5,
+        "xp": 120
+      },
+      {
+        "slug": "answer-two",
+        "needs": "open_decision",
+        "target": 2,
+        "xp": 150
+      },
+      {
+        "slug": "lift-three",
+        "needs": "lift_week",
+        "target": 3,
+        "xp": 90
+      },
+      {
+        "slug": "map-a-region",
+        "needs": "sprint_active",
+        "target": 1,
+        "xp": 120
+      },
+      {
+        "slug": "relieve-a-ward",
+        "needs": "pressured_ward",
+        "target": 1,
+        "xp": 150
+      }
+    ]
+  },
+  "works": [
+    {
+      "level": 1,
+      "slug": "lamps",
+      "label": "Lamps"
+    },
+    {
+      "level": 2,
+      "slug": "banner",
+      "label": "Banner"
+    },
+    {
+      "level": 3,
+      "slug": "watchtower",
+      "label": "Watchtower"
+    },
+    {
+      "level": 4,
+      "slug": "workshop",
+      "label": "Workshop"
+    },
+    {
+      "level": 5,
+      "slug": "archive",
+      "label": "Archive"
+    },
+    {
+      "level": 6,
+      "slug": "gatehouse",
+      "label": "Gatehouse"
+    },
+    {
+      "level": 8,
+      "slug": "observatory",
+      "label": "Observatory"
+    }
+  ],
+  "keeper": {
+    "parts": [
+      {
+        "slug": "chassis",
+        "label": "Chassis",
+        "from": "player_level",
+        "tiers": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "slug": "arm",
+        "label": "Arm",
+        "from": "closes",
+        "tiers": [
+          1,
+          10,
+          25,
+          50,
+          100
+        ]
+      },
+      {
+        "slug": "sensor",
+        "label": "Sensor",
+        "from": "regions",
+        "tiers": [
+          0,
+          1,
+          3,
+          6,
+          10
+        ]
+      },
+      {
+        "slug": "battery",
+        "label": "Battery",
+        "from": "lifts",
+        "tiers": [
+          0,
+          3,
+          12,
+          36,
+          72
+        ]
+      },
+      {
+        "slug": "plating",
+        "label": "Plating",
+        "from": "medals",
+        "tiers": [
+          0,
+          3,
+          8,
+          15,
+          25
+        ]
+      }
+    ]
+  },
+  "bank": {
+    "item": {
+      "tool": {
+        "plain": [
+          "Chalk line",
+          "Hand file",
+          "Bench rule"
+        ],
+        "fine": [
+          "Brass calipers",
+          "Hickory mallet",
+          "Steel scribe"
+        ],
+        "tempered": [
+          "Surveyor's level",
+          "Marking gauge",
+          "Try square"
+        ],
+        "masterwork": [
+          "Brass transit",
+          "Locked dividers",
+          "Boxwood plane"
+        ],
+        "heirloom": [
+          "The datum rod",
+          "Master gauge",
+          "Founder's chisel"
+        ]
+      },
+      "plan": {
+        "plain": [
+          "Field sketch",
+          "Tally sheet",
+          "Chit"
+        ],
+        "fine": [
+          "Working drawing",
+          "Cut list",
+          "Bill of quantities"
+        ],
+        "tempered": [
+          "Section drawing",
+          "Survey plat",
+          "Set of elevations"
+        ],
+        "masterwork": [
+          "Signed plat",
+          "Vellum section",
+          "Keyed plan"
+        ],
+        "heirloom": [
+          "The founding plat",
+          "Charter drawing",
+          "Sealed master plan"
+        ]
+      },
+      "chart": {
+        "plain": [
+          "Pace count",
+          "Compass bearing",
+          "Field note"
+        ],
+        "fine": [
+          "Sketch map",
+          "Bearing table",
+          "Traverse"
+        ],
+        "tempered": [
+          "Contour sheet",
+          "Triangulation",
+          "Sounding chart"
+        ],
+        "masterwork": [
+          "Region sheet",
+          "Benchmark register",
+          "Levelled profile"
+        ],
+        "heirloom": [
+          "The first atlas",
+          "Wayfinder's chart",
+          "The meridian"
+        ]
+      },
+      "plate": {
+        "plain": [
+          "Tin tag",
+          "Rivet",
+          "Washer"
+        ],
+        "fine": [
+          "Brass tag",
+          "Cleat",
+          "Bracket"
+        ],
+        "tempered": [
+          "Steel plate",
+          "Forged strap",
+          "Hinge"
+        ],
+        "masterwork": [
+          "Armour plate",
+          "Anvil face",
+          "Keel plate"
+        ],
+        "heirloom": [
+          "The anvil",
+          "Founder's plate",
+          "Keystone"
+        ]
+      },
+      "seal": {
+        "plain": [
+          "Wax seal",
+          "Date stamp",
+          "Initial"
+        ],
+        "fine": [
+          "Signet",
+          "Brass stamp",
+          "Ribbon"
+        ],
+        "tempered": [
+          "Office seal",
+          "Cachet",
+          "Countersign"
+        ],
+        "masterwork": [
+          "Great seal",
+          "Charter seal",
+          "Warrant"
+        ],
+        "heirloom": [
+          "The founder's seal",
+          "Letters patent",
+          "Writ"
+        ]
+      },
+      "sealed": {
+        "plain": [
+          "A sealed crate"
+        ],
+        "fine": [
+          "A sealed crate"
+        ],
+        "tempered": [
+          "A sealed crate"
+        ],
+        "masterwork": [
+          "A sealed crate"
+        ],
+        "heirloom": [
+          "A sealed crate"
+        ]
+      }
+    },
+    "medal": {
+      "answered": "A decision answered. The Office moves.",
+      "double-clear": "Two clears in one sitting.",
+      "lane-sweep": "Three from one lane. The lane is lighter.",
+      "clutch": "Closed on the day it was due.",
+      "lift-week": "Three lifts this week.",
+      "receipts": "The tick was checked and it held.",
+      "return": "Welcome back. The lamps are lit again.",
+      "pace": "A plan re-paced is a plan kept.",
+      "engine-down": "A siege engine down. Sixty days, gone in one.",
+      "region-mapped": "A region mapped. The field is a little smaller.",
+      "campaign": "A campaign complete. Its card is in the archive."
+    },
+    "weather": {
+      "quiet": "The Office kept the lights on.",
+      "unread": "Not read this session. The ward is unlit.",
+      "provisional": "Provisional until the tick is checked.",
+      "dark": "The lane is dark. The fortress draws from its last read."
+    },
+    "challenge": {
+      "quick-clear": "Clear one order under 15 minutes.",
+      "answer-one": "Answer one decision.",
+      "two-lessons": "Tick two lessons.",
+      "todays-lift": "Log today's lift.",
+      "oldest-now": "Clear the oldest Now-lane order.",
+      "clear-five": "Clear five this week.",
+      "answer-two": "Answer two decisions this week.",
+      "lift-three": "Lift three times this week.",
+      "map-a-region": "Map a region this week.",
+      "relieve-a-ward": "Relieve one ward to zero this week."
+    },
+    "drop": {
+      "plain": "A drop.",
+      "fine": "A fine drop.",
+      "tempered": "A tempered drop.",
+      "masterwork": "Masterwork.",
+      "heirloom": "An heirloom."
+    },
+    "fortress": {
+      "start": "The blight is the work that aged. Every cell you spend came from something you finished.",
+      "day": "Day {n}. Raise the beacon.",
+      "night": "Night {n}. {grew} tiles of blight surged.",
+      "engine_down": "{id} answered. Its engine is scrap.",
+      "cache": "A cache landed by the beacon: +{scrap} scrap, +{cells} cells.",
+      "pylon_fell": "A pylon fell. The ground is wild again, never lost.",
+      "reclaimed": "{n} tiles reclaimed.",
+      "dark": "The beacon dimmed. Nothing is lost; the lamps relight at dawn.",
+      "won": "Half the ground glows. The siege thinned."
+    },
+    "explore": {
+      "enter": "Out through the gate. The field is the roadmap; walk to a waypoint to survey it.",
+      "survey": "Waypoint surveyed. +{cells} cells.",
+      "mapped": "Region mapped. The fog lifts here.",
+      "fog": "Unmapped. The lessons here are still ahead."
+    }
+  },
+  "fortress": {
+    "$note": "Fortress mode (the owner's steer, D21): a real-time map the Keeper drives around. Scrap is ambient play; CELLS come only from evidence (a close, a lesson, a lift, a decision), so territory grows only through real work. Kills pay no XP (rule 1). Losing ground is weather, never a loss.",
+    "cols": 20,
+    "rows": 20,
+    "day_seconds": 45,
+    "goal_ground": 0.5,
+    "costs": {
+      "wall": {
+        "scrap": 3,
+        "cells": 0
+      },
+      "turret": {
+        "scrap": 5,
+        "cells": 2
+      },
+      "pylon": {
+        "scrap": 6,
+        "cells": 4
+      },
+      "habitat": {
+        "scrap": 4,
+        "cells": 2
+      }
+    },
+    "structure_hp": {
+      "wall": 170,
+      "turret": 110,
+      "pylon": 90,
+      "habitat": 80
+    },
+    "pylon_reach": 2.6,
+    "core_reach": 3.2,
+    "cache_by_grade": {
+      "plain": {
+        "scrap": 4,
+        "cells": 2
+      },
+      "fine": {
+        "scrap": 6,
+        "cells": 3
+      },
+      "tempered": {
+        "scrap": 8,
+        "cells": 4
+      },
+      "masterwork": {
+        "scrap": 10,
+        "cells": 6
+      },
+      "heirloom": {
+        "scrap": 14,
+        "cells": 9
+      }
+    },
+    "cache_by_kind": {
+      "lesson": {
+        "scrap": 0,
+        "cells": 2
+      },
+      "lift": {
+        "scrap": 0,
+        "cells": 2
+      },
+      "pace": {
+        "scrap": 0,
+        "cells": 1
+      }
+    },
+    "blight": {
+      "tiles_per_attacker": 5,
+      "min_tiles": 24,
+      "max_tiles": 180,
+      "spread_base": 0.14,
+      "spread_per_day": 0.03,
+      "spread_cap": 0.42
+    },
+    "waves": {
+      "base": 4,
+      "per_attacker": 1,
+      "per_day": 2
+    },
+    "machines": {
+      "crawler": {
+        "r": 9,
+        "hp": 34,
+        "speed": 30,
+        "dps": 9,
+        "aggro": 70
+      },
+      "skitter": {
+        "r": 7,
+        "hp": 20,
+        "speed": 64,
+        "dps": 6,
+        "aggro": 115
+      },
+      "juggernaut": {
+        "r": 14,
+        "hp": 260,
+        "speed": 20,
+        "dps": 32,
+        "aggro": 60
+      }
+    },
+    "engine_machine": "juggernaut",
+    "modules": [
+      {
+        "id": "cannon",
+        "label": "Overcharged cannon",
+        "line": "Shots hit 25% harder.",
+        "effect": {
+          "dmg": 1.25
+        }
+      },
+      {
+        "id": "cycler",
+        "label": "Rapid cycler",
+        "line": "Fire 20% faster.",
+        "effect": {
+          "rate": 1.2
+        }
+      },
+      {
+        "id": "servo",
+        "label": "Servo upgrade",
+        "line": "Move 15% faster.",
+        "effect": {
+          "speed": 1.15
+        }
+      },
+      {
+        "id": "plating",
+        "label": "Armour plating",
+        "line": "30 more hull, repaired in full.",
+        "effect": {
+          "hull": 30
+        }
+      },
+      {
+        "id": "salvage",
+        "label": "Salvage arm",
+        "line": "Gather 50% faster, one more per pickup.",
+        "effect": {
+          "gather": 1.5,
+          "bonus": 1
+        }
+      },
+      {
+        "id": "firmware",
+        "label": "Turret firmware",
+        "line": "Turrets deal 30% more.",
+        "effect": {
+          "turret": 1.3
+        }
+      },
+      {
+        "id": "alloy",
+        "label": "Reinforced alloy",
+        "line": "Structures get 40% more health.",
+        "effect": {
+          "struct": 1.4
+        }
+      },
+      {
+        "id": "optics",
+        "label": "Long-range optics",
+        "line": "Shoot 20% farther.",
+        "effect": {
+          "range": 1.2
+        }
+      },
+      {
+        "id": "amp",
+        "label": "Pylon amplifier",
+        "line": "Every pylon reaches one tile farther.",
+        "effect": {
+          "pylon": 1
+        }
+      }
+    ]
+  },
+  "explore": {
+    "$note": "Explore mode (D22): third person, the Keeper walking the field. A region is a sprint week, a waypoint a lesson; surveying a waypoint opens the lesson (DEMO: ticks it) and pays cells. Fog lifts as regions are mapped. Nothing here can be lost.",
+    "region_depth_m": 60,
+    "region_width_m": 40,
+    "waypoint_radius_m": 3.5,
+    "walk_speed_mps": 6,
+    "turn_rate": 1.8,
+    "fog_unmapped": 0.6,
+    "camera_height_m": 3.2,
+    "camera_back_m": 7,
+    "focal": 300
+  }
+}

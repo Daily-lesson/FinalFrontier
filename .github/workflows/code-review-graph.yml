@@ -1,0 +1,47 @@
+# Structural PR review via a local knowledge graph (tirth8205/code-review-graph).
+# Local-first: the graph is built on the CI runner and only the default
+# GITHUB_TOKEN is used — no source code or tokens go to any external API.
+#
+# ONCE PER PR, NOT ONCE PER PUSH (2026-09-29, alys ACTIONS_BUDGET.md). A bare
+# `pull_request:` trigger fires on every `synchronize`, so an agent session
+# pushing fifteen small commits to one branch rebuilt the whole graph fifteen
+# times. It was the second-largest line in September's portfolio bill (~396
+# minutes across four repos, 21% of the total). It now runs when a PR is opened
+# ready for review, reopened, or taken out of draft; a draft PR is skipped at
+# job level (a skipped job bills nothing), and so is every later push. To get a
+# fresh review after more commits, add the `review-graph` label (remove and
+# re-add it to run again).
+#
+# Canonical copy: Daily-lesson/alys .github/workflows/code-review-graph.yml,
+# referenced by templates/repo/manifest.json. Keep the copies byte-identical.
+name: code-review-graph
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: >-
+      github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' || github.event.label.name == 'review-graph')
+    # Job-level on purpose: a PR opened WITH labels fires `opened` and `labeled`
+    # together, and a workflow-level group would let the `labeled` run cancel
+    # the real review and then skip its own job. A job skipped by `if` should
+    # never join this group; `cancel-in-progress: false` makes that moot — a
+    # second real review QUEUES behind the first instead of cancelling it. The
+    # workflow fires a few times per PR at most, so queuing costs almost nothing.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: tirth8205/code-review-graph@v2.3.7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

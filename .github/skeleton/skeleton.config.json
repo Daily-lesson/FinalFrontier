@@ -1,0 +1,84 @@
+{
+  "docs": [
+    "SKELETON.md",
+    "CLAUDE.md"
+  ],
+  "entitySets": [
+    {
+      "name": "Engine and game modules",
+      "kind": "path",
+      "glob": "src/*.js",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "Rules files",
+      "kind": "path",
+      "glob": "rules/*.json",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "Sim scripts",
+      "kind": "path",
+      "glob": "sim/*.mjs",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "Prototype pages",
+      "kind": "path",
+      "glob": "prototype/*.html",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "Prototype scripts",
+      "kind": "path",
+      "glob": "prototype/*.mjs",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "Tests",
+      "kind": "path",
+      "glob": "tests/*.mjs",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "CI workflows",
+      "kind": "path",
+      "glob": ".github/workflows/*.yml",
+      "exclude": [
+        "**/skeleton-*.yml"
+      ],
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    }
+  ],
+  "reminder": {
+    "watchGlobs": [
+      "src/**",
+      "rules/**",
+      "sim/**",
+      "prototype/**"
+    ],
+    "doc": "CLAUDE.md",
+    "threshold": 5
+  }
+}

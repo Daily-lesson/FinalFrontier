@@ -1,0 +1,14 @@
+# .vercelignore — ALLOWLIST. Deny everything, then re-include runtime files.
+#
+# Why an allowlist: a static host serves whatever it
+# is given. SocialOS shipped without one and Vercel served the whole repo —
+# CLAUDE.md, docs/ and supabase/ source were publicly reachable (verified
+# 200s). A new top-level runtime file must be added here AND to any mirror
+# script, or the deployment silently drops it.
+/*
+!/index.html
+!/manifest.json
+!/sw.js
+!/css
+!/js
+!/icons

@@ -1,0 +1,44 @@
+name: skeleton-guard
+
+# Deterministic anti-drift guard for SKELETON.md (+ a soft CLAUDE.md reminder).
+# Fails the build if a module / route / migration / workflow exists in code but
+# is not documented in the skeleton. See .github/skeleton/ (check.mjs and
+# reminder.mjs are canonical — keep byte-identical across repos;
+# skeleton.config.json is per-repo). Document the new entity by hand.
+#
+# From Daily-lesson/alys templates/repo/. One change from the SocialOS /
+# Off_Races copies: `pull_request` has no branch filter, so a PR stacked on
+# another PR's branch is still guarded (the alys ci.yml lesson, run 053).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skeleton-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Skeleton coverage guard (blocking)
+        run: node .github/skeleton/check.mjs
+      - name: CLAUDE.md staleness reminder (non-blocking)
+        if: always()
+        env:
+          BASE_REF: origin/${{ github.base_ref || 'main' }}
+        run: node .github/skeleton/reminder.mjs
