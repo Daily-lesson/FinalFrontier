@@ -1,4 +1,4 @@
-// Inlines src/engine.js and rules/fieldworks.json into prototype.src.html →
+// Inlines src/engine.js, src/castle.js and rules/fieldworks.json into prototype.src.html →
 // prototype/index.html. The published artifact is one page with no dependency;
 // tests/check.mjs holds the inlined copies equal to the files.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -8,9 +8,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 const src = readFileSync(join(here, 'prototype.src.html'), 'utf8');
 const engine = readFileSync(join(root, 'src', 'engine.js'), 'utf8');
+const castle = readFileSync(join(root, 'src', 'castle.js'), 'utf8');
 const rules = readFileSync(join(root, 'rules', 'fieldworks.json'), 'utf8').trim();
-const out = src.replace('/*__ENGINE__*/', () => engine).replace('/*__RULES__*/', () => rules);
-if (out === src) throw new Error('markers not found');
+const out = src.replace('/*__ENGINE__*/', () => engine).replace('/*__CASTLE__*/', () => castle).replace('/*__RULES__*/', () => rules);
+for (const m of ['/*__ENGINE__*/', '/*__CASTLE__*/', '/*__RULES__*/']) if (!src.includes(m) || out.includes(m)) throw new Error(`marker ${m} not found or not replaced`);
 writeFileSync(join(here, 'index.html'), out);
 // The art sheet is the same page with one flag set: every sprite drawn by the prototype's own functions.
 const ART_FLAG = '<script>globalThis.FIELDWORKS_ART = true;</script>\n';

@@ -1,7 +1,7 @@
 {
-  "$note": "FIELDWORKS rules, version 1 — the owner's instance as the first of the template (docs/FIELDWORKS.md §7.4). Every number the engine reads lives here; the engine (engine.js) carries none of its own except the hash. Re-theme by writing another file; re-balance by editing this one. The bank is the game's every sentence, seeded once for the owner's review (D14) and then data. Public-tier text only: ward names come from js/projects-seed.js at run time, never from here.",
+  "$note": "FIELDWORKS rules, version 2 (the rework, design D34) — the owner's instance as the first of the template. Every number the engine, the castle module and the prototype read lives here; the code carries none of its own except the hash and the fight's fixed step. Re-theme by writing another file; re-balance by editing this one and running the sim. The bank is the game's every sentence, seeded once for the owner's review (D14) and then data. Public-tier text only: ward names come from the public project seed at run time, never from here.",
   "game": {
-    "version": 1,
+    "version": 2,
     "site": "fieldworks",
     "name": "Fieldworks",
     "enterprise": "daily-lesson"
@@ -584,7 +584,7 @@
       "quiet": "The Office kept the lights on.",
       "unread": "Not read this session. The ward is unlit.",
       "provisional": "Provisional until the tick is checked.",
-      "dark": "The lane is dark. The fortress draws from its last read."
+      "dark": "The lane is dark. The castle draws from its last read."
     },
     "challenge": {
       "quick-clear": "Clear one order under 15 minutes.",
@@ -605,63 +605,132 @@
       "masterwork": "Masterwork.",
       "heirloom": "An heirloom."
     },
-    "fortress": {
-      "start": "The blight is the work that aged. Every cell you spend came from something you finished.",
-      "day": "Day {n}. Raise the beacon.",
-      "night": "Night {n}. {grew} tiles of blight surged.",
-      "engine_down": "{id} answered. Its engine is scrap.",
-      "cache": "A cache landed by the beacon: +{scrap} scrap, +{cells} cells.",
-      "pylon_fell": "A pylon fell. The ground is wild again, never lost.",
-      "reclaimed": "{n} tiles reclaimed.",
-      "dark": "The beacon dimmed. Nothing is lost; the lamps relight at dawn.",
-      "won": "Half the ground glows. The siege thinned.",
-      "save_migrated": "This map was built under older rules. It loads under today's rules; nothing was taken.",
-      "save_corrupt": "The saved map could not be read. The map is laid again and every cache you had not picked up is back by the beacon.",
-      "clock_short": "45 s day",
-      "clock_real": "real day · night at {night}:00",
-      "until_night": "until {night}:00",
-      "until_dawn": "night until {dawn}:00",
-      "night_quiet": "The wave is spent. The night holds until {dawn}:00."
+    "castle": {
+      "start": "The castle is the work you finished. It holds on its own.",
+      "how": "Every closed order, lesson, lift and answered decision adds a piece. Nothing you do in play can add one, and nothing can take one.",
+      "keys": "Left and right to move, jump, fire. On a keyboard: arrows or A and D, space to jump, J or X to fire.",
+      "piece": "{what} added to the castle.",
+      "parts": {
+        "wall": "A wall section",
+        "tower": "A tower level",
+        "keep": "A keep level",
+        "course": "A course of stone",
+        "gate": "A gate brace",
+        "lamp": "A lamp"
+      },
+      "count": "{n} pieces",
+      "wall": "wall {n}",
+      "fire": "fire {n}",
+      "dim": "The walls are breached and dim. The next finished task relights them.",
+      "relit": "The walls are lit again.",
+      "save_migrated": "This castle was saved under older rules. It loads under today's rules; nothing was taken.",
+      "save_corrupt": "The save could not be read. The castle stands on its evidence all the same; only the play scores start again.",
+      "save_old_game": "This save was the old fortress map. Its evidence built this castle; nothing was taken.",
+      "gate": "Out the gate",
+      "orders": "Finish a task (evidence)"
     },
-    "explore": {
-      "enter": "Out through the gate. The field is the roadmap; walk to a waypoint to survey it.",
-      "survey": "Waypoint surveyed. +{cells} cells.",
-      "mapped": "Region mapped. The fog lifts here.",
-      "fog": "Unmapped. The lessons here are still ahead.",
-      "compass_waypoint": "waypoint {dist} m",
-      "compass_gate": "gate {dist} m",
+    "horde": {
+      "gathering": "A horde gathers: {pct}%",
+      "quiet": "No horde gathering",
+      "resting": "The last horde is spent",
+      "unread": "Backlog unread · the horde clock is unlit",
+      "warning": "Horde in {when}",
+      "when_days": "{n} days",
+      "when_day": "1 day",
+      "when_today": "hours",
+      "need_none": "The castle holds as it stands.",
+      "need_one": "1 finished task would see it hold.",
+      "need_some": "{n} finished tasks would see it hold.",
+      "need_many": "More than {n} finished tasks to hold it. Nothing is lost if it breaks.",
+      "size": "{n} machines · {bosses} engines",
+      "arrive": "The horde is at the walls",
+      "join": "The castle fights on its own. Fire from the wall if you like; it does not need you.",
+      "skip": "Skip to the end",
+      "held": "The castle held.",
+      "breached": "The wall was breached and the towers finished it. Nothing was taken.",
+      "dark": "The beacon dimmed. Nothing was taken; the next finished task relights it.",
+      "sum_wall": "Wall {pct}% standing",
+      "sum_beacon": "Beacon {pct}%",
+      "sum_downed": "{n} of {total} machines downed",
+      "sum_withdrew": "{n} withdrew at dawn",
+      "sum_best": "{who} mattered most: {n} downed",
+      "sum_keeper": "You downed {n} from the wall. They pay score, never XP.",
+      "sum_nobody": "No tower fired. A finished task raises one.",
+      "guns": {
+        "tower": "Tower {n}",
+        "keep": "The keep"
+      },
+      "done": "Back to the castle",
+      "next": "The next horde gathers from the aged backlog.",
+      "dev_wait": "A horde is already at the walls.",
+      "rally": "Rally +{pct}%: {n} pieces landed since the warning.",
+      "tile_need": "{n} tasks to hold",
+      "tile_holds": "the castle holds",
+      "tile_many": "more than {n} tasks",
+      "tile_dim": "walls dim"
+    },
+    "stage": {
+      "heading": "Stages",
+      "sub": "one per week of the roadmap, and the Wilds",
+      "week": "Week {n}",
+      "wilds": "The Wilds",
+      "wilds_line": "Free-standing. No end; go as far as you can.",
+      "enter": "Week {n}. Run right; the gate is behind you.",
+      "wilds_enter": "The Wilds. No end. Go as far as you can.",
+      "locked": "Clear week {n} first",
+      "best": "best {score}",
+      "unplayed": "not played yet",
+      "posts": "{done} of {total} lessons surveyed",
+      "mapped": "mapped",
+      "clear": "Stage clear",
+      "over": "Run over",
+      "score": "Score {score}",
+      "new_best": "A new best.",
+      "score_note": "Score is play. It buys paint, never power: XP and castle pieces come only from finished work.",
+      "again": "Run it again",
+      "home": "Back to the castle",
+      "offline": "Offline. Rebooting where you last stood.",
+      "gate_home": "Through the gate. The castle.",
       "card": "Week {week} · lesson {pos} of {of}",
       "card_done": "Surveyed",
       "card_open": "Not surveyed yet",
-      "province": "Province {n} · weeks {from}–{to}",
-      "gate_home": "Through the gate. The fortress.",
-      "survey_button": "Survey",
-      "walk_closer": "Walk closer"
+      "survey_button": "Tick (DEMO)",
+      "survey": "Waypoint surveyed. A course of stone for the wall.",
+      "stars": {
+        "clear": "cleared",
+        "sparks": "most sparks",
+        "clean": "no hull lost"
+      },
+      "walk_closer": "Walk closer",
+      "card_demo": "Not surveyed yet. The app opens the lesson; the DEMO ticks it."
     },
-    "keeper_effects": {
-      "heading": "Parts in play",
-      "proposed": "proposed",
-      "off": "off · the dev switch Parts act turns it on",
-      "line": "+{pct}% {label}",
-      "on": "The parts act in play now, each by the line beside it."
+    "keeper": {
+      "hearts": "{n} hull · level {level}",
+      "hearts_note": "The hull grows with the level, and the level comes from finished work.",
+      "paint": "Paint",
+      "paint_note": "Unlocked by play score. Looks only.",
+      "paint_locked": "at {at} score",
+      "total": "Play score {score}",
+      "device": "Scores and paint stay on this device. The castle is the evidence, so it is the same everywhere.",
+      "level": "Level {n}. Earned by evidence; the hull grows with it."
     },
     "states": {
-      "unlit": "{ward} · unread",
-      "dark": "Lanes last read {days} days ago. The fortress draws from that read.",
+      "unlit": "Backlog unread · the horde clock is unlit",
+      "dark": "Lanes last read {days} days ago. The castle draws from that read.",
       "quiet": "A quiet week. The Office kept the lights on."
     },
     "onboarding": {
-      "map": {
-        "title": "The map is your work",
-        "body": "The beacon at the centre is the Office. The blight at the edges is work that aged: each edge is one program, and the parked engines are your oldest orders."
+      "castle": {
+        "title": "The castle is your finished work",
+        "body": "Every order you close, lesson you tick, lift you log and decision you answer adds a piece: a wall section, a tower level, a keep level. Nothing in play can add one."
       },
-      "cells": {
-        "title": "Cells come from finished work",
-        "body": "Scrap you salvage by driving around. Cells, which raise pylons and win back ground, come only from real evidence: a closed order, a lesson, a lift. Play spends; it never earns them."
+      "horde": {
+        "title": "It defends itself, and hordes are announced",
+        "body": "The towers and the wall hold on their own. Now and then the aged backlog sends a horde. You are told days ahead, with how many finished tasks would see the castle hold. Nothing is ever taken."
       },
-      "night": {
-        "title": "The night comes, and nothing is lost",
-        "body": "At night the blight sends machines at the beacon. Hold it with walls and turrets. If the beacon goes dark it relights at dawn; no ground, item or level is ever taken."
+      "stages": {
+        "title": "Out the gate is a game",
+        "body": "Run, jump and shoot through a stage for each week of the roadmap, or as far as you can in the Wilds. Score is for fun and paint. Power comes only from real work."
       }
     },
     "telemetry": {
@@ -670,261 +739,26 @@
       "opens": "opens, last 7 days",
       "session_seconds": "minutes played",
       "closes_seen": "closes seen",
-      "pylons": "pylons raised",
-      "nights_held": "nights held",
+      "stages_cleared": "stages cleared",
+      "hordes_seen": "hordes seen",
       "regions_mapped": "regions mapped"
     }
   },
-  "fortress": {
-    "$note": "Fortress mode (the owner's steer, D21): a real-time map the Keeper drives around. Scrap is ambient play; CELLS come only from evidence (a close, a lesson, a lift, a decision), so territory grows only through real work. Kills pay no XP (rule 1). Losing ground is weather, never a loss.",
-    "cols": 20,
-    "rows": 20,
-    "day_seconds": 45,
-    "goal_ground": 0.5,
-    "costs": {
-      "wall": {
-        "scrap": 3,
-        "cells": 0
-      },
-      "turret": {
-        "scrap": 5,
-        "cells": 2
-      },
-      "pylon": {
-        "scrap": 6,
-        "cells": 8
-      },
-      "habitat": {
-        "scrap": 4,
-        "cells": 2
-      }
-    },
-    "structure_hp": {
-      "wall": 170,
-      "turret": 110,
-      "pylon": 90,
-      "habitat": 80
-    },
-    "pylon_reach": 1.6,
-    "core_reach": 3.2,
-    "cache_by_grade": {
-      "plain": {
-        "scrap": 4,
-        "cells": 2
-      },
-      "fine": {
-        "scrap": 6,
-        "cells": 3
-      },
-      "tempered": {
-        "scrap": 8,
-        "cells": 4
-      },
-      "masterwork": {
-        "scrap": 10,
-        "cells": 6
-      },
-      "heirloom": {
-        "scrap": 14,
-        "cells": 9
-      }
-    },
-    "cache_by_kind": {
-      "lesson": {
-        "scrap": 0,
-        "cells": 2
-      },
-      "lift": {
-        "scrap": 0,
-        "cells": 2
-      },
-      "pace": {
-        "scrap": 0,
-        "cells": 1
-      }
-    },
-    "blight": {
-      "tiles_per_attacker": 2,
-      "min_tiles": 8,
-      "max_tiles": 180,
-      "spread_base": 0.14,
-      "spread_per_day": 0.03,
-      "spread_cap": 0.42
-    },
-    "waves": {
-      "base": 4,
-      "per_attacker": 0.25,
-      "per_day": 2,
-      "max": 40,
-      "per_day_cap_days": 7
-    },
-    "machines": {
-      "crawler": {
-        "r": 9,
-        "hp": 34,
-        "speed": 30,
-        "dps": 9,
-        "aggro": 70
-      },
-      "skitter": {
-        "r": 7,
-        "hp": 20,
-        "speed": 64,
-        "dps": 6,
-        "aggro": 115
-      },
-      "juggernaut": {
-        "r": 14,
-        "hp": 260,
-        "speed": 20,
-        "dps": 32,
-        "aggro": 60
-      }
-    },
-    "engine_machine": "juggernaut",
-    "modules": [
-      {
-        "id": "cannon",
-        "label": "Overcharged cannon",
-        "line": "Shots hit 25% harder.",
-        "effect": {
-          "dmg": 1.25
-        }
-      },
-      {
-        "id": "cycler",
-        "label": "Rapid cycler",
-        "line": "Fire 20% faster.",
-        "effect": {
-          "rate": 1.2
-        }
-      },
-      {
-        "id": "servo",
-        "label": "Servo upgrade",
-        "line": "Move 15% faster.",
-        "effect": {
-          "speed": 1.15
-        }
-      },
-      {
-        "id": "plating",
-        "label": "Armour plating",
-        "line": "30 more hull, repaired in full.",
-        "effect": {
-          "hull": 30
-        }
-      },
-      {
-        "id": "salvage",
-        "label": "Salvage arm",
-        "line": "Gather 50% faster, one more per pickup.",
-        "effect": {
-          "gather": 1.5,
-          "bonus": 1
-        }
-      },
-      {
-        "id": "firmware",
-        "label": "Turret firmware",
-        "line": "Turrets deal 30% more.",
-        "effect": {
-          "turret": 1.3
-        }
-      },
-      {
-        "id": "alloy",
-        "label": "Reinforced alloy",
-        "line": "Structures get 40% more health.",
-        "effect": {
-          "struct": 1.4
-        }
-      },
-      {
-        "id": "optics",
-        "label": "Long-range optics",
-        "line": "Shoot 20% farther.",
-        "effect": {
-          "range": 1.2
-        }
-      },
-      {
-        "id": "amp",
-        "label": "Pylon amplifier",
-        "line": "Every pylon reaches one tile farther.",
-        "effect": {
-          "pylon": 1
-        }
-      }
-    ]
-  },
-  "explore": {
-    "$note": "Explore mode (D22): third person, the Keeper walking the field. A region is a sprint week, a waypoint a lesson; surveying a waypoint opens the lesson (DEMO: ticks it) and pays cells. Fog lifts as regions are mapped. Nothing here can be lost.",
-    "region_depth_m": 60,
-    "region_width_m": 40,
-    "waypoint_radius_m": 3.5,
-    "walk_speed_mps": 6,
-    "turn_rate": 1.8,
-    "fog_unmapped": 0.6,
-    "camera_height_m": 3.2,
-    "camera_back_m": 7,
-    "focal": 300,
-    "gate": {
-      "x_m": 0,
-      "z_m": -4,
-      "radius_m": 2.5
-    },
-    "province_weeks": 4,
-    "card_radius_m": 9
-  },
   "save": {
-    "$note": "The prototype keeps its built map in the device's own storage (key fieldworks-save). A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; an unreadable save is discarded and the map laid again with every unshown cache re-landed (pillar 2).",
-    "version": 1,
+    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2).",
+    "version": 2,
     "autosave_seconds": 5
   },
   "clock": {
-    "$note": "D25 (a proposal): a game day is a real day, night at night_hour and dawn at dawn_hour in the device's own zone, with Start night allowed early. The prototype keeps the 45 s day behind a dev switch.",
+    "$note": "The horde clock runs on real days (D25, re-cut by D34): a warning warning_hours ahead and an arrival at horde.arrive_hour in the device's own zone. The prototype steps the day from its dev bar so a horde can be met in a five-minute session. The prototype's clock is day-granular: horde.arrive_hour is the app's, and nothing here reads it yet.",
     "modes": [
-      "short",
+      "demo",
       "real"
     ],
-    "default": "short",
-    "night_hour": 21,
-    "dawn_hour": 7
-  },
-  "keeper_effects": {
-    "$note": "D26 (a proposal, off by default behind the dev switch Parts act): each of the Keeper's five parts adds a small multiplier per tier to one stat in play. The engine's keeper() reads rules.keeper; only the sims read this block.",
-    "proposed": true,
-    "parts": {
-      "chassis": {
-        "stat": "hull",
-        "per_tier": 0.06,
-        "label": "hull"
-      },
-      "arm": {
-        "stat": "gather",
-        "per_tier": 0.08,
-        "label": "gather speed"
-      },
-      "sensor": {
-        "stat": "range",
-        "per_tier": 0.05,
-        "label": "range"
-      },
-      "battery": {
-        "stat": "speed",
-        "per_tier": 0.04,
-        "label": "move speed"
-      },
-      "plating": {
-        "stat": "struct",
-        "per_tier": 0.05,
-        "label": "structure health"
-      }
-    }
+    "default": "demo"
   },
   "states": {
-    "$note": "Honest states the fortress can be in, each reachable from the dev bar: an edge whose lane was not read is drawn unlit; a dark lane draws from its last read and says how old it is; a quiet week dims the beacon. Never a zero the game did not measure.",
+    "$note": "Honest states, each reachable from the dev bar: an unread backlog leaves the horde clock unlit (it gathers nothing, never a zero); a dark lane draws from its last read and says how old it is; a quiet week dims the beacon.",
     "kinds": [
       "live",
       "unlit",
@@ -936,21 +770,242 @@
   "onboarding": {
     "$note": "Three cards on the first open (key fieldworks-onboarded), replayable from the dev bar. The words are in the bank.",
     "cards": [
-      "map",
-      "cells",
-      "night"
+      "castle",
+      "horde",
+      "stages"
     ]
   },
   "telemetry": {
-    "$note": "Local only (key fieldworks-telemetry): opens by day, session seconds, closes seen, pylons, nights held, regions mapped. Shown on the Keeper screen; never sent.",
+    "$note": "Local only (key fieldworks-telemetry). Shown on the Keeper screen; never sent.",
     "fields": [
       "opens",
       "session_seconds",
       "closes_seen",
-      "pylons",
-      "nights_held",
+      "stages_cleared",
+      "hordes_seen",
       "regions_mapped"
     ],
     "keep_days": 28
+  },
+  "castle": {
+    "$note": "The castle (D34, D37–D39). It is a fold over the evidence log and nothing else: a piece per evidence event, by the event's kind first, else by its drop's grade. Nothing here is bought, placed or lost. Tower points fill the slots breadth-first.",
+    "parts": [
+      "wall",
+      "tower",
+      "keep",
+      "course",
+      "gate",
+      "lamp"
+    ],
+    "by_grade": {
+      "plain": {
+        "part": "wall",
+        "size": 1
+      },
+      "fine": {
+        "part": "wall",
+        "size": 2
+      },
+      "tempered": {
+        "part": "tower",
+        "size": 1
+      },
+      "masterwork": {
+        "part": "tower",
+        "size": 2
+      },
+      "heirloom": {
+        "part": "tower",
+        "size": 3
+      }
+    },
+    "by_kind": {
+      "decision": {
+        "part": "keep",
+        "size": 1
+      },
+      "lesson": {
+        "part": "course",
+        "size": 1
+      },
+      "lift": {
+        "part": "gate",
+        "size": 1
+      },
+      "pace": {
+        "part": "lamp",
+        "size": 1
+      }
+    },
+    "wall": {
+      "hp_base": 40,
+      "hp_per_section": 10,
+      "hp_per_course": 2,
+      "hp_per_brace": 4
+    },
+    "tower": {
+      "slots": 4,
+      "dps_per_level": 3,
+      "range": 96,
+      "first_x": 10,
+      "spacing": 30
+    },
+    "keep": {
+      "beacon_hp_base": 60,
+      "beacon_hp_per_level": 20,
+      "dps_per_level": 1,
+      "range": 190,
+      "x": 70
+    },
+    "draw": {
+      "sections_max": 10,
+      "courses_per_row": 12,
+      "rows_max": 8,
+      "tower_levels_max": 7,
+      "keep_levels_max": 7
+    }
+  },
+  "horde": {
+    "$note": "The horde (D34, D40–D42). It gathers from the aged backlog (the engine's siege count), is announced warning_hours ahead, and never comes inside min_gap_days of the last. Its size is the backlog that day plus how many came before; its bosses are the siege engines. The fight is one stepping function (src/castle.js), so the forecast is the fight without the Keeper. Every piece the evidence lands between the warning and the arrival rallies the castle for that fight (rally). A horde takes nothing: a breach dims the walls until the next evidence.",
+    "gather_per_attacker": 1,
+    "gather_cap_per_day": 30,
+    "threshold": 150,
+    "warning_hours": 72,
+    "min_gap_days": 10,
+    "arrive_hour": 20,
+    "size": {
+      "base": 6,
+      "per_attacker": 0.4,
+      "per_horde": 3,
+      "max": 60
+    },
+    "max_bosses": 3,
+    "skitter_every": 3,
+    "machines": {
+      "crawler": {
+        "hp": 110,
+        "speed": 14,
+        "dps": 8
+      },
+      "skitter": {
+        "hp": 55,
+        "speed": 26,
+        "dps": 6
+      },
+      "brute": {
+        "hp": 600,
+        "speed": 8,
+        "dps": 30
+      }
+    },
+    "approach": 150,
+    "spawn_gap_s": 0.9,
+    "max_seconds": 120,
+    "warning": {
+      "assume": [
+        {
+          "part": "tower",
+          "size": 1
+        },
+        {
+          "part": "wall",
+          "size": 1
+        }
+      ],
+      "max_tasks": 9
+    },
+    "keeper_shot": 8,
+    "rally": {
+      "per_piece": 0.05,
+      "max_pieces": 10
+    }
+  },
+  "stage": {
+    "$note": "The stages (D34, D43–D46): a side-scrolling run for each stated week of the plan (positions, never a title) and one free-standing endless stage. Stage enemies pay play score, never XP or a castle piece. The Keeper's hull grows with the evidence level. Score unlocks paint and nothing else.",
+    "view_w": 180,
+    "tile": 12,
+    "length_tiles": 150,
+    "length_per_week": 12,
+    "keeper": {
+      "hearts_base": 3,
+      "levels_per_heart": 3,
+      "hearts_max": 6,
+      "speed": 66,
+      "jump": 215,
+      "gravity": 520,
+      "fire_per_s": 5,
+      "shot_speed": 190,
+      "shot_damage": 1,
+      "invulnerable_s": 1.2
+    },
+    "enemies": {
+      "crawler": {
+        "hp": 2,
+        "speed": 14,
+        "score": 100
+      },
+      "hopper": {
+        "hp": 1,
+        "speed": 26,
+        "score": 150
+      },
+      "drone": {
+        "hp": 2,
+        "speed": 22,
+        "score": 200
+      },
+      "brute": {
+        "hp": 8,
+        "speed": 9,
+        "score": 500
+      }
+    },
+    "score": {
+      "spark": 10,
+      "clear": 1000,
+      "par_seconds": 80,
+      "per_second_under_par": 10,
+      "clean": 500,
+      "wilds_per_tile": 2,
+      "horde_machine": 50
+    },
+    "stars": {
+      "sparks_share": 0.8
+    },
+    "wilds": {
+      "ramp_tiles": 60
+    },
+    "paints": [
+      {
+        "slug": "verdigris",
+        "label": "Verdigris",
+        "at": 0,
+        "colour": "#3DBFA6"
+      },
+      {
+        "slug": "signal",
+        "label": "Signal amber",
+        "at": 2000,
+        "colour": "#E9B949"
+      },
+      {
+        "slug": "ember",
+        "label": "Ember",
+        "at": 6000,
+        "colour": "#F0764A"
+      },
+      {
+        "slug": "violet",
+        "label": "Kiln violet",
+        "at": 12000,
+        "colour": "#9B7BFF"
+      },
+      {
+        "slug": "frost",
+        "label": "Frost",
+        "at": 20000,
+        "colour": "#8FD3FF"
+      }
+    ]
   }
 }

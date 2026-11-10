@@ -61,21 +61,51 @@ test('the report carries no order id and no section heading', { skip }, async ()
   assert.throws(() => S.guardReport('the Workshop section', md, index), /section/);
 });
 
-test('the four targets are computed, each with a number, never asserted', { skip }, async () => {
+test('the five targets are computed, each with a number, never asserted', { skip }, async () => {
   const { sim } = await run();
   const t = S.targets(sim, rules);
-  assert.equal(t.length, 4);
+  assert.deepEqual(t.map((x) => x.key), ['piece', 'growth', 'cadence', 'ready', 'level']);
   for (const x of t) { assert.equal(typeof x.met, 'boolean'); assert.ok(x.value !== undefined); }
   // the fixture is thin: it should not meet everything, which shows the targets are measured
   assert.ok(t.some((x) => !x.met), 'a three-order fixture does not meet every target');
 });
 
-test('cells come from the cache rules alone: by kind for a lesson or lift, by the drop grade for a close', () => {
-  const F = rules.fortress;
-  assert.deepEqual(S.cacheFor({ kind: 'lesson' }, { grade: 'heirloom' }, rules), F.cache_by_kind.lesson);
-  assert.deepEqual(S.cacheFor({ kind: 'lift' }, { grade: 'plain' }, rules), F.cache_by_kind.lift);
-  assert.deepEqual(S.cacheFor({ kind: 'close' }, { grade: 'tempered' }, rules), F.cache_by_grade.tempered);
-  assert.deepEqual(S.cacheFor({ kind: 'verify' }, null, rules), { scrap: 0, cells: 0 });
+test('the sim\'s castle is the castle module\'s fold over the engine\'s log, day by day, and never falls', { skip }, async () => {
+  const { sim } = await run(); const C = S.loadCastle();
+  const last = sim.days.at(-1);
+  assert.deepEqual({ ...C.castleFrom(last.count, last.total, rules) }.wallHp, last.wallHp);
+  assert.equal(sim.days.reduce((a, d) => a + d.pieces, 0), last.total, 'every piece was laid on a day');
+  for (let i = 1; i < sim.days.length; i++) { assert.ok(sim.days[i].total >= sim.days[i - 1].total); assert.ok(sim.days[i].wallHp >= sim.days[i - 1].wallHp); assert.ok(sim.days[i].dps >= sim.days[i - 1].dps); }
+  assert.equal(S.targets(sim, rules)[1].fell, 0);
+  const sum = (k) => sim.days.reduce((a, d) => a + d[k], 0);
+  assert.equal(last.count.course, sum('lessons'), 'a lesson is a course of stone'); assert.equal(last.count.gate, sum('lifts'), 'a lift is a gate brace');
+  assert.equal(last.count.keep, sum('decisions'), 'a decision is a keep level'); assert.equal(last.total, sum('lessons') + sum('lifts') + sum('decisions') + sum('closes'), 'one piece per evidence event, and none from anything else');
+});
+
+test('a horde in the sim is warned, then fought by the castle on its own, and the report tables it without an id', { skip }, async () => {
+  const P = await S.loadParser(ALYS); const E = S.loadEngine();
+  const { rows } = S.extract(md, TODAY, index, P, null);
+  // a rules copy whose clock fills fast, so the thin fixture meets hordes
+  const r = JSON.parse(JSON.stringify(rules)); r.horde.threshold = 4; r.horde.gather_cap_per_day = 4;
+  const sim = S.simulate(rows, r, TODAY, E);
+  assert.ok(sim.hordes.length >= 2, `${sim.hordes.length} hordes`);
+  const lead = Math.round(r.horde.warning_hours / 24);
+  for (const h of sim.hordes) { assert.equal(h.arrivedDay - h.warnedDay, lead); assert.ok(['held', 'breached', 'dark'].includes(h.outcome)); assert.ok(['held', 'breached', 'dark'].includes(h.forecast)); assert.ok(h.tasks === null || (h.tasks >= 0 && h.tasks <= r.horde.warning.max_tasks)); assert.ok(h.landed >= 0); }
+  for (let i = 1; i < sim.hordes.length; i++) assert.ok(sim.hordes[i].arrivedDay - sim.hordes[i - 1].arrivedDay >= r.horde.min_gap_days);
+  const C = S.loadCastle();
+  sim.hordes.forEach((h, i) => { const d = sim.days[h.arrivedDay - 1], w = sim.days[h.warnedDay - 1]; assert.equal(h.landed, d.total - w.total, 'landed is the pieces between the warning and the arrival');
+    const sized = C.hordeOf(w.attackers, w.engines, i, r); assert.equal(h.n, sized.n, 'the horde is the one sized at its warning'); assert.equal(h.bosses, sized.bosses);
+    assert.equal(h.forecast, C.readiness(C.castleFrom(w.count, w.total, r), sized, r, 0).forecast.outcome, 'the forecast is for the horde that arrives');
+    assert.ok(['none', 'under 10', '10 or more'].includes(h.band));
+    const again = C.resolveHorde(C.castleFrom(d.count, d.total, r), sized, r, h.landed); assert.equal(again.outcome, h.outcome, 'the outcome is the castle of that day, rallied by what landed, against that day\'s horde'); assert.equal(again.wallLeft, h.wallLeft); assert.equal(h.rally, Math.round((C.rallyOf(h.landed, r) - 1) * 100), 'the fight carries the rally of what landed'); });
+  assert.ok(sim.hordes.some((h) => h.landed > 0 && h.rally > 0), 'at least one horde of the fixture is met with a rally');
+  const closes = S.simulate(rows, r, TODAY, E, 60, { closesOnly: true });
+  assert.deepEqual(closes.hordes.map((h) => h.arrivedDay), sim.hordes.map((h) => h.arrivedDay), 'the horde\'s clock is the backlog\'s: the stated cadence does not move it');
+  assert.ok(closes.days.at(-1).total < sim.days.at(-1).total, 'closes alone build less than closes and the cadence');
+  assert.equal(closes.days.reduce((a, d) => a + d.lessons + d.lifts, 0), 0, 'the closes-only run carries no stated lesson or lift');
+  const report = S.renderReport({ sim, rules: r, stats: (await run()).stats, sha: 'f'.repeat(40), ref: 'fixture', tuning: [], tuningRuns: [S.targets(sim, r)], alysRef: 'fixture', closesOnly: { sim: closes, targets: S.targets(closes, r) } });
+  assert.match(report, /## The hordes/); for (const row of report.split('\n').filter((l) => /^\| \d+ \| \d+ \| \d+ \| \d+ \| (held|breached|dark) \|/.test(l))) { const cells = row.split('|').map((c) => c.trim()); assert.ok(['none', 'under 10', '10 or more'].includes(cells[7]), `pieces landed is a band, never a count: ${cells[7]}`); assert.ok(!/\+\d+%/.test(row), 'and no rally percentage, which would give the count back'); } assert.match(report, /On real closes alone/); assert.ok(!/WO-/.test(report));
+  S.guardReport(report, md, index);
 });
 
 test('the tuning record ends where the rules file is', () => {
@@ -91,12 +121,20 @@ test('the script refuses to run without --alys', () => {
   assert.equal(r.status, 2); assert.match(r.stderr, /--alys/);
 });
 
-test('target 3 counts a day held at either clamp, or squeezed, as illegible', () => {
-  const F = rules.fortress.blight; const day = (attackers, blight, blightSiege) => ({ date: '2026-11-01', day: 1, attackers, blight, blightSiege, cells: 4, pylons: 0, ground: 40, level: 0, xp: 0, regions: 0, closes: 0, decisions: 0, lessons: 0, lifts: 0, scrap: 0, wave: 4 });
-  const mk = (d) => ({ from: '2026-10-01', to: '2026-11-01', days: Array.from({ length: 8 }, () => d) });
-  const low = Math.max(0, Math.floor((F.min_tiles - 1) / F.tiles_per_attacker));   // a siege below the floor
-  assert.equal(S.targets(mk(day(low, F.min_tiles, F.min_tiles)), rules)[2].value, 8, 'held at the lower clamp');
-  assert.equal(S.targets(mk(day(200, F.max_tiles, F.max_tiles)), rules)[2].value, 8, 'held at the upper clamp');
-  assert.equal(S.targets(mk(day(30, 40, 60)), rules)[2].value, 8, 'squeezed by a full map');
-  assert.equal(S.targets(mk(day(30, 60, 60)), rules)[2].value, 0, 'following the backlog');
+test('target 3 (the cadence) fails a horde that came unannounced, two inside the gap, or too many in thirty days', () => {
+  const day = (n, o = {}) => ({ date: '2026-11-01', day: n, pieces: 1, towerPoints: 0, total: n, wallHp: 40, dps: 0, count: { wall: 0, tower: 0, keep: 0, course: n, gate: 0, lamp: 0 }, xp: 0, level: 0, closes: 0, decisions: 0, lessons: 1, lifts: 0, attackers: 30, engines: 0, gather: 0, warned: false, arrived: false, regions: 0, ...o });
+  const mk = (hordes) => ({ from: '2026-10-01', to: '2026-11-29', days: Array.from({ length: 60 }, (_, i) => day(i + 1)), hordes, pending: null });
+  const h = (warnedDay, arrivedDay, o = {}) => ({ warnedDay, arrivedDay, n: 12, bosses: 0, forecast: 'held', tasks: 0, landed: 0, band: 'none', rally: 0, outcome: 'held', wallLeft: 100, ...o });
+  const lead = Math.round(rules.horde.warning_hours / 24), gap = rules.horde.min_gap_days;
+  const T = (hs) => S.targets(mk(hs), rules);
+  assert.equal(T([h(10, 10 + lead), h(30, 30 + lead), h(50, 50 + lead)])[2].met, true, 'three in sixty days, each announced');
+  assert.equal(T([h(null, 13), h(30, 30 + lead)])[2].met, false, 'one came unannounced');
+  assert.equal(T([h(11, 13), h(30, 30 + lead)])[2].met, false, 'one was announced late');
+  assert.equal(T([h(10, 10 + lead), h(10 + gap - 2, 10 + lead + gap - 2), h(40, 40 + lead)])[2].met, false, 'two inside the gap');
+  assert.equal(T([h(10, 10 + lead)])[2].met, false, 'fewer than one in thirty days');
+  assert.equal(T(Array.from({ length: 7 }, (_, i) => h(1 + i * 8, 1 + i * 8 + lead)))[2].met, false, 'more than three in thirty days');
+  // target 4: every horde can be held from its warning, and at least one asks for something
+  assert.equal(T([h(10, 13), h(30, 33)])[3].met, false, 'none asked for anything: a formality');
+  assert.equal(T([h(10, 13), h(30, 33, { forecast: 'breached', tasks: 3 })])[3].met, true);
+  assert.equal(T([h(10, 13, { forecast: 'dark', tasks: null }), h(30, 33, { tasks: 2 })])[3].met, false, 'one was past the cap at its warning');
 });

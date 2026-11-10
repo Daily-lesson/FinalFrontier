@@ -1,7 +1,8 @@
 // FIELDWORKS — the engine's check (node --test tests/check.mjs).
 // Holds the reference engine (src/engine.js) to the rules (rules/fieldworks.json)
-// and the design's §6 numbers, holds prototype/index.html to the two files it
-// inlines (prototype/build.mjs writes it), and sweeps the whole tree for the
+// and the design's §6 numbers, holds the castle module (src/castle.js: the castle
+// from evidence, the horde's clock, the fight) to its pillars, holds
+// prototype/index.html to the three files it inlines (prototype/build.mjs writes it), and sweeps the whole tree for the
 // walls: this repository is public, so a name, an e-mail, a database ref or a
 // real-range order id never lands here. The denylist is stored as hashes, so the
 // check itself carries none of the words it refuses.
@@ -20,6 +21,8 @@ const RULES = JSON.parse(read('rules/fieldworks.json'));
 const ctx = { globalThis: null }; ctx.globalThis = ctx;
 vm.runInNewContext(read('src/engine.js'), ctx);
 const E = ctx.FieldworksEngine;
+vm.runInNewContext(read('src/castle.js'), ctx);
+const C = ctx.FieldworksCastle;
 const TODAY = '2026-11-09';
 const ev = (o) => ({ tier: 'public', evidence: { kind: 'commit', ref: 'abc' }, at: '2026-11-08', ...o });
 
@@ -161,9 +164,10 @@ test('rules file: every bank key exists for every kind × grade, every medal typ
   for (const pool of ['daily', 'weekly']) for (const c of RULES.challenges[pool]) assert.ok(RULES.bank.challenge[c.slug], `bank challenge.${c.slug}`);
 });
 
-test('prototype/index.html inlines src/engine.js and rules/fieldworks.json byte for byte', () => {
+test('prototype/index.html inlines src/engine.js, src/castle.js and rules/fieldworks.json byte for byte', () => {
   const html = read('prototype/index.html');
   assert.ok(html.includes(read('src/engine.js')), 'engine.js is inlined unchanged');
+  assert.ok(html.includes(read('src/castle.js')), 'castle.js is inlined unchanged');
   assert.ok(html.includes(read('rules/fieldworks.json').trim()), 'the rules are inlined unchanged');
 });
 
@@ -173,7 +177,7 @@ test('prototype/index.html inlines src/engine.js and rules/fieldworks.json byte 
 const DENY = new Set(['ccb71b663e383032', '3fe52df0c21fa28f', 'ea5e5cdbccb765e0', 'a67f8eb35b59c847', '576ba7c2e4abb718', '5ecec73dd71edcbb', '7772e1e25e61f131']);
 const h16 = (w) => createHash('sha256').update(w).digest('hex').slice(0, 16);
 const EMAIL = new RegExp('[^\\s@<>"\'(]+' + '@' + '[^\\s@<>"\')]+\\.[a-z]{2,}', 'i');
-const REAL_ID = new RegExp('WO-' + '(?:[01]\\d\\d|2[0-7]\\d)\\b');
+const REAL_ID = new RegExp('WO-' + '(?:\\d{1,2}|[01]\\d\\d|2[0-7]\\d)\\b', 'i');   // any casing, one to three digits
 export function sweep(text) {
   const hits = [];
   for (const w of new Set(text.toLowerCase().match(/[a-z0-9]+/g) || [])) if (DENY.has(h16(w))) hits.push(`denied word (${w.length} chars)`);
@@ -200,6 +204,7 @@ test('walls: the sweep catches what it guards (a name, an e-mail, a real id) and
   assert.ok(sweep('mail ' + ['someone', 'example.com'].join('@')).length, 'an e-mail shape is caught');
   assert.ok(sweep('see ' + 'WO-' + '042').length, 'a real-range id is caught');
   assert.ok(sweep('see ' + 'WO-' + '245').length, 'and one the real file will reach soon');
+  assert.ok(sweep('see ' + 'wo-' + '042').length && sweep('see ' + 'WO-' + '42.').length, 'in lower case and without its leading zero');
   assert.equal(sweep('WO-304 · P1 · a DEMO chore; family=Albert+Sans:wght@300;500').length, 0, 'invented ids and font URLs pass');
 });
 
@@ -209,37 +214,169 @@ test('walls: no file in the tree carries a name, an e-mail, a database ref or a 
   assert.deepEqual(found, []);
 });
 
-// ── prototype 3: the new rule blocks, each with its own test ─────────────────
-test('rules.save: a version and an autosave period', () => {
-  assert.ok(Number.isInteger(RULES.save.version) && RULES.save.version >= 1);
-  assert.ok(RULES.save.autosave_seconds > 0 && RULES.save.autosave_seconds <= 60);
+// ── the rework (design D34): the castle, the horde, the stages ───────────────
+const line = (kind, grade) => ({ id: `${kind}-${grade || 'x'}`, kind, xp: 1, item: grade ? { grade } : null, medals: [] });
+const built = (count) => C.castleFrom({ wall: 0, tower: 0, keep: 0, course: 0, gate: 0, lamp: 0, ...count }, 1, RULES);
+const strong = built({ wall: 30, tower: 16, keep: 4, course: 40, gate: 8 });
+const weak = built({ wall: 2, tower: 1 });
+
+test('rules.castle: a piece for every kind of evidence, by kind first, else by the drop\'s grade, and for nothing else', () => {
+  const RC = RULES.castle;
+  assert.deepEqual(Object.keys(RC.by_grade), RULES.rarity.grades, 'every grade lays a piece');
+  for (const p of [...Object.values(RC.by_grade), ...Object.values(RC.by_kind)]) { assert.ok(RC.parts.includes(p.part), p.part); assert.ok(Number.isInteger(p.size) && p.size >= 1); }
+  for (const k of Object.keys(RC.by_kind)) assert.ok(E.KINDS.includes(k), `by_kind.${k} is an evidence kind the engine knows`);
+  const sizes = RULES.rarity.grades.map((g) => RC.by_grade[g]);
+  assert.deepEqual(sizes.slice(0, 2).map((p) => p.part), ['wall', 'wall']); assert.deepEqual(sizes.slice(2).map((p) => p.part), ['tower', 'tower', 'tower'], 'a better drop is a bigger piece: wall sections, then tower levels');
+  assert.ok(sizes[1].size > sizes[0].size && sizes[4].size > sizes[3].size && sizes[3].size > sizes[2].size);
+  assert.deepEqual({ ...C.pieceFor(line('close', 'tempered'), RULES) }, { part: 'tower', size: 1 });
+  assert.deepEqual({ ...C.pieceFor(line('decision', 'plain'), RULES) }, { part: 'keep', size: 1 }, 'a decision answered is a keep level whatever its grade');
+  assert.deepEqual({ ...C.pieceFor(line('lesson', 'fine'), RULES) }, { part: 'course', size: 1 });
+  assert.deepEqual({ ...C.pieceFor(line('lift', 'plain'), RULES) }, { part: 'gate', size: 1 });
+  assert.equal(C.pieceFor(line('verify', null), RULES), null, 'a line with no drop lays nothing');
+  assert.equal(C.pieceFor({ id: 'x', voided: true }, RULES), null, 'a voided event lays nothing');
+  for (const play of ['score', 'kill', 'spark', 'stage', 'horde']) assert.equal(C.pieceFor({ id: 'p', kind: play, item: null }, RULES), null, `${play} is not evidence`);
+  for (const k of Object.keys(RC.parts.reduce((a, p) => ({ ...a, [p]: 1 }), {}))) assert.ok(RULES.bank.castle.parts[k], `bank castle.parts.${k}`);
 });
 
-test('rules.clock (D25): two modes, a night hour after the dawn hour, both on the clock', () => {
-  const c = RULES.clock;
-  assert.deepEqual([...c.modes].sort(), ['real', 'short']); assert.ok(c.modes.includes(c.default));
-  assert.ok(Number.isInteger(c.night_hour) && Number.isInteger(c.dawn_hour) && c.dawn_hour >= 0 && c.night_hour <= 23 && c.dawn_hour < c.night_hour);
-  for (const k of ['clock_short', 'clock_real', 'until_night', 'until_dawn', 'night_quiet']) assert.ok(RULES.bank.fortress[k], `bank fortress.${k}`);
+test('the castle is a fold over the evidence log: deterministic, towers breadth-first, never smaller for more evidence', () => {
+  const events = [ev({ id: 'WO-901', kind: 'close', weight: 80, facts: { pn: 'P1', difficulty: 'high', ageDays: 50 } }), ev({ id: 'WO-902', kind: 'decision', facts: { options: 2 } }), ev({ id: 'lesson/a', kind: 'lesson', tier: 'private', weight: 30, evidence: { kind: 'tick', ref: 'a' } }), ev({ id: 'lift/1', kind: 'lift', tier: 'private', weight: 30, evidence: { kind: 'tick', ref: 'b' } }), ev({ id: 'pace/1', kind: 'pace' })];
+  const st = E.evaluate(events, RULES, TODAY);
+  const cas = C.castleOf(st.log, RULES);
+  assert.equal(cas.pieces, 5); assert.equal(cas.count.keep, 1); assert.equal(cas.count.course, 1); assert.equal(cas.count.gate, 1); assert.equal(cas.count.lamp, 1); assert.ok(cas.count.tower >= 1, 'an aged high P1 close is a tower');
+  assert.deepEqual(C.castleOf(st.log, RULES), cas, 'the same log is the same castle');
+  assert.deepEqual([...built({ tower: 5 }).towers], [2, 1, 1, 1], 'every slot stands before any slot rises');
+  let prev = C.castleOf([], RULES);
+  for (let n = 1; n <= events.length; n++) { const c = C.castleOf(E.evaluate(events.slice(0, n), RULES, TODAY).log, RULES); for (const p of RULES.castle.parts) assert.ok(c.count[p] >= prev.count[p], `${p} never falls`); assert.ok(c.wallHp >= prev.wallHp && c.dps >= prev.dps && c.beaconHp >= prev.beaconHp); prev = c; }
+  const gone = C.castleOf(E.evaluate([...events, ev({ id: 'c-1', kind: 'contradict', at: '2026-11-09', facts: { target: 'WO-902' } })], RULES, TODAY).log, RULES);
+  assert.equal(gone.count.keep, 0, 'a contradicted tick was never evidence, so its piece was never laid');
 });
 
-test('rules.keeper_effects (D26): one small multiplier per part, on a closed set of stats, marked proposed', () => {
-  const fx = RULES.keeper_effects;
-  assert.equal(fx.proposed, true);
-  assert.deepEqual(Object.keys(fx.parts).sort(), RULES.keeper.parts.map((p) => p.slug).sort(), 'every part has exactly one effect');
-  for (const [slug, e] of Object.entries(fx.parts)) {
-    assert.ok(['hull', 'gather', 'range', 'speed', 'struct'].includes(e.stat), `${slug}.stat`);
-    assert.ok(e.per_tier > 0 && e.per_tier <= 0.1, `${slug} is small (≤ 10% a tier)`);
-    assert.ok(e.label, `${slug}.label`);
+test('rules.horde: the clock gathers from the siege\'s count, warns warning_hours ahead, keeps its gap, and an unread day gathers nothing', () => {
+  const H = RULES.horde, lead = Math.round(H.warning_hours / 24), day = (n) => new Date(Date.UTC(2026, 0, 1 + n)).toISOString().slice(0, 10);
+  assert.equal(H.warning_hours, 72, 'the warning is three days'); assert.ok(H.min_gap_days >= 7 && H.min_gap_days > lead, 'hordes are infrequent');
+  let clock = C.hordeClock(); const warned = [], arrived = [];
+  const sizes = [];
+  for (let n = 0; n < 120; n++) { const at = 60 + n; const r = C.hordeDay(clock, at, day(n), RULES, 1); clock = r.clock; if (r.warned) { warned.push(n); sizes.push({ ...clock.horde }); assert.deepEqual({ ...clock.horde }, { ...C.hordeOf(at, 1, clock.count, RULES) }, 'sized at the warning'); } if (r.arrived) { arrived.push(n); assert.deepEqual({ ...r.horde }, sizes[arrived.length - 1], 'the horde that arrives is the one that was announced, though the backlog moved'); assert.equal(clock.horde, null); } }
+  assert.ok(arrived.length >= 4, 'a deep backlog brings hordes');
+  arrived.forEach((a, i) => assert.equal(a - warned[i], lead, 'every arrival was announced the full warning ahead'));
+  for (let i = 1; i < arrived.length; i++) assert.ok(arrived[i] - arrived[i - 1] >= H.min_gap_days, `gap ${arrived[i] - arrived[i - 1]}`);
+  const period = arrived[2] - arrived[1];
+  assert.ok(period >= 12 && period <= 16, `about a fortnight at a deep backlog: ${period} days`);
+  assert.equal(clock.count, arrived.length);
+  // the cap: a backlog twice as deep comes no faster
+  let c2 = C.hordeClock(); const a2 = []; for (let n = 0; n < 120; n++) { const r = C.hordeDay(c2, 600, day(n), RULES); c2 = r.clock; if (r.arrived) a2.push(n); }
+  assert.deepEqual(a2, arrived, 'gather_cap_per_day holds the cadence');
+  // a thin backlog comes more slowly, and none comes with nothing at the walls
+  let c3 = C.hordeClock(); const a3 = []; for (let n = 0; n < 120; n++) { const r = C.hordeDay(c3, 5, day(n), RULES); c3 = r.clock; if (r.arrived) a3.push(n); }
+  assert.ok(a3.length < arrived.length && a3.length >= 1);
+  let c4 = C.hordeClock(); for (let n = 0; n < 120; n++) c4 = C.hordeDay(c4, 0, day(n), RULES).clock;
+  assert.equal(c4.count, 0); assert.equal(c4.due, null);
+  // unread: null gathers nothing, and is not a zero
+  let c5 = C.hordeDay(C.hordeClock(), 20, day(0), RULES).clock; const g = c5.gather; assert.ok(g > 0);
+  for (let n = 1; n < 30; n++) c5 = C.hordeDay(c5, null, day(n), RULES).clock;
+  assert.equal(c5.gather, g, 'an unread lane leaves the clock where it stood'); assert.equal(c5.due, null);
+  // a horde already announced still arrives on its day when the lane goes unread
+  let c6 = { gather: 0, warned: day(0), due: day(3), count: 0, last: null };
+  assert.equal(C.hordeDay(c6, null, day(2), RULES).arrived, false); assert.equal(C.hordeDay(c6, null, day(3), RULES).arrived, true);
+});
+
+test('rules.horde.size: the horde is the backlog that day plus how many came before, capped; its bosses are the siege engines', () => {
+  const z = RULES.horde.size;
+  assert.equal(C.hordeOf(20, 0, 0, RULES).n, Math.round(z.base + z.per_attacker * 20));
+  assert.ok(C.hordeOf(20, 0, 3, RULES).n > C.hordeOf(20, 0, 0, RULES).n, 'a later horde is larger');
+  assert.ok(C.hordeOf(40, 0, 0, RULES).n > C.hordeOf(20, 0, 0, RULES).n, 'a deeper backlog is a larger horde');
+  assert.equal(C.hordeOf(5000, 0, 50, RULES).n, z.max);
+  assert.equal(C.hordeOf(20, 9, 0, RULES).bosses, RULES.horde.max_bosses); assert.equal(C.hordeOf(20, 1, 0, RULES).bosses, 1);
+  for (const m of ['crawler', 'skitter', 'brute']) { const s = RULES.horde.machines[m]; assert.ok(s.hp > 0 && s.speed > 0 && s.dps > 0, m); }
+});
+
+test('the fight is one stepping function: the forecast is the fight without the Keeper, and it is deterministic', () => {
+  const horde = C.hordeOf(30, 1, 1, RULES);
+  const a = C.resolveHorde(strong, horde, RULES, 0), b = C.resolveHorde(strong, horde, RULES, 0);
+  assert.deepEqual(a, b);
+  const f = C.hordeStart(strong, horde, RULES, 0); let steps = 0; while (!f.done && steps++ < 5000) C.hordeStep(f, RULES);
+  assert.deepEqual(C.summary(f), a, 'stepping it by hand is resolveHorde');
+  assert.equal(a.total, horde.n); assert.equal(a.keeperDowned, 0, 'nobody at the wall in a forecast');
+  assert.ok(['held', 'breached', 'dark'].includes(a.outcome));
+  assert.equal(C.resolveHorde(strong, C.hordeOf(4, 0, 0, RULES), RULES, 0).outcome, 'held', 'a strong castle holds a small horde on its own');
+  const lost = C.resolveHorde(weak, C.hordeOf(200, 3, 9, RULES), RULES, 0);
+  assert.notEqual(lost.outcome, 'held'); assert.equal(lost.wallLeft, 0);
+  assert.ok(a.guns.length >= 4 && a.guns.every((g) => g.level > 0), 'every standing tower and the keep fire');
+  assert.ok(!a.best || a.guns.some((g) => g.id === a.best.id && g.downed === a.best.downed), 'the tower that mattered is one of the guns');
+  assert.ok(C.resolveHorde(strong, horde, RULES, 0).seconds <= RULES.horde.max_seconds + 1, 'a fight ends');
+});
+
+test('pillar 2 in the fight: a horde changes nothing in the castle, whatever the outcome', () => {
+  for (const cas of [strong, weak, built({})]) {
+    const before = JSON.stringify(cas);
+    const out = C.resolveHorde(cas, C.hordeOf(200, 3, 9, RULES), RULES, 0);
+    assert.equal(JSON.stringify(cas), before, `the castle is untouched after ${out.outcome}`);
+    assert.deepEqual(Object.keys(out).sort(), ['beaconLeft', 'best', 'downed', 'guns', 'keeperDowned', 'outcome', 'rally', 'seconds', 'total', 'wallLeft', 'withdrew'], 'a summary carries no piece, XP or item');
   }
-  assert.equal(new Set(Object.values(fx.parts).map((e) => e.stat)).size, 5, 'five parts, five stats');
+  assert.ok(RULES.bank.horde.breached.includes('Nothing was taken') && RULES.bank.horde.dark.includes('Nothing was taken'));
 });
 
-test('rules.explore (D29): the gate, provinces and the card radius', () => {
-  const X = RULES.explore;
-  assert.ok(X.gate.radius_m > 0 && X.gate.z_m < 0, 'the gate stands behind the start');
-  assert.ok(Number.isInteger(X.province_weeks) && X.province_weeks >= 1);
-  assert.ok(X.card_radius_m > X.waypoint_radius_m, 'the card shows before the survey is in reach');
-  for (const k of ['compass_waypoint', 'compass_gate', 'card', 'card_done', 'card_open', 'province', 'gate_home']) assert.ok(RULES.bank.explore[k], `bank explore.${k}`);
+test('play can only help: the Keeper\'s shots are counted apart and never make an outcome worse', () => {
+  const horde = C.hordeOf(26, 1, 2, RULES), cas = built({ wall: 20, tower: 9, keep: 2, course: 20, gate: 4 });
+  const alone = C.resolveHorde(cas, horde, RULES, 0);
+  const f = C.hordeStart(cas, horde, RULES, 0); let n = 0;
+  while (!f.done && n++ < 5000) { C.hordeStep(f, RULES); if (n % 4 === 0) { const i = f.machines.findIndex((z) => z.alive); if (i >= 0) C.keeperHit(f, i, RULES.horde.keeper_shot); } }
+  const helped = C.summary(f); const rank = { dark: 0, breached: 1, held: 2 };
+  assert.ok(helped.keeperDowned > 0); assert.ok(rank[helped.outcome] >= rank[alone.outcome], `${alone.outcome} → ${helped.outcome}`);
+  assert.equal(helped.downed + helped.keeperDowned + helped.withdrew <= helped.total, true);
+  assert.equal(C.keeperHit(f, 0, 999), false, 'a finished fight takes no more shots');
+});
+
+test('the warning\'s count: 0 when the castle holds, the fewest tasks that would see it hold otherwise, null past the cap; pieces only ever lower it', () => {
+  const W = RULES.horde.warning; assert.ok(W.max_tasks >= 5 && W.max_tasks <= 9, 'a single digit: it is a count on a tile');
+  for (const p of W.assume) assert.ok(RULES.castle.parts.includes(p.part));
+  assert.equal(C.readiness(strong, C.hordeOf(4, 0, 0, RULES), RULES, 0).tasks, 0);
+  assert.equal(C.readiness(built({}), C.hordeOf(600, 3, 30, RULES), RULES, 0).tasks, null);
+  const horde = C.hordeOf(26, 1, 2, RULES); let cas = built({ wall: 12, tower: 5, keep: 1, course: 14, gate: 2 }); let last = Infinity, seenBetween = false;
+  for (let k = 0; k < 80 && last > 0; k++) {
+    const r = C.readiness(cas, horde, RULES, 0), t = r.tasks == null ? Infinity : r.tasks;
+    assert.ok(t <= last, `more castle never asks for more tasks: ${last} → ${t}`); last = t; if (t > 0 && t < Infinity) seenBetween = true;
+    if (r.tasks > 0) { const extra = Array.from({ length: r.tasks }, (_, i) => W.assume[i % W.assume.length]); assert.equal(C.resolveHorde(C.withPieces(cas, extra, RULES), horde, RULES, r.tasks).outcome, 'held', 'the count is true: that many tasks do hold it'); }
+    cas = C.withPieces(cas, [W.assume[k % W.assume.length]], RULES);
+  }
+  assert.equal(last, 0); assert.ok(seenBetween, 'the count takes values between none and too many');
+  for (const k of ['warning', 'when_days', 'when_day', 'when_today', 'need_none', 'need_one', 'need_some', 'need_many', 'gathering', 'unread', 'arrive', 'held', 'breached', 'dark', 'sum_best', 'sum_wall', 'rally']) assert.ok(RULES.bank.horde[k], `bank horde.${k}`);
+  assert.ok(!/\{(title|id|name)\}/.test(JSON.stringify(RULES.bank.horde)), 'a warning carries a count, never a title or an id');
+});
+
+test('rules.horde.rally: pieces landed since the warning lift the castle for that fight, up to a cap', () => {
+  const R = RULES.horde.rally;
+  assert.equal(C.rallyOf(0, RULES), 1); assert.equal(C.rallyOf(2, RULES), 1 + 2 * R.per_piece); assert.equal(C.rallyOf(999, RULES), 1 + R.max_pieces * R.per_piece); assert.equal(C.rallyOf(-3, RULES), 1);
+  const f0 = C.hordeStart(strong, C.hordeOf(10, 0, 0, RULES), RULES, 0), f4 = C.hordeStart(strong, C.hordeOf(10, 0, 0, RULES), RULES, 4);
+  assert.ok(f4.wallMax > f0.wallMax && f4.guns[0].dps > f0.guns[0].dps);
+  const big = C.hordeOf(40, 2, 4, RULES), fr = C.hordeStart(strong, big, RULES, 6); let n = 0; while (!fr.done && n++ < 5000) C.hordeStep(fr, RULES);
+  assert.deepEqual(C.resolveHorde(strong, big, RULES, 6), C.summary(fr), 'a forecast carries the rally the fight will have');
+  assert.notDeepEqual(C.resolveHorde(strong, big, RULES, 6), C.resolveHorde(strong, big, RULES, 0));
+  assert.equal(JSON.stringify(strong), JSON.stringify(built({ wall: 30, tower: 16, keep: 4, course: 40, gate: 8 })), 'the rally lifts the fight, not the castle');
+});
+
+test('rules.stage: stages are play, their score buys paint and nothing else, and the Keeper\'s hull comes from the evidence level', () => {
+  const S = RULES.stage;
+  assert.ok(S.view_w >= 150 && S.view_w <= 220 && S.tile >= 8);
+  for (const [k, e] of Object.entries(S.enemies)) assert.ok(e.hp > 0 && e.speed > 0 && Number.isInteger(e.score) && e.score > 0, k);
+  for (const [k, v] of Object.entries(S.score)) assert.ok(typeof v === 'number' && v >= 0, `score.${k}`);
+  assert.ok(!JSON.stringify(S).match(/"(xp|cells|piece|part|wall|tower|keep)"/), 'nothing in the stage block names XP or a castle part');
+  const K = S.keeper; assert.ok(K.hearts_base >= 1 && K.hearts_max >= K.hearts_base && K.levels_per_heart >= 1);
+  const reach = K.jump * K.jump / (2 * K.gravity), across = 2 * K.jump / K.gravity * K.speed;
+  assert.ok(reach >= 3 * S.tile, `a platform three tiles up is in reach: ${reach.toFixed(0)} px`); assert.ok(across >= 3.5 * S.tile, `a three-tile gap is in reach: ${across.toFixed(0)} px`);
+  assert.equal(S.paints[0].at, 0, 'the first paint is free'); for (let i = 1; i < S.paints.length; i++) assert.ok(S.paints[i].at > S.paints[i - 1].at);
+  for (const p of S.paints) { assert.match(p.colour, /^#[0-9A-Fa-f]{6}$/); assert.ok(p.slug && p.label); }
+  for (const k of ['week', 'wilds', 'enter', 'clear', 'over', 'score', 'score_note', 'card', 'survey', 'gate_home', 'offline', 'locked']) assert.ok(RULES.bank.stage[k], `bank stage.${k}`);
+  assert.ok(/never power/.test(RULES.bank.stage.score_note));
+  assert.ok(!/\{(title|name)\}/.test(JSON.stringify(RULES.bank.stage)), 'a stage shows a week\'s position, never a title');
+});
+
+test('rules.save and rules.clock: a version, an autosave period, and the two clocks', () => {
+  assert.equal(RULES.save.version, 2, 'the rework\'s save: no map, the castle is derived');
+  assert.ok(RULES.save.autosave_seconds > 0 && RULES.save.autosave_seconds <= 60);
+  assert.deepEqual([...RULES.clock.modes].sort(), ['demo', 'real']); assert.ok(RULES.clock.modes.includes(RULES.clock.default));
+  assert.ok(Number.isInteger(RULES.horde.arrive_hour) && RULES.horde.arrive_hour >= 0 && RULES.horde.arrive_hour <= 23);
+  for (const k of ['save_migrated', 'save_corrupt', 'save_old_game']) assert.ok(RULES.bank.castle[k], `bank castle.${k}`);
 });
 
 test('rules.states: the honest states, each with its words', () => {
@@ -249,56 +386,105 @@ test('rules.states: the honest states, each with its words', () => {
 });
 
 test('rules.onboarding: three cards, each with a title and a body in the bank', () => {
-  assert.equal(RULES.onboarding.cards.length, 3);
+  assert.deepEqual(RULES.onboarding.cards, ['castle', 'horde', 'stages']);
   for (const c of RULES.onboarding.cards) { assert.ok(RULES.bank.onboarding[c]?.title); assert.ok(RULES.bank.onboarding[c]?.body); }
 });
 
 test('rules.telemetry: the six local fields, their labels, and the sentence that says they stay', () => {
-  assert.deepEqual(RULES.telemetry.fields, ['opens', 'session_seconds', 'closes_seen', 'pylons', 'nights_held', 'regions_mapped']);
+  assert.deepEqual(RULES.telemetry.fields, ['opens', 'session_seconds', 'closes_seen', 'stages_cleared', 'hordes_seen', 'regions_mapped']);
   for (const f of RULES.telemetry.fields) assert.ok(RULES.bank.telemetry[f], `bank telemetry.${f}`);
   assert.equal(RULES.bank.telemetry.note, 'Kept on this device, never sent.');
 });
 
-test('rules.fortress.waves: the cap and the day cap the sim tuned are present and sane', () => {
-  const w = RULES.fortress.waves;
-  assert.ok(w.max >= w.base && w.max <= 40, 'a night stays inside the 40-machine budget');
-  assert.ok(Number.isInteger(w.per_day_cap_days) && w.per_day_cap_days >= 1);
+test('the superseded blocks are gone: no fortress map, no cells, no third-person field in the rules', () => {
+  for (const k of ['fortress', 'explore', 'keeper_effects']) { assert.equal(RULES[k], undefined, k); assert.equal(RULES.bank[k], undefined, `bank.${k}`); }
+  assert.ok(!/"cells"/.test(JSON.stringify(RULES)), 'no cells anywhere: a piece is laid, never bought');
 });
 
-// ── prototype 3: the page itself ────────────────────────────────────────────
+// ── prototype 4: the page itself ────────────────────────────────────────────
 const SRC = read('prototype/prototype.src.html');
 const scripts = (html) => [...html.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+/** The source of one top-level function of the page, by name. */
+const fn = (name) => { const a = SRC.indexOf(`\n  function ${name}(`); assert.ok(a >= 0, `function ${name}`); const eol = SRC.indexOf('\n', a + 1), first = SRC.slice(a + 1, eol); if (/\}\s*(\/\/.*)?$/.test(first)) return '\n' + first; const b = SRC.indexOf('\n  }\n', a); return SRC.slice(a, b); };   // a one-line function is its line
 
 test('the built pages parse: every inline script of index.html and art-sheet.html compiles', () => {
   for (const f of ['prototype/index.html', 'prototype/art-sheet.html']) {
-    const ss = scripts(read(f)); assert.ok(ss.length >= 2, f);
+    const ss = scripts(read(f)); assert.ok(ss.length >= 3, f);
     for (const code of ss) assert.doesNotThrow(() => new vm.Script(code), f);
+    assert.ok(!/\/\*__[A-Z]+__\*\//.test(read(f)), `${f}: no inline marker left`);
   }
   const art = read('prototype/art-sheet.html');
-  assert.ok(art.includes(read('src/engine.js')) && art.includes(read('rules/fieldworks.json').trim()), 'the art sheet inlines the same engine and rules');
+  assert.ok(art.includes(read('src/engine.js')) && art.includes(read('src/castle.js')) && art.includes(read('rules/fieldworks.json').trim()), 'the art sheet inlines the same engine, castle module and rules');
 });
 
-test('pillar 1: cells arrive in one place (a cache picked up), start at zero, and nothing in the page writes XP', () => {
-  const adds = SRC.split('\n').filter((l) => /G\.cells\s*\+=/.test(l));
-  assert.equal(adds.length, 1, 'one line adds cells');
-  assert.match(adds[0], /G\.cells \+= c\.cells/, 'and it is the cache pickup');
-  assert.match(SRC, /scrap: 12, cells: 0,/, 'a new map starts with no cells');
-  assert.ok(!/G\.cells\s*=[^=]/.test(SRC), 'no line sets cells outright (a save restores them through Object.assign of its own map)');
-  const subs = SRC.split('\n').filter((l) => /G\.cells\s*-=/.test(l));
-  assert.equal(subs.length, 1); assert.match(subs[0], /G\.cells -= cost\.cells/, 'and the one line that takes cells is a build the player chose');
+test('pillar 1 in the page: the castle comes from the evidence log in one place, and evidence enters in three', () => {
+  const sets = SRC.split('\n').filter((l) => /\bCAS\s*=[^=]/.test(l));
+  assert.equal(sets.length, 1, 'one line sets the castle'); assert.match(sets[0], /CAS = C\.castleOf\(st\.log, RULES\)/, 'and it is the fold over the engine\'s log');
+  assert.ok(!/CAS\.(count|towers|pieces|wallHp|dps|beaconHp)(\.\w+|\[[^\]]+\])?\s*(\+\+|--|[+\-*]?=(?!=))/.test(SRC), 'nothing writes into the castle');
+  const pushes = SRC.split('\n').filter((l) => /S\.events\.push\(/.test(l)).length;
+  const inside = ['reset', 'loadSave', 'fire'].reduce((a, f) => a + (fn(f).match(/S\.events\.push\(/g) || []).length, 0);
+  assert.ok(pushes > 0 && (SRC.match(/S\.events\.push\(/g) || []).length === inside, 'events are pushed only by the DEMO history, a replayed save and fire()');
+  const fires = [...SRC.matchAll(/\bfire\(\[([^\]]*)\]/g)].map((m) => m[1]);
+  assert.ok(fires.length >= 3); for (const f of fires) assert.match(f, /^(ev|lessonEvent\(p\.id, TODAY\)|liftEvent\(TODAY\))$/, `fire() carries evidence only: ${f}`);
+  assert.match(fn('closeOrder'), /const ev = closeEvent\(o\);/, 'and that event is a finished order');
+  // the DEMO's one stand-in, named: a waypoint's button ticks the lesson (the app opens the lesson instead); no key does it, and it needs a post
+  assert.match(fn('survey'), /const p = ST && ST\.near; if \(!p \|\| S\.ticks\.includes\(p\.id\)\) return;/);
+  assert.ok(!/survey\(\)/.test(SRC.split('\n').filter((l) => /addEventListener\('keydown'/.test(l)).join('')), 'no key ticks a lesson');
+  assert.ok(RULES.bank.stage.card_demo && /DEMO/.test(RULES.bank.stage.card_demo), 'and the card says it is the DEMO standing in');
+});
+
+test('pillar 1 in the page: score is play. No line carries it into the evidence, XP or the castle', () => {
+  const lines = SRC.split('\n');
+  for (const l of lines) if (/score/i.test(l) && !/^\s*(\/\/|\/\*|\*)/.test(l)) assert.ok(!/S\.events|closeEvent|lessonEvent|liftEvent|setState\(|castleOf/.test(l) || /function |\/\/ /.test(l) && !/score[^;]*S\.events\.push/.test(l), `a score line touches the evidence: ${l.trim().slice(0, 90)}`);
+  for (const f of ['updateStage', 'finishStage', 'updateCastle', 'endFight', 'hurt', 'grow', 'newStage']) { const body = fn(f); assert.ok(!/S\.events|fire\(|setState\(|derive\(|S\.st\s*=|S\.ticks\.push|S\.closed\.push|S\.liftsLogged\.push/.test(body), `${f} never touches the evidence`); }
   assert.ok(!/\.xp\s*[+\-*]?=(?!=)/.test(SRC.replace(/hudEls\.xp/g, '')), 'no XP write outside the engine');
-  assert.match(SRC, /const by = F\.cache_by_kind\[ev\.kind\] \|\| \(item \? F\.cache_by_grade\[item\.grade\] : null\);/, 'one cache rule, the sim\'s');
+  assert.match(fn('updateStage'), /ST\.score \+= RS\.enemies\[z\.type\]\.score/, 'a stage kill pays play score');
+  assert.match(fn('endFight'), /S\.play\.wall \+= sum\.keeperDowned \* RS\.score\.horde_machine/, 'the Keeper\'s kills at the wall pay play score');
+  assert.match(fn('endFight'), /if \(sum\.outcome !== 'held'\) S\.horde\.dim = true;/, 'a breach sets one flag, and a held horde does not clear it');
+  assert.match(fn('fire'), /if \(relit\) S\.horde\.dim = false;/, 'and only evidence clears it');
+  assert.equal((SRC.match(/S\.horde\.dim\s*=[^=]/g) || []).length, 2, 'the fight sets the flag and fire() clears it: nothing else writes it');
+  for (const f of ['endFight', 'skipFight', 'showSummary']) assert.ok(!/S\.closed|S\.ticks|S\.liftsLogged|S\.events|S\.lastLevel|S\.shown/.test(fn(f)), `${f} takes nothing`);
+});
+
+test('the save holds no map and nothing the evidence can rebuild', () => {
+  const snap = fn('snapshot');
+  assert.match(snap, /journal: \{ closed: S\.closed\.slice\(\), ticks: S\.ticks\.slice\(\), lifts: S\.liftsLogged\.slice\(\), lastLevel: S\.lastLevel \}/);
+  assert.ok(!/CAS|castle|map:|tiles|grid/.test(snap), 'the castle is never saved: it is derived');
+  assert.match(fn('loadSave'), /const old = s && s\.version === 1;/, 'a version-1 save keeps its journal');
+});
+
+test('the update and render paths allocate nothing per frame (the HUD, four times a second, builds its strings)', () => {
+  assert.match(fn('backdrop'), /if \(bg && bgKey\) return bg;/, 'the backdrop is painted once per theme and size');
+  for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'drawCastle', 'ground', 'text', 'stone', 'crenels', 'frame', 'burst', 'pop']) {
+    const src = fn(f).replace(/\/\/.*$/gm, ''), body = src.slice(src.indexOf('{') + 1);
+    const bad = body.match(/\.(map|filter|slice|concat|flatMap|reduce|forEach|split|join|find|some|every|includes)\(|\bnew \w|Array\.from|\[[^\]]*,[^\]]*\]\s*[;)]|=>|`|\bString\(|\.toUpperCase\(|\{ ?\w+: /g) || [];
+    // the few allowed, each exactly as often as it stands today: the cached score and horde count, and a ticked-post lookup
+    const allowed = { renderCastle: { 'String(': 1 }, renderStage: { 'String(': 1, '.includes(': 1 } }[f] || {};
+    const seen = {}; for (const b of bad) seen[b] = (seen[b] || 0) + 1;
+    assert.deepEqual(seen, allowed, `${f}: ${bad.join(' ')}`);
+  }
+  assert.match(fn('renderStage'), /if \(ST\.score !== ST\.scoreSeen\)/, 'the score\'s text is rebuilt only when the score changes');
+  assert.match(fn('renderCastle'), /if \(left !== CS\.left\)/, 'and the horde\'s count only when it changes');
+});
+
+test('pixels: canvas only, no image asset, a whole-number scale', () => {
+  assert.ok(!/<img|new Image|\.png|\.jpg|\.gif|\.webp|data:image|url\(/i.test(SRC), 'no image asset anywhere');
+  assert.match(SRC, /image-rendering: pixelated/); assert.match(fn('resize'), /sc = Math\.max\(1, Math\.round\(w \/ RS\.view_w\)\)/); assert.match(fn('resize'), /ctx\.imageSmoothingEnabled = false/);
+  assert.equal((SRC.match(/fonts\.googleapis\.com/g) || []).length, 1, 'one stylesheet, the two faces');
 });
 
 test('storage: the page touches localStorage only through its helper, under exactly four keys', () => {
   assert.equal((SRC.match(/localStorage\./g) || []).length, 3, 'get, set and remove, in the helper');
   const keys = [...new Set(SRC.match(/'fieldworks-[a-z]+'/g))].sort();
   assert.deepEqual(keys, ["'fieldworks-keeper'", "'fieldworks-onboarded'", "'fieldworks-save'", "'fieldworks-telemetry'"]);
-  assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon|WebSocket/.test(SRC), 'nothing is sent anywhere');
+  assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource|navigator\.share/.test(SRC), 'nothing is sent anywhere');
 });
 
 test('the bank: every sentence the page reads exists in the rules', () => {
-  const refs = [...new Set([...SRC.matchAll(/BANK\.([a-z_]+)\.([a-z_]+)/g)].map((m) => `${m[1]}.${m[2]}`))];
-  assert.ok(refs.length > 20);
-  for (const r of refs) { const [a, b] = r.split('.'); assert.ok(RULES.bank[a] && RULES.bank[a][b] != null, `bank ${r}`); }
+  const refs = [...new Set([...SRC.matchAll(/BANK\.([a-z_]+)\.([a-z_]+)(?:\.([a-z_]+))?/g)].map((m) => m.slice(1).filter(Boolean).join('.')))];
+  assert.ok(refs.length > 60, `${refs.length} references`);
+  for (const r of refs) { const v = r.split('.').reduce((a, k) => (a == null ? a : a[k]), RULES.bank); assert.ok(v != null, `bank ${r}`); }
+  // the sentences the game speaks about the castle, the horde and a stage are not typed into the page (comments and the dev bar's note aside)
+  const SPOKEN = SRC.replace(/<span class="note">[\s\S]*?<\/span>/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  for (const phrase of ['would see it hold', 'holds as it stands', 'at the walls', 'Nothing was taken', 'Stage clear', 'never power', 'added to the castle']) assert.ok(!SPOKEN.includes(phrase), `"${phrase}" comes from the bank, not the page`);
 });

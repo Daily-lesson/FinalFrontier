@@ -7,7 +7,11 @@ node --test sim/economy.test.mjs               # the fixture tests (skip without
 ```
 
 Flags: `--ref` (default `origin/main`), `--today` (default the run's UTC date),
-`--no-fetch`. The sim refuses to run without `--alys`.
+`--no-fetch`, `--allow-shallow`. The sim refuses to run without `--alys`, and
+refuses a **shallow** alys checkout: a Done row's section history is read from
+git, and a short history counts public rows as private (it once reported 90
+private rows where the full history gives 26). Run `git -C ../alys fetch
+--unshallow origin main` first.
 
 **What it reads.** The owner's task file, at the alys checkout's `--ref`, through
 the board's own parser imported from that checkout at run time
@@ -32,18 +36,26 @@ counted private. The report says how many were ambiguous.
 **What it models.** The last 60 days, one fold over the evidence (closes and
 decisions from the file; lessons and lifts from a **stated game cadence**: ten
 lessons and three lifts a week on an invented spread, not a read of anyone's
-learning record). Per day: XP and level, the caches (cells and scrap
-by the prototype's one rule: `cache_by_kind` for a lesson, lift or pace,
-`cache_by_grade` for a drop otherwise), the open set as it stood that day fed to
-`engine.siege`, the blight and the wave, and an expected-value ground model
-(pylons the cells buy, half a disc each, ground never taken). Deterministic.
+learning record). Per day: XP and level; the pieces the evidence lays on the
+castle (`src/castle.js` `pieceFor`, the prototype's one rule: by the event's
+kind first, else by its drop's grade) and the castle's wall and fire; the open
+set as it stood that day fed to `engine.siege`; the horde's clock
+(`hordeDay`). When a horde is announced it is sized, once, and the forecast
+and the count of tasks that would see the castle hold are computed for it
+(`readiness`); when it arrives, the fight with
+nobody at the wall (`resolveHorde`), rallied by what landed since the warning.
+Every run is made twice: with the stated cadence, and on the real closes
+alone. Deterministic.
 
 **What it writes.** `REPORT.md`: per-week counts only, never an id, a section or
-an order's date; the four GDD targets met or not with their numbers; the arc in
-plain words; the tuning table (`tuning.json`, each change re-run); and the lines
-in the prototype where cells, scrap or XP change. `guardReport` refuses a report
-with a `WO-` token or a section heading of the file.
+an order's date; the five GDD targets met or not with their numbers, beside a
+closes-only column; a table of the hordes (warned and arrived as day numbers of
+the window, machines, engines, the forecast, tasks to hold, the pieces landed
+as a band and never a count, outcome, wall left); the arc in plain words; the tuning table (`tuning.json`,
+each change re-run); and the lines in the prototype where evidence enters, where
+the castle is derived and where play score changes. `guardReport` refuses a
+report with a `WO-` token or a section heading of the file.
 
-**Tuning.** Only `rules/fieldworks.json`, never the engine. Add the change to
+**Tuning.** Only `rules/fieldworks.json`, never the engine or the castle module. Add the change to
 `tuning.json` (`key`, `before`, `after`, `why`), edit the rules, re-run; the test
 holds the two in step.
