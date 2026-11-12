@@ -16,6 +16,10 @@ This repository is the game's home: the engine and the castle module (`src/`),
 the rules (`rules/`), the economy sim (`sim/`), the prototype (`prototype/`)
 and the tests. It is pre-production: nothing here runs in an app yet.
 
+**Play the prototype:** https://daily-lesson.github.io/FinalFrontier/ (the
+art sheet is `art-sheet.html` beside it). It is the DEMO: invented orders and
+lessons, nothing read from anyone's real lanes, nothing sent anywhere.
+
 ```
 node --test tests/check.mjs                 # the engine, the castle module, the rules, the page's pillars, the wall sweep
 node prototype/build.mjs                    # rebuild the prototype page

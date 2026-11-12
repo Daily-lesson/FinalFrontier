@@ -5,6 +5,32 @@ schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
 merged; `## Unreleased — <title>` while the PR is open (date it at merge).
 Name the files touched and say what a user or operator will notice.
 
+## Unreleased — the prototype on GitHub Pages
+
+- `.github/workflows/pages.yml` (new): on a push to `main` touching
+  `prototype/`, `src/`, `rules/` or the workflow, or by hand (only `main`
+  deploys), rebuilds the two pages and
+  fails if the committed ones differ, assembles the site, runs the two test
+  files over it and deploys it to https://daily-lesson.github.io/FinalFrontier/.
+  Least permissions (the build reads; only the deploy job gets `pages: write`
+  and `id-token: write`), one `pages` concurrency group that never cancels a
+  deploy, 10-minute timeouts, actions pinned to commit SHAs. No schedule, no
+  pull-request trigger, no secret, no alys checkout.
+- `prototype/site.mjs` (new): the site is `index.html`, `art-sheet.html` and
+  `fonts/`, nothing else. Its copies gain the document head the artifact host
+  wraps around the page (a doctype, `lang`, a UTF-8 charset: served bare, the
+  page rendered in quirks mode and showed `Â·` for `·`), swap the Google Fonts link for the
+  self-hosted `fonts/fonts.css` and add a robots `noindex` meta; it refuses a
+  page carrying any URL that names another host. The committed pages and
+  the private artifact are unchanged.
+- `prototype/fonts/` (new): the latin subsets of Albert Sans and Silkscreen,
+  with their OFL 1.1 licences.
+- `tests/check.mjs`: one test for the site (what is published, the three
+  edits and nothing else, no other origin, the wall sweep over every published text
+  file, and the guards refusing what they should).
+- Enabling Pages (Settings → Pages → Source: GitHub Actions) is the owner's
+  step; until then the deploy job fails and the build job still runs.
+
 ## Unreleased — the rework: a castle from evidence, announced hordes, stages out the gate (prototype 4)
 
 The design's ruling D34 replaced the top-down fortress map and the

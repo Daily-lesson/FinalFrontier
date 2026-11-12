@@ -27,3 +27,7 @@ Thumbs.db
 # ── Static PWA ───────────────────────────────────────────────────────────────
 config.local.js
 .wrangler/
+
+# ── Pages ────────────────────────────────────────────────────────────────────
+# Assembled by `node prototype/site.mjs _site` in .github/workflows/pages.yml.
+_site/

@@ -39,6 +39,7 @@ There is **no build step for the engine and no `package.json`**: `src/` and
 | Both | `node --test tests/check.mjs sim/economy.test.mjs` |
 | Economy sim → `sim/REPORT.md` | `node sim/economy.mjs --alys ../alys` (refuses to run without the flag, and on a shallow alys checkout: `git -C ../alys fetch --unshallow origin main` first) |
 | Rebuild the prototype | `node prototype/build.mjs` (inlines `src/engine.js`, `src/castle.js` + `rules/fieldworks.json` into `prototype/index.html`) |
+| Assemble the Pages site | `node prototype/site.mjs _site` (the game at the root, the art sheet, `fonts/`; nothing else) |
 | The walk: shots, checks, frame time, art sheet | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`; about three minutes) |
 | Workflow lint | `node .github/scripts/workflow-lint.mjs` |
 | Skeleton guard | `node .github/skeleton/check.mjs` (`--list` prints the inventory) |
@@ -50,6 +51,21 @@ executes the page's behaviour (the tests read the page as text): run
 `node prototype/shots.mjs` before every push that touches the page, the
 rules or `src/`.
 
+**Pages** (`.github/workflows/pages.yml`): the prototype as a public site,
+https://daily-lesson.github.io/FinalFrontier/. A push to `main` touching
+`prototype/`, `src/`, `rules/` or the workflow, or by hand (only `main`
+ever deploys); never a schedule, never a PR (a
+fork cannot reach it). It fails if the committed pages differ from a
+rebuild, assembles `_site/` with `prototype/site.mjs`, runs the two test
+files (so the wall sweep reads the published directory), and deploys with
+the built-in OIDC token: no secret, no alys checkout. The site's copies
+gain the doctype and charset the artifact host would add,
+self-host the two faces (`prototype/fonts/`, OFL) and carry
+`<meta name="robots" content="noindex">`; `site.mjs` refuses a page that
+carries any URL naming another host. About 2 billed minutes a run,
+nothing against the 100 min/month cap. It is **not** an answer to the
+design's D32 (how the game feeds SocialOS). Neither workflow runs the walk.
+
 ---
 
 ## Directory map
@@ -59,7 +75,7 @@ src/engine.js          # the fold: pure, window-free, every number from the rule
 src/castle.js          # the castle from the fold's log, the horde's clock, the fight as one stepping function
 rules/fieldworks.json  # the owner's instance of the rules: every number and sentence the game reads
 sim/                   # the economy sim (economy.mjs), its test and fixture, REPORT.md (generated)
-prototype/             # prototype.src.html → build.mjs → index.html; art-sheet.html; shots.mjs; shots/
+prototype/             # prototype.src.html → build.mjs → index.html; art-sheet.html; shots.mjs; shots/; site.mjs + fonts/ → the Pages site
 tests/check.mjs        # the engine, the castle module, the rules, the page's pillars, the inline equality, the tree-wide wall sweep
 docs/PLAYTEST.md       # the Gate 1 form
 .github/  .claude/     # standards from Daily-lesson/alys templates/repo/
@@ -82,6 +98,10 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
   horde met while away must stay one function.
 - **The prototype** (the castle screen, the stages, the pixel renderer, the screens, the DEMO set) →
   `prototype/prototype.src.html`, then rebuild. Never edit `index.html`.
+- **What the Pages site publishes** → `prototype/site.mjs` (its file
+  list and the three edits) + its test in `tests/check.mjs`; the deploy is
+  `.github/workflows/pages.yml`. Add nothing to the site that the page does
+  not load: no sim, no report, no tests, no shots.
 - **The sim's model or report** → `sim/economy.mjs` + `sim/economy.test.mjs`.
 - **Repo standards (CI lint, PR template, graph skills, skeleton guard)** →
   canonical in `Daily-lesson/alys` → `templates/repo/`; change them there.

@@ -1,0 +1,78 @@
+name: Pages
+
+# Publishes the prototype to GitHub Pages: the game at the site's root, the art
+# sheet beside it, the two self-hosted faces, and nothing else from the repo.
+# Not a `schedule:` (nothing against the 100 min/month cap); path-filtered, so it
+# runs only when the page, the engine, the rules or this file change on `main`,
+# plus by hand (a dispatch from another branch builds and tests, and never deploys).
+# No pull_request trigger: a fork's PR can never build, upload or deploy.
+# No alys checkout and no secret: the sim's test skips without alys, and the
+# deploy uses the run's own OIDC token through actions/deploy-pages.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'prototype/**'
+      - 'src/**'
+      - 'rules/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Least privilege: the build reads; only the deploy job gets Pages and OIDC.
+permissions:
+  contents: read
+
+# A deploy mutates something outside the runner: queue, never cancel mid-deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: The committed pages are the build of their sources
+        run: |
+          set -euo pipefail
+          node prototype/build.mjs
+          git diff --exit-code -- prototype/index.html prototype/art-sheet.html \
+            || { echo "::error::prototype/index.html or art-sheet.html differs from a rebuild — run node prototype/build.mjs and commit"; exit 1; }
+
+      - name: Assemble the site
+        run: node prototype/site.mjs _site
+
+      # After the assembly on purpose: the tree-wide wall sweep in tests/check.mjs
+      # then reads the exact directory this run publishes.
+      - name: Engine, rules, the pages and the wall sweep (the published directory included)
+        run: node --test tests/check.mjs sim/economy.test.mjs
+
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    # Only main deploys, whatever branch a dispatch names: the github-pages
+    # environment's branch rule is a second lock, not the only one.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

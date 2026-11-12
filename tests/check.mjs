@@ -488,3 +488,40 @@ test('the bank: every sentence the page reads exists in the rules', () => {
   const SPOKEN = SRC.replace(/<span class="note">[\s\S]*?<\/span>/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   for (const phrase of ['would see it hold', 'holds as it stands', 'at the walls', 'Nothing was taken', 'Stage clear', 'never power', 'added to the castle']) assert.ok(!SPOKEN.includes(phrase), `"${phrase}" comes from the bank, not the page`);
 });
+
+test('the Pages site: the two pages and the faces only, noindex, nothing loaded from another origin, nothing walled', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const site = await import('../prototype/site.mjs');
+  const out = mkdtempSync(join(tmpdir(), 'fieldworks-site-'));
+  try {
+    const published = site.assemble(out);
+    assert.deepEqual(published, ['index.html', 'art-sheet.html', ...site.FONT_FILES.map((f) => `fonts/${f}`)], 'the game, the art sheet and the faces; nothing else');
+    assert.deepEqual(readdirSync(out).sort(), ['art-sheet.html', 'fonts', 'index.html']);
+    for (const page of site.PAGES) {
+      const built = read(`prototype/${page}`), html = readFileSync(join(out, page), 'utf8');
+      assert.equal(html.split(site.NOINDEX).length, 2, `${page}: one robots noindex`);
+      assert.ok(!/fonts\.googleapis|fonts\.gstatic/.test(html) && html.includes('<link rel="stylesheet" href="fonts/fonts.css">'), `${page}: the faces are local`);
+      // the three edits and nothing else: undo them and the built page comes back byte for byte
+      assert.ok(html.startsWith(site.HEAD), `${page}: a doctype, lang and a UTF-8 charset first`);
+      const undone = html.slice(site.HEAD.length).replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
+      assert.equal(undone, built, `${page}: the site copy is the built page plus the three edits`);
+    }
+    const css = readFileSync(join(out, 'fonts', 'fonts.css'), 'utf8');
+    assert.deepEqual([...css.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]).sort(), ['albert-sans-latin.woff2', 'silkscreen-400-latin.woff2', 'silkscreen-700-latin.woff2'], 'fonts.css points only at the files beside it');
+    for (const f of published.filter((p) => /\.(html|css|txt)$/.test(p))) assert.deepEqual(sweep(readFileSync(join(out, f), 'utf8')), [], `the wall sweep over the published ${f}`);
+    // the guard itself: a page that would reach another origin is refused, and so is a second run into a full directory
+    const page = read('prototype/index.html');
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<script src="https://example.org/x.js"></script><meta name="viewport"')), /another origin/);
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<style>@import "//example.org/x.css";</style><meta name="viewport"')), /another origin/);
+    assert.throws(() => site.sitePage(page.replace(/<link rel="stylesheet" href="https:\/\/fonts[^>]*>/, '')), /one Google Fonts link/);
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<img srcset="https://example.org/a.png 2x">' + '<meta name="viewport"')), /another origin/, '<img srcset="https://example.org/a.png 2x">');
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<meta http-equiv="refresh" content="0;url=//example.org/">' + '<meta name="viewport"')), /another origin/, '<meta http-equiv="refresh" content="0;url=//example.org/">');
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<script>fetch("https://example.org/x")</script>' + '<meta name="viewport"')), /another origin/, '<script>fetch("https://example.org/x")</script>');
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', "<script>import('//example.org/m.js')</script>" + '<meta name="viewport"')), /another origin/, "<script>import('//example.org/m.js')</script>");
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<video poster="HTTPS://example.org/p.jpg"></video>' + '<meta name="viewport"')), /another origin/, '<video poster="HTTPS://example.org/p.jpg"></video>');
+    assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<script>new WebSocket("wss://example.org")</script>' + '<meta name="viewport"')), /another origin/, '<script>new WebSocket("wss://example.org")</script>');
+    assert.throws(() => site.sitePage('<!doctype html>\n' + page), /bare page/);
+    assert.throws(() => site.assemble(out), /not empty/);
+  } finally { rmSync(out, { recursive: true, force: true }); }
+});
