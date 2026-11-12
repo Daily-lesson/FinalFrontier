@@ -1,0 +1,11 @@
+/* The prototype's two faces, self-hosted for the Pages site so a visitor's
+   browser asks no third party for anything (prototype/site.mjs swaps the page's
+   Google Fonts link for this file). Latin subset only, the one the page uses;
+   both faces are SIL Open Font License 1.1, licences beside this file.
+   Albert Sans is one variable file, so 300 and 500 share it. */
+@font-face { font-family: 'Albert Sans'; font-style: normal; font-weight: 300 500; font-display: swap;
+  src: url(albert-sans-latin.woff2) format('woff2'); }
+@font-face { font-family: 'Silkscreen'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(silkscreen-400-latin.woff2) format('woff2'); }
+@font-face { font-family: 'Silkscreen'; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(silkscreen-700-latin.woff2) format('woff2'); }
