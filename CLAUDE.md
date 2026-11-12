@@ -61,7 +61,12 @@ files (so the wall sweep reads the published directory), and deploys with
 the built-in OIDC token: no secret, no alys checkout. The site's copies
 gain the doctype and charset the artifact host would add,
 self-host the two faces (`prototype/fonts/`, OFL) and carry
-`<meta name="robots" content="noindex">`; `site.mjs` refuses a page that
+`<meta name="robots" content="noindex">`; the game page is also
+**signed out** (`globalThis.FIELDWORKS_SIGNED_OUT`): it starts empty, with no
+evidence, orders, lessons, lifts or horde, hides the account's chrome
+(prototype controls, Home, Create, the backlog) and offers the Wilds alone;
+its save keeps play only. The DEMO world stays in the committed page and the
+private artifact. `site.mjs` refuses a page that
 carries any URL naming another host. About 2 billed minutes a run,
 nothing against the 100 min/month cap. It is **not** an answer to the
 design's D32 (how the game feeds SocialOS). Neither workflow runs the walk.
@@ -99,7 +104,7 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 - **The prototype** (the castle screen, the stages, the pixel renderer, the screens, the DEMO set) →
   `prototype/prototype.src.html`, then rebuild. Never edit `index.html`.
 - **What the Pages site publishes** → `prototype/site.mjs` (its file
-  list and the three edits) + its test in `tests/check.mjs`; the deploy is
+  list and its edits; the signed-out flag is the game page's alone) + its test in `tests/check.mjs`; the deploy is
   `.github/workflows/pages.yml`. Add nothing to the site that the page does
   not load: no sim, no report, no tests, no shots.
 - **The sim's model or report** → `sim/economy.mjs` + `sim/economy.test.mjs`.
