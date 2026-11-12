@@ -62,7 +62,7 @@
   {
     "name": "a stage is played with the keyboard: the Keeper runs, jumps and scores",
     "ok": true,
-    "detail": "x 314 · score 210"
+    "detail": "x 315 · score 210"
   },
   {
     "name": "a cleared stage keeps its score as the best, on the device",
@@ -177,22 +177,22 @@
   {
     "name": "signed out: the Wilds play, and their score builds nothing",
     "ok": true,
-    "detail": "x 260 · score 262; pieces 0"
+    "detail": "x 261 · score 262; pieces 0"
   },
   {
-    "name": "signed out: an earlier DEMO save replays no evidence and no horde, and keeps its play record",
+    "name": "signed out: an earlier DEMO save replays no evidence and no horde, and keeps its Wilds score alone",
     "ok": true,
-    "detail": "pieces 0; horde No horde gathering; wilds best 120"
+    "detail": "pieces 0; horde No horde gathering; wilds best 120; play total 120"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a horde at the walls, the towers firing)",
     "ok": true,
-    "detail": "0.95 ms · 60 fps"
+    "detail": "0.88 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a stage, running and firing)",
     "ok": true,
-    "detail": "0.75 ms · 60 fps"
+    "detail": "0.71 ms · 60 fps"
   },
   {
     "name": "the art sheet renders in both themes",

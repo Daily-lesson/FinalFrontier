@@ -16,7 +16,9 @@ reads as an account to a visitor who has none.
   hides what reads an account (the prototype controls, Home, Create, the
   backlog, skills, the archive and the roadmap's weeks), offers the Wilds and
   the Keeper's paint, and its save keeps the play record only, so a device that
-  opened the DEMO build replays none of it. Unset (the committed page, the
+  opened the DEMO build replays none of it: of its play record the Wilds score
+  alone, and of its telemetry the opens and minutes alone. The account's chrome
+  is hidden by CSS before any script runs, and again at start-up. Unset (the committed page, the
   private artifact), nothing changes.
 - `prototype/site.mjs`: sets the flag on the site's `index.html` only.
 - `rules/fieldworks.json`: three bank lines (`castle.signed_out`,

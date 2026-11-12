@@ -139,6 +139,8 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
 [hidden] { display: none !important; }
 .live { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 @media (max-width: 420px) { .phone { height: calc(100dvh - 90px); min-height: 560px; border-radius: 16px; } }
+/* signed out (the public site's flag): the account's chrome is hidden before any script runs */
+html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon .pill.lit { display: none !important; }
 </style>
 
 <svg hidden aria-hidden="true">
@@ -1660,6 +1662,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
   const TEL0 = () => ({ v: 2, opens: {}, session_seconds: 0, closes_seen: 0, stages_cleared: 0, hordes_seen: 0, regions_mapped: 0 });
   function teleLoad() { try { const t = JSON.parse(store.get(KEYS.telemetry) || 'null'); if (t && t.opens && typeof t.opens === 'object') { if (t.v === 2) return t; if (t.v === 1) return { ...TEL0(), opens: t.opens, session_seconds: t.session_seconds || 0, closes_seen: t.closes_seen || 0, regions_mapped: t.regions_mapped || 0 }; } } catch {} return TEL0(); }   // version 1 was the old game's: its opens, minutes, closes and regions carry over
   let TEL = teleLoad();
+  if (OUT) TEL = { ...TEL0(), opens: TEL.opens, session_seconds: TEL.session_seconds };   // signed out: a device's own opens and minutes, never counts of the DEMO's closes, hordes or regions
   const teleSave = () => { if (!globalThis.FIELDWORKS_ART) store.set(KEYS.telemetry, JSON.stringify(TEL)); };
   function teleOpen() { const d = localDay(); TEL.opens[d] = (TEL.opens[d] || 0) + 1; const cut = new Date(Date.now() - RULES.telemetry.keep_days * DAY); for (const k of Object.keys(TEL.opens)) if (new Date(k) < cut) delete TEL.opens[k]; teleSave(); }
   const teleAdd = (k, n = 1) => { TEL[k] = (TEL[k] || 0) + n; };
@@ -1791,7 +1794,10 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     if (!s || !(old || s.version === RULES.save.version) || !validJournal(s.journal)) { store.del(KEYS.save); reset(); return 'corrupt'; }
     const j = s.journal;
     reset();
-    if (OUT) { if (validPlay(s.play)) S.play = s.play; return 'loaded'; }   // signed out: no journal and no horde to replay, only the play record
+    if (OUT) {   // signed out: no journal and no horde to replay; of the play record, the Wilds alone (the weeks and the wall were the DEMO's)
+      if (validPlay(s.play)) { S.play.wilds = s.play.wilds; const p = RS.paints.find((x) => x.slug === s.play.paint); if (p && totalScore() >= p.at) S.play.paint = p.slug; }
+      return 'loaded';
+    }
     for (const id of j.closed) { const o = S.open.find((x) => x.id === id); if (!o) continue; S.events.push(closeEvent(o)); S.open = S.open.filter((x) => x !== o); S.closed.push(id); S.shown.add(id); }
     for (const t of j.ticks) if (!S.ticks.includes(t) && PLAN.weeks.some((w) => w.lessons.includes(t))) { S.ticks.push(t); S.events.push(lessonEvent(t, TODAY)); S.shown.add(`lesson/${t}`); }
     for (const d of j.lifts) if (!S.liftsLogged.includes(d)) { S.liftsLogged.push(d); S.events.push(liftEvent(d)); S.shown.add(`lift/${d}`); }

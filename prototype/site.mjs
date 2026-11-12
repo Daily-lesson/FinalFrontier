@@ -28,7 +28,7 @@ const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-sca
 export const NOINDEX = '<meta name="robots" content="noindex">';
 export const HEAD = '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n';
 // The game page only: signed out, so it starts empty (no evidence, orders, lessons, lifts or horde; the Wilds only).
-export const SIGNED_OUT = '<script>globalThis.FIELDWORKS_SIGNED_OUT = true;</script>\n';
+export const SIGNED_OUT = '<script>globalThis.FIELDWORKS_SIGNED_OUT = true; document.documentElement.classList.add(\'signed-out\');</script>\n';
 const RULES_TAG = '<script id="rules"';
 
 /** One built page → its site copy. Throws unless each change applies exactly once. */

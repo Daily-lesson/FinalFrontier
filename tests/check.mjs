@@ -533,10 +533,21 @@ test('signed out (the public site): the page starts empty and hides what reads a
   assert.match(SRC, /const OUT = !!globalThis\.FIELDWORKS_SIGNED_OUT;/);
   const r = fn('reset');
   for (const k of ['events: OUT ? [] : PRIOR.slice()', 'open: OUT ? [] : OPEN0()', 'ticks: OUT ? [] : TICKS0.slice()', 'liftsLogged: OUT ? [] : ', 'horde: OUT ? HORDE_NONE() : HORDE0()', 'if (!OUT) S.events.push({ id: `pace/']) assert.ok(r.includes(k), `reset: ${k}`);
-  assert.match(fn('loadSave'), /if \(OUT\) \{ if \(validPlay\(s\.play\)\) S\.play = s\.play; return 'loaded'; \}/, 'a signed-out save replays no journal and no horde, only play');
+  { const ls = fn('loadSave'), at = ls.indexOf('if (OUT) {'), branch = ls.slice(at, ls.indexOf("return 'loaded';", at));
+    assert.ok(at > 0 && at < ls.indexOf('for (const id of j.closed)') && !/S\.events|S\.horde|S\.ticks|S\.liftsLogged|S\.closed/.test(branch), 'a signed-out save returns before the journal and the horde, touching neither'); }
   assert.match(fn('stageRows'), /if \(OUT\) return `\$\{wildsCard\}/, 'the Wilds only: the roadmap is the account\'s');
   assert.match(SRC, /if \(OUT && !\['castle', 'stage', 'stages', 'keeper'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
   assert.match(SRC, /if \(OUT && n !== 0\) return;/, 'no roadmap stage by click either');
   assert.ok(RULES.bank.castle.signed_out && RULES.bank.castle.signed_out_short, 'the sentences are in the bank');
+  // what hides the account's chrome, held here because CI never runs the walk
+  assert.match(SRC, /html\.signed-out \.wrap > \.dev, html\.signed-out \.bar-nav, html\.signed-out \.ribbon \.pill\.lit \{ display: none !important; \}/, 'the prototype bar, Home and Create are hidden by CSS before any script runs');
+  assert.match(SRC, /if \(OUT\) \{   \/\/ the account's chrome[^\n]*\n    document\.querySelector\('\.wrap > \.dev'\)\.style\.display = 'none'; document\.getElementById\('homebtn'\)\.parentElement\.style\.display = 'none';\n    document\.querySelector\('\.ribbon \.brand'\)\.textContent = 'Fieldworks'; document\.querySelector\('\.ribbon \.pill\.lit'\)\.style\.display = 'none';/, 'and again at start-up');
+  const shell = fn('gameShell');
+  assert.match(shell, /const strip = OUT \? \(mode === 'castle' \? `<button class="pri" data-go="stages">[^`]*<button data-go="keeper">[^`]*` : `<button data-go="castle">[^`]*`\)/, 'the signed-out strip: out the gate and the Keeper; in a stage, home');
+  assert.ok(!/data-go="siege"/.test(shell.slice(0, shell.indexOf(': mode === '))), 'and no backlog button');
+  assert.match(fn('needLine'), /if \(OUT\) return BANK\.castle\.signed_out_short;/);
+  assert.match(fn('showStart'), /\$\{OUT \? `<p><b>\$\{esc\(BANK\.castle\.signed_out\)\}<\/b><\/p>`/);
+  assert.match(SRC, /if \(OUT\) TEL = \{ \.\.\.TEL0\(\), opens: TEL\.opens, session_seconds: TEL\.session_seconds \};/, 'no DEMO counts on the Keeper screen');
+  assert.match(fn('loadSave'), /if \(validPlay\(s\.play\)\) \{ S\.play\.wilds = s\.play\.wilds;/, 'of an old play record, the Wilds alone');
   assert.ok(!/FIELDWORKS_SIGNED_OUT = true/.test(read('prototype/index.html')), 'the committed page (the DEMO) never sets the flag');
 });
