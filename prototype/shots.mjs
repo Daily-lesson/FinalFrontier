@@ -3,7 +3,8 @@
 // the behaviours prototype 4 claims (each a named check; the run exits non-zero
 // on any failure or page error), and measures the frame time with Chrome's own
 // Performance metrics. Run `node prototype/build.mjs` first.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
@@ -225,6 +226,41 @@ async function behaviours() {
   await ctx.close();
 }
 
+/** The public site's game page: signed out, so it starts empty and the Wilds are the whole game. */
+async function signedOut() {
+  const dir = mkdtempSync(join(tmpdir(), 'fieldworks-site-')); const { assemble } = await import('./site.mjs'); assemble(join(dir, 'site'));
+  const url = pathToFileURL(join(dir, 'site', 'index.html')).href;
+  const ctx = await chromium.newContext({ viewport: VIEW, timezoneId: 'UTC' });
+  const p = await ctx.newPage();
+  p.on('pageerror', (e) => errors.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  await p.goto(url); await p.evaluate(() => localStorage.clear()); await p.reload(); await wait(p, 400);
+  const startText = await (async () => { for (let i = 0; i < 6; i++) { const n = p.locator('[data-act="next"]'); if (!(await n.count())) break; await n.click(); await wait(p, 100); } return p.locator('#overlay').innerText(); })();
+  await clearCards(p);
+  const c0 = await D(p, 'castle'), h0 = await D(p, 'horde'), ev0 = await D(p, 'events'), xp0 = await D(p, 'xp');
+  check('signed out: the castle starts empty, with no evidence, no XP and no horde', c0.pieces === 0 && ev0 === 0 && xp0 === 0 && !h0.clock.due && h0.forecast === null && h0.line === 'No horde gathering', `${c0.pieces} pieces · ${ev0} events · ${xp0} XP · ${h0.line}`);
+  check('… and says why, on the start card and under the horde line', /Signed out, so nothing is built here/.test(startText) && h0.need === 'Built only by work finished in SocialOS', h0.need);
+  const chrome = await p.evaluate(() => ({ dev: getComputedStyle(document.querySelector('.wrap > .dev')).display, home: getComputedStyle(document.getElementById('homebtn').parentElement).display, brand: document.querySelector('.ribbon .brand').textContent, create: getComputedStyle(document.querySelector('.ribbon .pill.lit')).display, strip: [...document.querySelectorAll('.strip [data-go]')].map((b) => b.dataset.go) }));
+  check('… and shows nothing that reads an account: no backlog, Home, Create or prototype controls', chrome.dev === 'none' && chrome.home === 'none' && chrome.create === 'none' && chrome.brand === 'Fieldworks' && JSON.stringify(chrome.strip) === '["stages","keeper"]', JSON.stringify(chrome));
+  await phoneShot(p, 'signed-out-castle');
+  await p.click('.strip [data-go="stages"]'); await wait(p, 200);
+  const stages = await p.locator('[data-stage]').evaluateAll((els) => els.map((e) => e.dataset.stage));
+  check('signed out: the stage list is the Wilds alone (the roadmap is the account\'s)', JSON.stringify(stages) === '["0"]', stages.join(', '));
+  await phoneShot(p, 'signed-out-stages');
+  await p.click('[data-stage="0"]'); await wait(p, 300);
+  await p.keyboard.down('d'); await p.keyboard.down('j');
+  for (let i = 0; i < 10; i++) { await p.keyboard.press(' ', { delay: 120 }); await wait(p, 240); }
+  await p.keyboard.up('d'); await p.keyboard.up('j');
+  const st = await D(p, 'stage'), c1 = await D(p, 'castle');
+  check('signed out: the Wilds play, and their score builds nothing', st && st.week === 0 && st.x > 80 && (st.score > 0 || st.hp < (await D(p, 'hearts'))) && c1.pieces === 0 && (await D(p, 'events')) === 0 && (await D(p, 'xp')) === 0, st ? `x ${Math.round(st.x)} · score ${st.score}; pieces ${c1.pieces}` : 'no stage');
+  // a device that opened the DEMO build earlier carries its journal and announced horde: signed out, none of it replays
+  // planted from pagehide and visibilitychange listeners added after the page's own, so its save-on-hide cannot overwrite it
+  await p.evaluate(() => { const plant = () => localStorage.setItem('fieldworks-save', JSON.stringify({ version: 2, rules: 'x', journal: { closed: ['WO-304'], ticks: ['w1a', 'w4c'], lifts: ['2026-11-09'], lastLevel: 3 }, play: { best: { w1: { score: 900, stars: 3 } }, wilds: { best: 120, runs: 1 }, paint: 'verdigris', wall: 500 }, horde: { day: 0, clock: { gather: 0, warned: '2026-11-09', due: '2026-11-12', count: 0, last: null, horde: { n: 12, bosses: 0, ordinal: 0 } }, history: [], dim: false, arrived: null, fresh: 50 } })); addEventListener('pagehide', plant); document.addEventListener('visibilitychange', plant); });
+  await p.reload(); await wait(p, 400); await clearCards(p);
+  const c2 = await D(p, 'castle'), h2 = await D(p, 'horde'), pl = await D(p, 'play');
+  check('signed out: an earlier DEMO save replays no evidence and no horde, and keeps its Wilds score alone', c2.pieces === 0 && (await D(p, 'events')) === 0 && !h2.clock.due && pl.wilds.best === 120 && pl.total === 120 && !pl.best.w1, `pieces ${c2.pieces}; horde ${h2.line}; wilds best ${pl.wilds.best}; play total ${pl.total}`);
+  await ctx.close(); rmSync(dir, { recursive: true, force: true });
+}
+
 async function perfScene(name, setup) {
   const ctx = await chromium.newContext({ viewport: VIEW, deviceScaleFactor: 2, timezoneId: 'UTC' });
   const p = await open(ctx); await clearCards(p); await setup(p);
@@ -261,7 +297,7 @@ const b = await chromium.launch();
 chromium.newContext = (o) => b.newContext(o);
 try {
   for (const theme of ['light', 'dark']) await walk(theme);
-  await homeFit(); await behaviours(); await perf(); await artSheet();
+  await homeFit(); await behaviours(); await signedOut(); await perf(); await artSheet();
 } finally { await b.close(); }
 check('no page error anywhere in the walk', errors.length === 0, errors.slice(0, 3).join(' | '));
 writeFileSync(join(OUT, 'checks.json'), JSON.stringify(results, null, 2) + '\n');

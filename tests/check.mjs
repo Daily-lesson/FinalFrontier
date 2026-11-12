@@ -502,10 +502,12 @@ test('the Pages site: the two pages and the faces only, noindex, nothing loaded 
       const built = read(`prototype/${page}`), html = readFileSync(join(out, page), 'utf8');
       assert.equal(html.split(site.NOINDEX).length, 2, `${page}: one robots noindex`);
       assert.ok(!/fonts\.googleapis|fonts\.gstatic/.test(html) && html.includes('<link rel="stylesheet" href="fonts/fonts.css">'), `${page}: the faces are local`);
-      // the three edits and nothing else: undo them and the built page comes back byte for byte
+      // the edits and nothing else: undo them and the built page comes back byte for byte
       assert.ok(html.startsWith(site.HEAD), `${page}: a doctype, lang and a UTF-8 charset first`);
-      const undone = html.slice(site.HEAD.length).replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
-      assert.equal(undone, built, `${page}: the site copy is the built page plus the three edits`);
+      assert.equal(html.split(site.SIGNED_OUT).length, page === 'index.html' ? 2 : 1, `${page}: the signed-out flag on the game page only`);
+      if (page === 'index.html') assert.ok(html.indexOf(site.SIGNED_OUT) < html.indexOf('<script id="rules"'), 'the flag is set before the page reads it');
+      const undone = html.slice(site.HEAD.length).replace(site.SIGNED_OUT, '').replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
+      assert.equal(undone, built, `${page}: the site copy is the built page plus its edits`);
     }
     const css = readFileSync(join(out, 'fonts', 'fonts.css'), 'utf8');
     assert.deepEqual([...css.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]).sort(), ['albert-sans-latin.woff2', 'silkscreen-400-latin.woff2', 'silkscreen-700-latin.woff2'], 'fonts.css points only at the files beside it');
@@ -522,6 +524,30 @@ test('the Pages site: the two pages and the faces only, noindex, nothing loaded 
     assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<video poster="HTTPS://example.org/p.jpg"></video>' + '<meta name="viewport"')), /another origin/, '<video poster="HTTPS://example.org/p.jpg"></video>');
     assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<script>new WebSocket("wss://example.org")</script>' + '<meta name="viewport"')), /another origin/, '<script>new WebSocket("wss://example.org")</script>');
     assert.throws(() => site.sitePage('<!doctype html>\n' + page), /bare page/);
+    assert.throws(() => site.sitePage(page.replace('<script id="rules"', '<script id="rulez"'), { signedOut: true }), /rules script/);
     assert.throws(() => site.assemble(out), /not empty/);
   } finally { rmSync(out, { recursive: true, force: true }); }
+});
+
+test('signed out (the public site): the page starts empty and hides what reads an account', () => {
+  assert.match(SRC, /const OUT = !!globalThis\.FIELDWORKS_SIGNED_OUT;/);
+  const r = fn('reset');
+  for (const k of ['events: OUT ? [] : PRIOR.slice()', 'open: OUT ? [] : OPEN0()', 'ticks: OUT ? [] : TICKS0.slice()', 'liftsLogged: OUT ? [] : ', 'horde: OUT ? HORDE_NONE() : HORDE0()', 'if (!OUT) S.events.push({ id: `pace/']) assert.ok(r.includes(k), `reset: ${k}`);
+  { const ls = fn('loadSave'), at = ls.indexOf('if (OUT) {'), branch = ls.slice(at, ls.indexOf("return 'loaded';", at));
+    assert.ok(at > 0 && at < ls.indexOf('for (const id of j.closed)') && !/S\.events|S\.horde|S\.ticks|S\.liftsLogged|S\.closed/.test(branch), 'a signed-out save returns before the journal and the horde, touching neither'); }
+  assert.match(fn('stageRows'), /if \(OUT\) return `\$\{wildsCard\}/, 'the Wilds only: the roadmap is the account\'s');
+  assert.match(SRC, /if \(OUT && !\['castle', 'stage', 'stages', 'keeper'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
+  assert.match(SRC, /if \(OUT && n !== 0\) return;/, 'no roadmap stage by click either');
+  assert.ok(RULES.bank.castle.signed_out && RULES.bank.castle.signed_out_short, 'the sentences are in the bank');
+  // what hides the account's chrome, held here because CI never runs the walk
+  assert.match(SRC, /html\.signed-out \.wrap > \.dev, html\.signed-out \.bar-nav, html\.signed-out \.ribbon \.pill\.lit \{ display: none !important; \}/, 'the prototype bar, Home and Create are hidden by CSS before any script runs');
+  assert.match(SRC, /if \(OUT\) \{   \/\/ the account's chrome[^\n]*\n    document\.querySelector\('\.wrap > \.dev'\)\.style\.display = 'none'; document\.getElementById\('homebtn'\)\.parentElement\.style\.display = 'none';\n    document\.querySelector\('\.ribbon \.brand'\)\.textContent = 'Fieldworks'; document\.querySelector\('\.ribbon \.pill\.lit'\)\.style\.display = 'none';/, 'and again at start-up');
+  const shell = fn('gameShell');
+  assert.match(shell, /const strip = OUT \? \(mode === 'castle' \? `<button class="pri" data-go="stages">[^`]*<button data-go="keeper">[^`]*` : `<button data-go="castle">[^`]*`\)/, 'the signed-out strip: out the gate and the Keeper; in a stage, home');
+  assert.ok(!/data-go="siege"/.test(shell.slice(0, shell.indexOf(': mode === '))), 'and no backlog button');
+  assert.match(fn('needLine'), /if \(OUT\) return BANK\.castle\.signed_out_short;/);
+  assert.match(fn('showStart'), /\$\{OUT \? `<p><b>\$\{esc\(BANK\.castle\.signed_out\)\}<\/b><\/p>`/);
+  assert.match(SRC, /if \(OUT\) TEL = \{ \.\.\.TEL0\(\), opens: TEL\.opens, session_seconds: TEL\.session_seconds \};/, 'no DEMO counts on the Keeper screen');
+  assert.match(fn('loadSave'), /if \(validPlay\(s\.play\)\) \{ S\.play\.wilds = s\.play\.wilds;/, 'of an old play record, the Wilds alone');
+  assert.ok(!/FIELDWORKS_SIGNED_OUT = true/.test(read('prototype/index.html')), 'the committed page (the DEMO) never sets the flag');
 });

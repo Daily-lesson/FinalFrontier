@@ -139,6 +139,8 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
 [hidden] { display: none !important; }
 .live { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 @media (max-width: 420px) { .phone { height: calc(100dvh - 90px); min-height: 560px; border-radius: 16px; } }
+/* signed out (the public site's flag): the account's chrome is hidden before any script runs */
+html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon .pill.lit { display: none !important; }
 </style>
 
 <svg hidden aria-hidden="true">
@@ -185,6 +187,9 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
   const RULES = JSON.parse(document.getElementById('rules').textContent);
   const E = FieldworksEngine, C = FieldworksCastle;
   const BANK = RULES.bank, RC = RULES.castle, RH = RULES.horde, RS = RULES.stage;
+  // Signed out (the public site sets the flag; the DEMO never does): no account, so no evidence, no orders, no lessons,
+  // no lifts and no horde. The castle stands empty and the Wilds are the whole game. The save keeps play only.
+  const OUT = !!globalThis.FIELDWORKS_SIGNED_OUT;
   const TODAY = '2026-11-09';
   const DAY = 86400000;
   const utc = (d) => { const [y, m, dd] = d.split('-').map(Number); return Date.UTC(y, m - 1, dd); };
@@ -204,6 +209,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
   const TEL0 = () => ({ v: 2, opens: {}, session_seconds: 0, closes_seen: 0, stages_cleared: 0, hordes_seen: 0, regions_mapped: 0 });
   function teleLoad() { try { const t = JSON.parse(store.get(KEYS.telemetry) || 'null'); if (t && t.opens && typeof t.opens === 'object') { if (t.v === 2) return t; if (t.v === 1) return { ...TEL0(), opens: t.opens, session_seconds: t.session_seconds || 0, closes_seen: t.closes_seen || 0, regions_mapped: t.regions_mapped || 0 }; } } catch {} return TEL0(); }   // version 1 was the old game's: its opens, minutes, closes and regions carry over
   let TEL = teleLoad();
+  if (OUT) TEL = { ...TEL0(), opens: TEL.opens, session_seconds: TEL.session_seconds };   // signed out: a device's own opens and minutes, never counts of the DEMO's closes, hordes or regions
   const teleSave = () => { if (!globalThis.FIELDWORKS_ART) store.set(KEYS.telemetry, JSON.stringify(TEL)); };
   function teleOpen() { const d = localDay(); TEL.opens[d] = (TEL.opens[d] || 0) + 1; const cut = new Date(Date.now() - RULES.telemetry.keep_days * DAY); for (const k of Object.keys(TEL.opens)) if (new Date(k) < cut) delete TEL.opens[k]; teleSave(); }
   const teleAdd = (k, n = 1) => { TEL[k] = (TEL[k] || 0) + n; };
@@ -282,15 +288,16 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
   const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0 });
   // The DEMO opens with its first horde already announced, so the warning is the first thing seen. `fresh` is the castle's size at the warning: pieces landed since then rally it.
   const HORDE0 = () => ({ day: 0, clock: { gather: 0, warned: TODAY, due: iso(utc(TODAY) + LEAD * DAY), count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
+  const HORDE_NONE = () => ({ day: 0, clock: { gather: 0, warned: null, due: null, count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
   function reset() {
     sgSeen = -1;
-    S = { events: PRIOR.slice(), open: OPEN0(), ticks: TICKS0.slice(), liftsLogged: [ago(2), ago(4)], shown: new Set(), closed: [], screen: S ? S.screen : 'castle', order: null, picked: null, proof: '', keeperName: S ? S.keeperName : '', lastLevel: 0,
-      state: S ? S.state : 'live', started: false, stage: null, play: PLAY0(), horde: HORDE0() };
+    S = { events: OUT ? [] : PRIOR.slice(), open: OUT ? [] : OPEN0(), ticks: OUT ? [] : TICKS0.slice(), liftsLogged: OUT ? [] : [ago(2), ago(4)], shown: new Set(), closed: [], screen: S ? S.screen : 'castle', order: null, picked: null, proof: '', keeperName: S ? S.keeperName : '', lastLevel: 0,
+      state: S ? S.state : 'live', started: false, stage: null, play: PLAY0(), horde: OUT ? HORDE_NONE() : HORDE0() };
     for (const d of S.liftsLogged) S.events.push(liftEvent(d));
     for (const id of S.ticks) S.events.push(lessonEvent(id, ago(6)));
-    S.events.push({ id: `pace/${ago(5)}`, kind: 'pace', at: ago(5), tier: 'private', zone: null, weight: 0, facts: {}, evidence: { kind: 'commit', ref: 'pace' } });
-    setState(derive()); S.lastLevel = S.st.player.level; S.horde.fresh = CAS.pieces;
-    { const sg = siegeCounts(); S.horde.clock.horde = C.hordeOf(sg.attackers, sg.engines, 0, RULES); }   // the announced horde is sized once, at its warning
+    if (!OUT) S.events.push({ id: `pace/${ago(5)}`, kind: 'pace', at: ago(5), tier: 'private', zone: null, weight: 0, facts: {}, evidence: { kind: 'commit', ref: 'pace' } });
+    setState(derive()); S.lastLevel = S.st.player.level;
+    if (!OUT) { S.horde.fresh = CAS.pieces; const sg = siegeCounts(); S.horde.clock.horde = C.hordeOf(sg.attackers, sg.engines, 0, RULES); }   // the announced horde is sized once, at its warning
     for (const l of S.st.log) S.shown.add(l.id);   // the drop cards for history never fire; the castle is built from all of it all the same
   }
   const derive = () => E.evaluate(S.events, RULES, TODAY, { plan: PLAN });
@@ -334,6 +341,10 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     if (!s || !(old || s.version === RULES.save.version) || !validJournal(s.journal)) { store.del(KEYS.save); reset(); return 'corrupt'; }
     const j = s.journal;
     reset();
+    if (OUT) {   // signed out: no journal and no horde to replay; of the play record, the Wilds alone (the weeks and the wall were the DEMO's)
+      if (validPlay(s.play)) { S.play.wilds = s.play.wilds; const p = RS.paints.find((x) => x.slug === s.play.paint); if (p && totalScore() >= p.at) S.play.paint = p.slug; }
+      return 'loaded';
+    }
     for (const id of j.closed) { const o = S.open.find((x) => x.id === id); if (!o) continue; S.events.push(closeEvent(o)); S.open = S.open.filter((x) => x !== o); S.closed.push(id); S.shown.add(id); }
     for (const t of j.ticks) if (!S.ticks.includes(t) && PLAN.weeks.some((w) => w.lessons.includes(t))) { S.ticks.push(t); S.events.push(lessonEvent(t, TODAY)); S.shown.add(`lesson/${t}`); }
     for (const d of j.lifts) if (!S.liftsLogged.includes(d)) { S.liftsLogged.push(d); S.events.push(liftEvent(d)); S.shown.add(`lift/${d}`); }
@@ -364,6 +375,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     return cl.last ? BANK.horde.resting : BANK.horde.quiet;
   }
   function needLine() {
+    if (OUT) return BANK.castle.signed_out_short;
     if (S.horde.arrived) return BANK.horde.join;
     if (S.horde.dim) return BANK.castle.dim;
     const f = forecast(); if (!f) return '';
@@ -800,7 +812,8 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
   function head(title, sub, back) { return `<div class="shead">${back ? `<button class="back" data-go="${back}" aria-label="Back">${icon('back')}</button>` : ''}<span class="mark" aria-hidden="true"></span><div class="grow"><h1>${esc(title)}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div></div>`; }
   let hudEls = null;
   function gameShell(mode) {
-    const strip = mode === 'castle'
+    const strip = OUT ? (mode === 'castle' ? `<button class="pri" data-go="stages">${icon('field')} ${esc(BANK.castle.gate)}</button><button data-go="keeper">${icon('medal')} ${esc(BANK.castle.keeper)}</button>` : `<button data-go="castle">${icon('fort')} ${esc(BANK.stage.home)}</button>`)
+      : mode === 'castle'
       ? `<button class="pri" data-go="siege">${icon('engine')} ${esc(BANK.castle.orders)}</button><button data-go="stages">${icon('field')} ${esc(BANK.castle.gate)}</button>`
       : `<button data-go="castle">${icon('fort')} ${esc(BANK.stage.home)}</button><button data-go="siege">${icon('engine')} ${esc(BANK.castle.orders)}</button>`;
     return `<div class="hud" id="hud"><div class="title"><b id="hudTitle"></b></div><div class="meter" id="hudCastle"></div><div class="meter"><span>L<b id="lvl"></b></span><div class="bar"><i id="xpBar"></i></div></div><div class="statechip" id="stateChip"></div></div>
@@ -842,7 +855,9 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
       const b = S.play.best[`w${w.n}`], reg = x.regions[i], can = open; open = open && !!b;
       return `<button class="row" data-stage="${w.n}" ${can ? '' : 'disabled'}><span class="chip ${reg.mapped ? 'g g-fine' : ''}">${w.n}</span><div class="t"><div class="name">${esc(fill(B.week, { n: w.n }))}${b ? ` ${'★'.repeat(b.stars)}` : ''}</div><div class="meta">${esc(fill(B.posts, { done: reg.done, total: reg.total }))}${reg.mapped ? ` · ${esc(B.mapped)}` : ''} · ${can ? esc(b ? fill(B.best, { score: b.score }) : B.unplayed) : esc(fill(B.locked, { n: w.n - 1 }))}</div></div></button>`;
     }).join('');
-    return `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)}</div></div></button></section><section class="card"><h2>The roadmap <span class="more">${x.mapped} regions mapped · ${esc(x.rank.label)}</span></h2>${rows}</section><div class="empty">${esc(B.score_note)}</div>`;
+    const wildsCard = `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)}</div></div></button></section>`;
+    if (OUT) return `${wildsCard}<div class="empty">${esc(BANK.castle.signed_out)}</div><div class="empty">${esc(B.score_note)}</div>`;   // the roadmap's weeks are the account's
+    return `${wildsCard}<section class="card"><h2>The roadmap <span class="more">${x.mapped} regions mapped · ${esc(x.rank.label)}</span></h2>${rows}</section><div class="empty">${esc(B.score_note)}</div>`;
   }
   function render() {
     const st = S.st; const wards = siegeNow(); const x = E.expedition(PLAN, S.ticks, RULES);
@@ -851,6 +866,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     document.getElementById('homebtn').setAttribute('aria-current', S.screen === 'home' ? 'page' : 'false');
     let html = '';
     if (S.screen === 'stage' && !ST) S.screen = 'castle';
+    if (OUT && !['castle', 'stage', 'stages', 'keeper'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account
     if (S.screen === 'castle' || S.screen === 'stage') {
       $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
       if (S.screen === 'castle' && CS.fight) document.getElementById('skipFight').hidden = false;
@@ -859,7 +875,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     }
     hudEls = null; cv = null;
     if (S.screen === 'stages') {
-      html += head(BANK.stage.heading, esc(BANK.stage.sub), 'castle') + `<div class="content">${stageRows()}</div>`;
+      html += head(BANK.stage.heading, OUT ? '' : esc(BANK.stage.sub), 'castle') + `<div class="content">${stageRows()}</div>`;
     } else if (S.screen === 'siege') {
       const f = forecast();
       html += head('The backlog', `${wards.reduce((a, w) => a + w.attackers.length, 0)} aged orders feed the horde · finish one to build the castle`, 'castle');
@@ -942,7 +958,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     el.addEventListener('click', (e) => { if (!e.target.closest('[data-act="next"]')) return; el.remove(); if (i + 1 < ids.length) showOnboarding(i + 1); else { store.set(KEYS.onboarded, '1'); showStart(); } });
   }
   function showStart() {
-    const el = paper(`<h2>Fieldworks</h2><p>${esc(BANK.castle.start)}</p><p>${esc(BANK.castle.how)}</p><p><b>${esc(hordeLine())}.</b> ${esc(needLine())}</p><p class="keys">${esc(BANK.castle.keys)}</p><button class="primary" data-act="start">Power on</button>`);
+    const el = paper(`<h2>Fieldworks</h2><p>${esc(BANK.castle.start)}</p><p>${esc(BANK.castle.how)}</p>${OUT ? `<p><b>${esc(BANK.castle.signed_out)}</b></p>` : `<p><b>${esc(hordeLine())}.</b> ${esc(needLine())}</p>`}<p class="keys">${esc(BANK.castle.keys)}</p><button class="primary" data-act="start">Power on</button>`);
     el.addEventListener('click', (e) => { if (e.target.closest('[data-act="start"]')) el.remove(); });
   }
 
@@ -951,7 +967,7 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],#reset,#replayOnboarding,#skipFight');
     if (!t) return;
     if (t.dataset.go) { if (CS.fight && t.dataset.go !== 'castle') skipFight(); S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); return; }
-    if (t.dataset.stage) { const n = Number(t.dataset.stage); if (n > 1 && !S.play.best[`w${n - 1}`]) return;   // a week opens when the one before it is cleared
+    if (t.dataset.stage) { const n = Number(t.dataset.stage); if (OUT && n !== 0) return; if (n > 1 && !S.play.best[`w${n - 1}`]) return;   // a week opens when the one before it is cleared
       S.stage = n; newStage(S.stage); S.screen = 'stage'; render(); ticker(ST.wilds ? BANK.stage.wilds_enter : fill(BANK.stage.enter, { n: ST.week }), ''); return; }
     if (t.dataset.paint) { S.play.paint = t.dataset.paint; paintKeeper(); saveNow(); render(); return; }
     if (t.dataset.order) { S.order = t.dataset.order; S.picked = null; S.proof = ''; renderOverlay(); return; }
@@ -1035,6 +1051,10 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
     keys: () => ({ ...keys })
   };
   if (globalThis.FIELDWORKS_ART) { reset(); paintKeeper(); renderArtSheet(); return; }
+  if (OUT) {   // the account's chrome: the prototype bar, SocialOS's Home and its Create pill
+    document.querySelector('.wrap > .dev').style.display = 'none'; document.getElementById('homebtn').parentElement.style.display = 'none';
+    document.querySelector('.ribbon .brand').textContent = 'Fieldworks'; document.querySelector('.ribbon .pill.lit').style.display = 'none';
+  }
   S = undefined;
   const loaded = loadSave();
   if (loaded === 'none') reset();

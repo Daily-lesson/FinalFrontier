@@ -13,6 +13,9 @@
 // site asks no third party for anything; and a
 // `<meta name="robots" content="noindex">` keeps the playable spec out of
 // search indexes (a public repo is not an invitation to be found).
+// And on the game page alone, a fourth: the signed-out flag. The public site has no
+// account, so the game starts empty (no evidence, orders, lessons, lifts or horde)
+// and the Wilds are the whole game; the private artifact keeps the DEMO world.
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, copyFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,17 +27,22 @@ const GOOGLE = /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[
 const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1">';
 export const NOINDEX = '<meta name="robots" content="noindex">';
 export const HEAD = '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n';
+// The game page only: signed out, so it starts empty (no evidence, orders, lessons, lifts or horde; the Wilds only).
+export const SIGNED_OUT = '<script>globalThis.FIELDWORKS_SIGNED_OUT = true; document.documentElement.classList.add(\'signed-out\');</script>\n';
+const RULES_TAG = '<script id="rules"';
 
 /** One built page → its site copy. Throws unless each change applies exactly once. */
-export function sitePage(html) {
+export function sitePage(html, { signedOut = false } = {}) {
   const links = html.match(GOOGLE) || [];
   if (links.length !== 1) throw new Error(`expected one Google Fonts link, found ${links.length}`);
   if (html.split(VIEWPORT).length !== 2) throw new Error('expected one viewport meta');
   if (html.includes('name="robots"')) throw new Error('the page already carries a robots meta');
   if (!html.startsWith('<title>') || /<!doctype|<meta charset/i.test(html)) throw new Error('expected a bare page that starts at its <title>');
-  const out = HEAD + html
+  if (signedOut && html.split(RULES_TAG).length !== 2) throw new Error('expected one rules script to set the signed-out flag before');
+  let out = HEAD + html
     .replace(GOOGLE, () => '<link rel="stylesheet" href="fonts/fonts.css">')
     .replace(VIEWPORT, () => `${VIEWPORT}\n${NOINDEX}`);
+  if (signedOut) out = out.replace(RULES_TAG, () => SIGNED_OUT + RULES_TAG);
   // Nothing the page loads may leave the origin. Fail closed rather than list the ways a page can
   // load (src, srcset, poster, action, url(), @import, refresh, fetch, import(), workers, sockets…):
   // no absolute or protocol-relative URL naming a host may appear anywhere in the site's copy.
@@ -50,7 +58,7 @@ export function assemble(out, from = here) {
   mkdirSync(join(out, 'fonts'), { recursive: true });
   const published = [];
   for (const page of PAGES) {
-    writeFileSync(join(out, page), sitePage(readFileSync(join(from, page), 'utf8')));
+    writeFileSync(join(out, page), sitePage(readFileSync(join(from, page), 'utf8'), { signedOut: page === 'index.html' }));
     published.push(page);
   }
   for (const f of FONT_FILES) {

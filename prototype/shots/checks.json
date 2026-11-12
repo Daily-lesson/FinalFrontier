@@ -62,7 +62,7 @@
   {
     "name": "a stage is played with the keyboard: the Keeper runs, jumps and scores",
     "ok": true,
-    "detail": "x 314 · score 210"
+    "detail": "x 315 · score 210"
   },
   {
     "name": "a cleared stage keeps its score as the best, on the device",
@@ -155,14 +155,44 @@
     "detail": "165 × 144 drawn at 330 × 288 (×2)"
   },
   {
+    "name": "signed out: the castle starts empty, with no evidence, no XP and no horde",
+    "ok": true,
+    "detail": "0 pieces · 0 events · 0 XP · No horde gathering"
+  },
+  {
+    "name": "… and says why, on the start card and under the horde line",
+    "ok": true,
+    "detail": "Built only by work finished in SocialOS"
+  },
+  {
+    "name": "… and shows nothing that reads an account: no backlog, Home, Create or prototype controls",
+    "ok": true,
+    "detail": "{\"dev\":\"none\",\"home\":\"none\",\"brand\":\"Fieldworks\",\"create\":\"none\",\"strip\":[\"stages\",\"keeper\"]}"
+  },
+  {
+    "name": "signed out: the stage list is the Wilds alone (the roadmap is the account's)",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "signed out: the Wilds play, and their score builds nothing",
+    "ok": true,
+    "detail": "x 261 · score 262; pieces 0"
+  },
+  {
+    "name": "signed out: an earlier DEMO save replays no evidence and no horde, and keeps its Wilds score alone",
+    "ok": true,
+    "detail": "pieces 0; horde No horde gathering; wilds best 120; play total 120"
+  },
+  {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a horde at the walls, the towers firing)",
     "ok": true,
-    "detail": "1.02 ms · 60 fps"
+    "detail": "0.88 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a stage, running and firing)",
     "ok": true,
-    "detail": "0.84 ms · 60 fps"
+    "detail": "0.71 ms · 60 fps"
   },
   {
     "name": "the art sheet renders in both themes",

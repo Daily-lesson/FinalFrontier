@@ -5,6 +5,28 @@ schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
 merged; `## Unreleased — <title>` while the PR is open (date it at merge).
 Name the files touched and say what a user or operator will notice.
 
+## Unreleased — the public site plays signed out
+
+The first deploy opened on the DEMO world (54 castle pieces, invented orders,
+ticked lessons, an announced horde, SocialOS's Home with made-up counts), which
+reads as an account to a visitor who has none.
+
+- `prototype/prototype.src.html`: one flag, `globalThis.FIELDWORKS_SIGNED_OUT`.
+  Set, the game starts empty (no evidence, orders, lessons, lifts or horde),
+  hides what reads an account (the prototype controls, Home, Create, the
+  backlog, skills, the archive and the roadmap's weeks), offers the Wilds and
+  the Keeper's paint, and its save keeps the play record only, so a device that
+  opened the DEMO build replays none of it: of its play record the Wilds score
+  alone, and of its telemetry the opens and minutes alone. The account's chrome
+  is hidden by CSS before any script runs, and again at start-up. Unset (the committed page, the
+  private artifact), nothing changes.
+- `prototype/site.mjs`: sets the flag on the site's `index.html` only.
+- `rules/fieldworks.json`: three bank lines (`castle.signed_out`,
+  `castle.signed_out_short`, `castle.keeper`).
+- `prototype/shots.mjs`: a signed-out section (six checks, two screenshots);
+  41 checks. `tests/check.mjs`: the flag's reads in the page's source and the
+  site test's fourth edit.
+
 ## Unreleased — the prototype on GitHub Pages
 
 - `.github/workflows/pages.yml` (new): on a push to `main` touching

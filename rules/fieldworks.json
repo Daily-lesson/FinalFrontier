@@ -627,7 +627,10 @@
       "save_corrupt": "The save could not be read. The castle stands on its evidence all the same; only the play scores start again.",
       "save_old_game": "This save was the old fortress map. Its evidence built this castle; nothing was taken.",
       "gate": "Out the gate",
-      "orders": "Finish a task (evidence)"
+      "orders": "Finish a task (evidence)",
+      "signed_out": "Signed out, so nothing is built here. Every piece comes from work you finish in SocialOS, and nothing in play can add one. The Wilds are open.",
+      "signed_out_short": "Built only by work finished in SocialOS",
+      "keeper": "The Keeper"
     },
     "horde": {
       "gathering": "A horde gathers: {pct}%",

@@ -23,7 +23,7 @@ lessons, nothing read from anyone's real lanes, nothing sent anywhere.
 ```
 node --test tests/check.mjs                 # the engine, the castle module, the rules, the page's pillars, the wall sweep
 node prototype/build.mjs                    # rebuild the prototype page
-node prototype/shots.mjs                    # the walk: screenshots, 35 behavioural checks, the frame time
+node prototype/shots.mjs                    # the walk: screenshots, 41 behavioural checks, the frame time
 node sim/economy.mjs --alys ../alys         # the economy sim (needs the design repo beside this one, with its full history)
 ```
 
