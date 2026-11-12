@@ -22,43 +22,44 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 | File | Global / exports | What |
 |---|---|---|
 | `engine.js` | `FieldworksEngine` (classic script, IIFE on `globalThis`) | The fold of the design's §7.3: `validateEvent(s)`, `drop`, `xp`, `level`/`progress`, `evaluate`, `medalsFor`, `siege`, `expedition`, `challenges`, `keeper`, `works`, `hash`. Window-free, clock-free, storage-free; every number from the rules. |
+| `castle.js` | `FieldworksCastle` (classic script, IIFE on `globalThis`) | The rework's module (design D34): `pieceFor`, `castleOf`, `castleFrom`, `withPieces` (the castle as a fold over the engine's log); `hordeClock`, `hordeDay`, `hordeOf` (the horde's clock, and its size fixed at the warning); `hordeStart`, `hordeStep`, `keeperHit`, `resolveHorde`, `summary`, `readiness`, `rallyOf` (the fight as one stepping function and the warning's count). Pure; every number from the rules' `castle` and `horde` blocks. |
 
 ## Rules files (`rules/`)
 
 | File | What |
 |---|---|
-| `fieldworks.json` | The owner's instance: rarity, XP and curves, skills, the siege, expeditions, weather, medals, challenges, works, the Keeper's parts, the `fortress` and `explore` blocks, the `keeper_effects`, `clock`, `onboarding`, `states` and `telemetry` blocks, and the bank (every sentence the game speaks). |
+| `fieldworks.json` | The owner's instance: rarity, XP and curves, skills, the siege, expeditions, weather, medals, challenges, works, the Keeper's parts, the `castle`, `horde` and `stage` blocks (version 2, the rework), the `save`, `clock`, `onboarding`, `states` and `telemetry` blocks, and the bank (every sentence the game speaks). |
 
 ## Sim scripts (`sim/`)
 
 | File | What |
 |---|---|
-| `economy.mjs` | The economy sim (the paper prototype): replays the last 60 days of real Done history, read for numbers only through the alys board's parser, through the engine and the fortress rules; writes `REPORT.md`. `node sim/economy.mjs --alys ../alys`. |
-| `economy.test.mjs` | The sim on an invented fixture: deterministic, private rows are counts, no id or section reaches the report, the targets are computed. |
+| `economy.mjs` | The economy sim (the paper prototype): replays the last 60 days of real Done history, read for numbers only through the alys board's parser, through the engine and the castle module; per day the pieces laid, the horde's clock, each horde's forecast and fight; writes `REPORT.md`. `node sim/economy.mjs --alys ../alys` (a full-history checkout). |
+| `economy.test.mjs` | The sim on an invented fixture: deterministic, private rows are counts, no id or section reaches the report, the five targets are computed, the castle is the module's fold, each horde is warned and fought as its day's castle. |
 | `fixture/` | The invented task file and index the test reads (the real grammar, invented ids and words). |
-| `REPORT.md` | Generated. Per-week counts, the four targets, the arc, the tuning table. |
+| `REPORT.md` | Generated. Per-week counts, the five targets with a closes-only column, the hordes, the arc, the tuning table. |
 | `README.md` | How the sim reads, what it keeps, what it models. |
 
 ## Prototype pages (`prototype/`)
 
 | File | What |
 |---|---|
-| `prototype.src.html` | The prototype's source (version 3): fortress and explore modes, the save, the day clock, the Keeper's parts in play, explore content, onboarding, honest states, local telemetry. `/*__ENGINE__*/` and `/*__RULES__*/` are the inline markers. |
+| `prototype.src.html` | The prototype's source (version 4, the rework): the pixel renderer, the castle screen and the horde fight, the stages and the Wilds, the save without a map, onboarding, honest states, local telemetry. `/*__ENGINE__*/`, `/*__CASTLE__*/` and `/*__RULES__*/` are the inline markers. |
 | `index.html` | Built by `build.mjs`; never edited by hand. Published as a private artifact. |
-| `art-sheet.html` | Every sprite the renderers draw, by the prototype's own functions, on a grid; light and dark. |
+| `art-sheet.html` | Every sprite the renderers draw and the castle at four sizes, by the prototype's own functions, on a grid; light and dark. |
 
 ## Prototype scripts (`prototype/`)
 
 | File | What |
 |---|---|
-| `build.mjs` | Inlines `src/engine.js` and `rules/fieldworks.json` into `index.html`. |
-| `shots.mjs` | The Playwright walk at 375 × 667: the screenshots in both themes, the art sheet at 2×, the frame-time measurement. |
+| `build.mjs` | Inlines `src/engine.js`, `src/castle.js` and `rules/fieldworks.json` into `index.html` and `art-sheet.html`. |
+| `shots.mjs` | The Playwright walk at 375 × 667: the screenshots in both themes, the art sheet at 2×, the frame-time measurement of two scenes (`shots/perf.json`) and 35 behavioural checks (`shots/checks.json`: the warning, a piece from a close, the horde held on its own, a stage that pays no XP, the save, touch); exits non-zero on a failure or a page error. |
 
 ## Tests (`tests/`)
 
 | File | What |
 |---|---|
-| `check.mjs` | The engine against the rules and the design's numbers, the inline equality, the new rule blocks, and the tree-wide wall sweep. |
+| `check.mjs` | The engine against the rules and the design's numbers, the castle module (pieces, the clock, the fight, the forecast, the rally), the rule blocks, the page's pillars read from its source, the inline equality, and the tree-wide wall sweep. |
 
 ## CI workflows
 

@@ -1,0 +1,177 @@
+[
+  {
+    "name": "Home fits the 375 × 667 frame without scrolling (light)",
+    "ok": true,
+    "detail": "528 ≤ 528 px; the tile: Fieldworks Horde in 3 days · 2 tasks to hold"
+  },
+  {
+    "name": "the Home tile carries the horde's countdown and a count, never a title (light)",
+    "ok": true,
+    "detail": "Fieldworks Horde in 3 days · 2 tasks to hold"
+  },
+  {
+    "name": "Home fits the 375 × 667 frame without scrolling (dark)",
+    "ok": true,
+    "detail": "528 ≤ 528 px; the tile: Fieldworks Horde in 3 days · 2 tasks to hold"
+  },
+  {
+    "name": "the Home tile carries the horde's countdown and a count, never a title (dark)",
+    "ok": true,
+    "detail": "Fieldworks Horde in 3 days · 2 tasks to hold"
+  },
+  {
+    "name": "the horde is announced three days ahead with a count of tasks that would see the castle hold",
+    "ok": true,
+    "detail": "Horde in 3 days · 2 finished tasks would see it hold. · 12 machines"
+  },
+  {
+    "name": "a closed order adds a piece to the castle, named on its drop card, and pays XP",
+    "ok": true,
+    "detail": "pieces 54 → 55; keep 1 → 2; XP 2535 → 2715"
+  },
+  {
+    "name": "finishing tasks lowers the count until the warning says the castle holds",
+    "ok": true,
+    "detail": "2 tasks finished (the warning asked for 2); now: The castle holds as it stands."
+  },
+  {
+    "name": "the horde does not come early",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "… and arrives on the third day, on the castle screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the castle holds the horde on its own (nobody at the pad), as the warning forecast",
+    "ok": true,
+    "detail": "forecast held → fought held; The ca tle held.\n12 of 12 machine  downed\nWall 9%  tanding\nBeacon 100%\nTower 3 mattered mo t: 10 downed\nRally +10%: 2 piece  landed  ince the warning."
+  },
+  {
+    "name": "the summary says what held and which tower mattered",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a horde takes nothing: every piece, the XP and the level stand",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a stage is played with the keyboard: the Keeper runs, jumps and scores",
+    "ok": true,
+    "detail": "x 314 · score 210"
+  },
+  {
+    "name": "a cleared stage keeps its score as the best, on the device",
+    "ok": true,
+    "detail": "score 2450; best 2450"
+  },
+  {
+    "name": "stage score pays no XP, no event and no castle piece",
+    "ok": true,
+    "detail": "XP 2775 → 2775; events 56 → 56; pieces 56 → 56"
+  },
+  {
+    "name": "play score unlocks paint and nothing else (the Keeper screen says so)",
+    "ok": true,
+    "detail": "verdigris:open signal:open ember:locked violet:locked frost:locked"
+  },
+  {
+    "name": "a surveyed waypoint reads surveyed and offers nothing",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a reload keeps the castle, the horde clock and the best score",
+    "ok": true,
+    "detail": "pieces 56 (a fresh device has 54); the save holds a journal of 2 closes and no map"
+  },
+  {
+    "name": "onboarding shows once (not again after a reload)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a save from other rules loads under the current rules and says so",
+    "ok": true,
+    "detail": "Fieldworks The castle is the work you finished. It holds on its own. Every closed order, l"
+  },
+  {
+    "name": "… once",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a save from the old fortress game keeps its evidence: the castle stands on it, and the page says so",
+    "ok": true,
+    "detail": "Fieldworks The castle is the work you finished. It holds on its own. Every closed order, l"
+  },
+  {
+    "name": "an unreadable save is discarded with a toast and the castle still stands on its evidence",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the page keeps exactly its four named keys",
+    "ok": true,
+    "detail": "fieldworks-keeper, fieldworks-onboarded, fieldworks-save, fieldworks-telemetry"
+  },
+  {
+    "name": "a horde that arrived while the page was shut is resolved and its summary shown",
+    "ok": true,
+    "detail": "forecast breached → resolved breached"
+  },
+  {
+    "name": "a breach dims the walls and takes nothing",
+    "ok": true,
+    "detail": "The walls are breached and dim. The next finished task relights them."
+  },
+  {
+    "name": "the next finished task relights the walls",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "an unread backlog leaves the horde clock unlit: seven days gather nothing",
+    "ok": true,
+    "detail": "Backlog unread · the horde clock is unlit; gathered 0 → 0"
+  },
+  {
+    "name": "… and read again it gathers, inside the gap rule",
+    "ok": true,
+    "detail": "A horde gathers: 61%"
+  },
+  {
+    "name": "touch: holding the pad's right button runs the Keeper, and jump lifts it",
+    "ok": true,
+    "detail": "x 30 → 77; y 144 → 113; buttons 68 × 48 px"
+  },
+  {
+    "name": "the pixels are whole: the canvas is drawn at a whole-number scale",
+    "ok": true,
+    "detail": "165 × 144 drawn at 330 × 288 (×2)"
+  },
+  {
+    "name": "a frame stays inside the 16.7 ms budget on the main thread (a horde at the walls, the towers firing)",
+    "ok": true,
+    "detail": "1.02 ms · 60 fps"
+  },
+  {
+    "name": "a frame stays inside the 16.7 ms budget on the main thread (a stage, running and firing)",
+    "ok": true,
+    "detail": "0.84 ms · 60 fps"
+  },
+  {
+    "name": "the art sheet renders in both themes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no page error anywhere in the walk",
+    "ok": true,
+    "detail": ""
+  }
+]

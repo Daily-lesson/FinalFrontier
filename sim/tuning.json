@@ -1,0 +1,73 @@
+{
+  "$note": "Rules changes the sim tested for the rework (design D34), in order (sim/economy.mjs applies them one by one and re-runs). Every 'after' must equal rules/fieldworks.json; a null 'before' means the key did not exist. The first sim's eight changes (the fortress map) are in this file's history and the design's GDD v1; of them only xp.player_step 200 still applies and it is carried as it stood.",
+  "changes": [
+    {
+      "key": "horde.gather_cap_per_day",
+      "before": 1000,
+      "after": 30,
+      "why": "Uncapped, the clock fills as fast as the backlog is deep: with 78 orders at the walls on the last day it would fill in under four days, and only the gap would space the hordes. At 30 a day the clock fills at one speed for any backlog of 30 orders or more; the arrivals are days 28, 44 and 60."
+    },
+    {
+      "key": "horde.threshold",
+      "before": 300,
+      "after": 150,
+      "why": "At 30 a day, 300 is ten days of gathering and the hordes came sixteen days apart. 150 is five days: arrivals on days 19, 32, 43 and 54."
+    },
+    {
+      "key": "horde.min_gap_days",
+      "before": 7,
+      "after": 10,
+      "why": "At seven days the last two hordes came eleven days apart. Ten puts a clear week between an arrival and the next warning: days 19, 34 and 48, with a fourth announced for day 62. That is the fortnight the design asks for."
+    },
+    {
+      "key": "horde.size.per_attacker",
+      "before": 0.5,
+      "after": 0.4,
+      "why": "Half a machine per order made the third horde 40 machines. At 0.4 the sizes are 15, 16 and 33 and still read the backlog as it stood at each warning."
+    },
+    {
+      "key": "horde.size.per_horde",
+      "before": 0,
+      "after": 3,
+      "why": "With no growth the castle only ever outgrows the horde. Three more machines each time: 15, 19 and 39, and 46 for the one announced."
+    },
+    {
+      "key": "horde.machines",
+      "before": {
+        "crawler": {
+          "hp": 30,
+          "speed": 14,
+          "dps": 4
+        },
+        "skitter": {
+          "hp": 16,
+          "speed": 26,
+          "dps": 3
+        },
+        "brute": {
+          "hp": 160,
+          "speed": 8,
+          "dps": 12
+        }
+      },
+      "after": {
+        "crawler": {
+          "hp": 110,
+          "speed": 14,
+          "dps": 8
+        },
+        "skitter": {
+          "hp": 55,
+          "speed": 26,
+          "dps": 6
+        },
+        "brute": {
+          "hp": 600,
+          "speed": 8,
+          "dps": 30
+        }
+      },
+      "why": "Through step 5 every horde was held with nothing asked (target 4 not met): the towers downed each machine on the approach and no wall was touched, so a wall section was worth nothing. At about three and a half times the health and at least twice the damage the horde reaches the wall: the three warnings ask for 8, 2 and 5 finished tasks, and with what the evidence landed inside each warning the castle held all three, the wall at 81%, 89% and 93%."
+    }
+  ]
+}

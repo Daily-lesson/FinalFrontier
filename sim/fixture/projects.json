@@ -1,0 +1,6 @@
+{
+  "$note": "An invented index for sim/economy.test.mjs.",
+  "sections": { "Workshop": { "program": "workshop", "project": null }, "Back Office": { "program": "workshop", "project": "back-office" } },
+  "programs": [ { "id": "workshop", "tier": "public" } ],
+  "projects": [ { "id": "workshop-line", "program": "workshop", "tier": "public", "name": "Workshop line" }, { "id": "back-office", "program": "workshop", "tier": "private", "name": "" } ]
+}

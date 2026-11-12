@@ -1,0 +1,24 @@
+{
+  "horde": {
+    "scene": "a horde at the walls, the towers firing",
+    "viewport": "375 × 667 @2×",
+    "seconds": 6,
+    "frames": 360,
+    "fps": 60,
+    "main_thread_ms_per_frame": 1.02,
+    "script_ms_per_frame": 0.4,
+    "heap_mb": 5.3,
+    "heap_growth_kb": 487
+  },
+  "stage": {
+    "scene": "a stage, running and firing",
+    "viewport": "375 × 667 @2×",
+    "seconds": 6,
+    "frames": 360,
+    "fps": 60,
+    "main_thread_ms_per_frame": 0.84,
+    "script_ms_per_frame": 0.31,
+    "heap_mb": 4.7,
+    "heap_growth_kb": 235
+  }
+}

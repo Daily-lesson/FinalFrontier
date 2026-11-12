@@ -1,26 +1,29 @@
 # CLAUDE.md — FinalFrontier project map
 
-**Fieldworks**, the game: a fortress you build out of the work you actually
-finish. This repo is its home (design ruling D31): the engine, the rules, the
-economy sim, the greybox prototype, the tests. There is a grep-able repo map in
+**Fieldworks**, the game: a castle you build out of the work you actually
+finish, and a side-scrolling pixel action game outside its gate. This repo is
+its home (design ruling D31): the engine, the castle module, the rules, the
+economy sim, the prototype, the tests. There is a grep-able repo map in
 **`SKELETON.md`** — read it before spelunking. **Keep both files current** when
 you add a module, a sim or a workflow: `skeleton-guard` fails the build on
 anything undocumented.
 
-**The shape, in two sentences.** *Fortress mode* is a real-time 20 × 20 map:
-the Keeper (a workshop robot) salvages scrap, raises pylons that reclaim
-ground from the blight (the aged backlog), and holds the beacon through night
-waves; **cells, the material that buys ground, come only from evidence** (a
-verified close, a lesson, a lift, a re-pace). *Explore mode* is third person:
-the Keeper walks out of the gate into the field, where the learning roadmap's
-weeks are regions and its lessons waypoints to survey.
+**The shape, in two sentences** (the rework, design ruling D34, 2026-11-10).
+*The castle* is the home screen: **one piece per evidence event and nothing
+else** (a verified close, a decision, a lesson, a lift, a re-pace) builds it,
+it defends itself, and a horde gathered from the aged backlog comes about once
+a fortnight, announced three days ahead with a count of finished tasks that
+would see it hold. *The stages* are out the gate: the Keeper (a workshop
+robot) runs, jumps and shoots through one stage per stated week of the
+roadmap, or the endless Wilds, for play score that buys paint and nothing
+else.
 
 **The canon is not here.** The design lives in the private design repo,
 `Daily-lesson/alys`: `docs/FIELDWORKS.md` (the world, the nine invariants,
 every mechanic with its source field, the template and the walls, decisions
-D1–D24, D31) and `docs/fieldworks/GAME_DEVELOPMENT.md` (the lifecycle and its
-gates, the GDD v1, the tech design, milestones, the playtest plan, proposals
-D25–D30, D32). A design question is answered there, never here.
+D1–D24, D31, and §16 the rework, D34–D35) and
+`docs/fieldworks/GAME_DEVELOPMENT.md` (the lifecycle and its gates, the GDD
+v2, the tech design, milestones, the playtest plan, proposals D36–D48, D32). A design question is answered there, never here.
 
 ---
 
@@ -31,18 +34,21 @@ There is **no build step for the engine and no `package.json`**: `src/` and
 
 | Task | How |
 |---|---|
-| Engine + walls check | `node --test tests/check.mjs` |
+| Engine, castle module, page pillars + walls check | `node --test tests/check.mjs` |
 | Sim tests | `node --test sim/economy.test.mjs` (needs an alys checkout beside this one; skips with the reason otherwise) |
 | Both | `node --test tests/check.mjs sim/economy.test.mjs` |
-| Economy sim → `sim/REPORT.md` | `node sim/economy.mjs --alys ../alys` (refuses to run without the flag) |
-| Rebuild the prototype | `node prototype/build.mjs` (inlines `src/engine.js` + `rules/fieldworks.json` into `prototype/index.html`) |
-| Art sheet + shots | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`) |
+| Economy sim → `sim/REPORT.md` | `node sim/economy.mjs --alys ../alys` (refuses to run without the flag, and on a shallow alys checkout: `git -C ../alys fetch --unshallow origin main` first) |
+| Rebuild the prototype | `node prototype/build.mjs` (inlines `src/engine.js`, `src/castle.js` + `rules/fieldworks.json` into `prototype/index.html`) |
+| The walk: shots, checks, frame time, art sheet | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`; about three minutes) |
 | Workflow lint | `node .github/scripts/workflow-lint.mjs` |
 | Skeleton guard | `node .github/skeleton/check.mjs` (`--list` prints the inventory) |
 
 **CI** (`.github/workflows/ci.yml`): every push to `main` and every pull
 request. Workflow lint, `node --check` over every script, JSON validity,
-then the two test files.
+then the two test files. **CI does not run the walk**, and the walk is what
+executes the page's behaviour (the tests read the page as text): run
+`node prototype/shots.mjs` before every push that touches the page, the
+rules or `src/`.
 
 ---
 
@@ -50,10 +56,11 @@ then the two test files.
 
 ```
 src/engine.js          # the fold: pure, window-free, every number from the rules
+src/castle.js          # the castle from the fold's log, the horde's clock, the fight as one stepping function
 rules/fieldworks.json  # the owner's instance of the rules: every number and sentence the game reads
 sim/                   # the economy sim (economy.mjs), its test and fixture, REPORT.md (generated)
 prototype/             # prototype.src.html → build.mjs → index.html; art-sheet.html; shots.mjs; shots/
-tests/check.mjs        # the engine, the rules, the inline equality, the tree-wide wall sweep
+tests/check.mjs        # the engine, the castle module, the rules, the page's pillars, the inline equality, the tree-wide wall sweep
 docs/PLAYTEST.md       # the Gate 1 form
 .github/  .claude/     # standards from Daily-lesson/alys templates/repo/
 CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
@@ -69,7 +76,11 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 - **A rule of the fold** (rarity, XP, medals, the siege, expeditions) →
   `src/engine.js` + a test in `tests/check.mjs`; the contract is the design's
   §7.3 and changing it is a design question first.
-- **The prototype** (fortress sim, explore sim, screens, the DEMO set) →
+- **What a piece of evidence builds, how the horde gathers, how a fight
+  steps** → the numbers are in the rules' `castle` and `horde` blocks; the
+  functions in `src/castle.js` + a test. The live fight, the forecast and a
+  horde met while away must stay one function.
+- **The prototype** (the castle screen, the stages, the pixel renderer, the screens, the DEMO set) →
   `prototype/prototype.src.html`, then rebuild. Never edit `index.html`.
 - **The sim's model or report** → `sim/economy.mjs` + `sim/economy.test.mjs`.
 - **Repo standards (CI lint, PR template, graph skills, skeleton guard)** →
@@ -109,27 +120,37 @@ repo.
    from the real file, no quoted order text, no e-mail, no database ref.
    `tests/check.mjs` sweeps every file for those (a hashed denylist and two
    shapes) and CI fails on a hit. The DEMO ids in the prototype (WO-281 and
-   up) are invented; a fixture id below 200 is refused by the sweep.
-2. **Evidence is the only power source (pillar 1).** Cells come from
-   `fortress.cache_by_grade` and `fortress.cache_by_kind` on evidence
-   events and from nowhere else: not a kill, a tile, a night or a pickup.
-   A kill pays scrap, never XP.
+   up) are invented; any id below 280 is refused by the sweep, so a real
+   id cannot land here as the real file grows toward them.
+2. **Evidence is the only power source (pillar 1).** A castle piece comes
+   from `castle.by_kind` and `castle.by_grade` on an evidence event and from
+   nowhere else. The page sets the castle in one line (`CAS =
+   C.castleOf(st.log, RULES)`) and nothing writes into it. A kill, a spark, a
+   cleared stage and a machine downed from the wall pay play score, which
+   buys paint: never XP, a level, an item or a piece. `tests/check.mjs`
+   reads the page's source for both. **One DEMO stand-in:** a waypoint
+   card's button ticks the lesson (the app would open the lesson and the
+   tick made there is the evidence); the card says so and no key does it.
 3. **Nothing is ever lost (pillar 2).** No change may take XP, an item, a
-   medal, rank, a module or a built tile; a dark beacon relights; a corrupt
-   save is discarded and the map laid again with every unshown cache
-   re-landed.
+   medal, rank or a castle piece. A fight reads the castle and writes
+   nothing to it; a breach sets one flag that the next evidence clears; the
+   save holds no map, so an unreadable save costs only the play scores.
 4. **Counts through the walls.** A private event is sealed; the Keep's
    attackers are a count and an engine flag; the engine refuses a private
-   event with a name field (tested).
-5. **The sim reads the real task file for numbers only,** through the alys
+   event with a name field (tested). A horde's warning is a count of tasks,
+   never a title; a stage shows a week's position, never a lesson's name.
+5. **No person's schedule.** The sim's lesson and lift cadence is a stated
+   game cadence: weekly totals in the order of the design's own budget, laid
+   on invented days, never anyone's real study or training days or times.
+6. **The sim reads the real task file for numbers only,** through the alys
    board's own parser imported from the alys checkout at run time — never
    copied here. It keeps an order's id, dates, Pn, tier, program, two counts
    and its score, drops every title, step, option and Say line, and its
    report prints per-week counts and never an id. Never commit the task
    file, the parser or an id from it.
-6. **No Claude in the loop.** Every sentence the game speaks is in the rules
+7. **No Claude in the loop.** Every sentence the game speaks is in the rules
    file's bank; no model call, anywhere.
-7. **No secret ever lands in a file.** CI passes with no secrets set.
+8. **No secret ever lands in a file.** CI passes with no secrets set.
 
 ---
 
