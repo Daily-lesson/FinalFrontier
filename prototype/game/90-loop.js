@@ -30,7 +30,8 @@
   const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
   addEventListener('keydown', (e) => { if (e.target.matches('input')) return; auUnlock(); const key = e.key.toLowerCase();
     if (key >= '1' && key <= '3') { const ups = $overlay.querySelectorAll('[data-up]'); if (ups[key - 1]) { ups[key - 1].click(); return; } }   /* an upgrade by its number */
-    if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); } });
+    if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
+    else if (key === 'escape' && EMBED && !blocking() && !(S.screen === 'stage' && ST)) { saveNow(); music(''); hostGo('close'); } });   /* in a host frame, Escape at rest closes the game; a run in progress is never dropped by a key */
   addEventListener('keyup', (e) => { const k = KEYMAP[e.key.toLowerCase()]; if (k) keys[k] = false; });
   addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; });
   function pressSeg(id, key, v) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[key] === v))); }

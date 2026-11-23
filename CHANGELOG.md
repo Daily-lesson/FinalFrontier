@@ -2,7 +2,16 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — <title>` while the PR is open (date it at merge).
+merged; `## Unreleased — the embed, after review
+
+- `prototype/game/25-embed.js`: a lane read for the first time is taken as the
+  castle as it stood (no drop card for its whole history); a received event
+  is rebuilt from the engine's eight fields, so nothing else a host left on
+  one is kept.
+- `prototype/game/90-loop.js`: in a host frame, Escape with nothing open and
+  no run in progress asks the host to close the game.
+
+## Unreleased — <title>` while the PR is open (date it at merge).
 Name the files touched and say what a user or operator will notice.
 
 ## Unreleased — the feel pass (phase 1 of the redesign) and an embeddable build

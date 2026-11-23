@@ -87,7 +87,7 @@
   {
     "name": "jump: a short press is a short hop, a held one a full jump",
     "ok": true,
-    "detail": "14 px against 46 px"
+    "detail": "11 px against 46 px"
   },
   {
     "name": "a checkpoint offers one of three run upgrades, and the pick joins the build shown on the HUD",
@@ -252,7 +252,7 @@
   {
     "name": "a moving platform carries the Keeper across a chasm",
     "ok": true,
-    "detail": "the deck moved 31 px and the Keeper 31 px with it"
+    "detail": "the deck moved 32 px and the Keeper 32 px with it"
   },
   {
     "name": "out of hull, a roadmap run restarts at its last checkpoint twice, with the build kept; the third time the run is over",
@@ -282,7 +282,7 @@
   {
     "name": "play score opens things for play: a starting pick, a second jump, more worlds for the Wilds",
     "ok": true,
-    "detail": "a head start of 3; one jump 46 px, two 69 px; 3 worlds; a pool of 9"
+    "detail": "a head start of 3; one jump 46 px, two 70 px; 3 worlds; a pool of 9"
   },
   {
     "name": "… and nothing for the castle: the same pieces and XP as a device that never played",
@@ -407,17 +407,17 @@
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a horde at the walls, the towers firing)",
     "ok": true,
-    "detail": "0.97 ms · 60 fps"
+    "detail": "0.89 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a stage, running and firing)",
     "ok": true,
-    "detail": "0.83 ms · 60 fps"
+    "detail": "0.75 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a boss fight, dashing and firing)",
     "ok": true,
-    "detail": "1 ms · 60 fps"
+    "detail": "1.02 ms · 60 fps"
   },
   {
     "name": "the art sheet renders in both themes",

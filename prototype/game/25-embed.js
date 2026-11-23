@@ -42,11 +42,16 @@
       horde = { day: h.day, clock: { gather: c.gather, warned: c.warned, due: c.due, count: c.count, last: c.last, horde: c.horde ? hordeShape(c.horde) : null }, history: [], dim: h.dim, arrived: h.arrived ? hordeShape(h.arrived) : null, fresh: h.fresh };
     }
     // `briefing` (optional) is a later phase's: carried by the host, ignored here, never a reason to refuse.
-    return { today: m.today, theme: m.theme || null, events: v.ok, open, plan, horde, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
+    // The eight fields an engine event has, and nothing else a host might have left on one.
+    const events = v.ok.map((e) => ({ id: e.id, kind: e.kind, at: e.at, tier: e.tier, zone: e.zone ?? null, weight: e.weight, facts: e.facts, evidence: e.evidence }));
+    return { today: m.today, theme: m.theme || null, events, open, plan, horde, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
   }
   /** The host's world becomes the game's: the castle is the fold over the host's events, the horde is the host's, the day is the host's. */
   function applyWorld(w) {
-    const first = !EMB.seen, before = S.st;
+    // A lane read for the first time brings its whole history: that is the castle as it stood, not work just finished,
+    // so it is taken as the baseline (no drop card, no level toast) exactly as the first world is.
+    const was = S.lanes || {}, landed = ['workorders', 'learning', 'body'].some((k) => w.lanes[k] && !was[k]);
+    const first = !EMB.seen || landed, before = S.st;
     TODAY = w.today; OUT = false; EMB.state = 'world'; EMB.seen = true;
     if (w.theme) document.documentElement.setAttribute('data-theme', w.theme);
     PLAN = w.lanes.learning ? w.plan : { weeks: [] };

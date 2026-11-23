@@ -2878,11 +2878,16 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       horde = { day: h.day, clock: { gather: c.gather, warned: c.warned, due: c.due, count: c.count, last: c.last, horde: c.horde ? hordeShape(c.horde) : null }, history: [], dim: h.dim, arrived: h.arrived ? hordeShape(h.arrived) : null, fresh: h.fresh };
     }
     // `briefing` (optional) is a later phase's: carried by the host, ignored here, never a reason to refuse.
-    return { today: m.today, theme: m.theme || null, events: v.ok, open, plan, horde, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
+    // The eight fields an engine event has, and nothing else a host might have left on one.
+    const events = v.ok.map((e) => ({ id: e.id, kind: e.kind, at: e.at, tier: e.tier, zone: e.zone ?? null, weight: e.weight, facts: e.facts, evidence: e.evidence }));
+    return { today: m.today, theme: m.theme || null, events, open, plan, horde, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
   }
   /** The host's world becomes the game's: the castle is the fold over the host's events, the horde is the host's, the day is the host's. */
   function applyWorld(w) {
-    const first = !EMB.seen, before = S.st;
+    // A lane read for the first time brings its whole history: that is the castle as it stood, not work just finished,
+    // so it is taken as the baseline (no drop card, no level toast) exactly as the first world is.
+    const was = S.lanes || {}, landed = ['workorders', 'learning', 'body'].some((k) => w.lanes[k] && !was[k]);
+    const first = !EMB.seen || landed, before = S.st;
     TODAY = w.today; OUT = false; EMB.state = 'world'; EMB.seen = true;
     if (w.theme) document.documentElement.setAttribute('data-theme', w.theme);
     PLAN = w.lanes.learning ? w.plan : { weeks: [] };
@@ -4094,7 +4099,8 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
   addEventListener('keydown', (e) => { if (e.target.matches('input')) return; auUnlock(); const key = e.key.toLowerCase();
     if (key >= '1' && key <= '3') { const ups = $overlay.querySelectorAll('[data-up]'); if (ups[key - 1]) { ups[key - 1].click(); return; } }   /* an upgrade by its number */
-    if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); } });
+    if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
+    else if (key === 'escape' && EMBED && !blocking() && !(S.screen === 'stage' && ST)) { saveNow(); music(''); hostGo('close'); } });   /* in a host frame, Escape at rest closes the game; a run in progress is never dropped by a key */
   addEventListener('keyup', (e) => { const k = KEYMAP[e.key.toLowerCase()]; if (k) keys[k] = false; });
   addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; });
   function pressSeg(id, key, v) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[key] === v))); }
