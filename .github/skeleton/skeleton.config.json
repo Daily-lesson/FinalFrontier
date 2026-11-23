@@ -50,6 +50,24 @@
       ]
     },
     {
+      "name": "Game script fragments",
+      "kind": "path",
+      "glob": "prototype/game/*.js",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
+      "name": "Embed build",
+      "kind": "path",
+      "glob": "embed/*",
+      "tokenBasename": true,
+      "docs": [
+        "SKELETON.md"
+      ]
+    },
+    {
       "name": "Tests",
       "kind": "path",
       "glob": "tests/*.mjs",
@@ -76,7 +94,8 @@
       "src/**",
       "rules/**",
       "sim/**",
-      "prototype/**"
+      "prototype/**",
+      "embed/**"
     ],
     "doc": "CLAUDE.md",
     "threshold": 5

@@ -14,9 +14,12 @@ else** (a verified close, a decision, a lesson, a lift, a re-pace) builds it,
 it defends itself, and a horde gathered from the aged backlog comes about once
 a fortnight, announced three days ahead with a count of finished tasks that
 would see it hold. *The stages* are out the gate: the Keeper (a workshop
-robot) runs, jumps and shoots through one stage per stated week of the
-roadmap, or the endless Wilds, for play score that buys paint and nothing
-else.
+robot) runs, jumps, dashes and shoots through one stage per stated week of the
+roadmap (checkpoints, a pick of three run upgrades at each, a boss at the end)
+or the endless Wilds, for play score. **Play powers play** (the owner's
+ruling, 2026-11-23): lifetime play score opens, for good, more of the upgrade
+pool, a second jump, a starting pick, worlds for the Wilds, and paint. It
+never yields XP, a level, an item or a castle piece.
 
 **The canon is not here.** The design lives in the private design repo,
 `Daily-lesson/alys`: `docs/FIELDWORKS.md` (the world, the nine invariants,
@@ -38,9 +41,9 @@ There is **no build step for the engine and no `package.json`**: `src/` and
 | Sim tests | `node --test sim/economy.test.mjs` (needs an alys checkout beside this one; skips with the reason otherwise) |
 | Both | `node --test tests/check.mjs sim/economy.test.mjs` |
 | Economy sim → `sim/REPORT.md` | `node sim/economy.mjs --alys ../alys` (refuses to run without the flag, and on a shallow alys checkout: `git -C ../alys fetch --unshallow origin main` first) |
-| Rebuild the prototype | `node prototype/build.mjs` (inlines `src/engine.js`, `src/castle.js` + `rules/fieldworks.json` into `prototype/index.html`) |
+| Rebuild the prototype and the embed | `node prototype/build.mjs` (joins `prototype/game/*.js` into the page and inlines `src/engine.js`, `src/castle.js` + `rules/fieldworks.json` → `prototype/index.html`, `art-sheet.html`, and `embed/play.html`, `play.js`, `play.css`) |
 | Assemble the Pages site | `node prototype/site.mjs _site` (the game at the root, the art sheet, `fonts/`; nothing else) |
-| The walk: shots, checks, frame time, art sheet | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`; about three minutes) |
+| The walk: shots, checks, frame time, art sheet, the signed-out site, the embed in a host frame | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`; about five minutes) |
 | Workflow lint | `node .github/scripts/workflow-lint.mjs` |
 | Skeleton guard | `node .github/skeleton/check.mjs` (`--list` prints the inventory) |
 
@@ -80,7 +83,8 @@ src/engine.js          # the fold: pure, window-free, every number from the rule
 src/castle.js          # the castle from the fold's log, the horde's clock, the fight as one stepping function
 rules/fieldworks.json  # the owner's instance of the rules: every number and sentence the game reads
 sim/                   # the economy sim (economy.mjs), its test and fixture, REPORT.md (generated)
-prototype/             # prototype.src.html → build.mjs → index.html; art-sheet.html; shots.mjs; shots/; site.mjs + fonts/ → the Pages site
+prototype/             # prototype.src.html (the shell and styles) + game/*.js (the game script, in fragments) → build.mjs → index.html; art-sheet.html; shots.mjs; shots/; site.mjs + fonts/ → the Pages site
+embed/                 # built by build.mjs, committed: play.html, play.js, play.css — the game for a host app's same-origin frame (no inline script)
 tests/check.mjs        # the engine, the castle module, the rules, the page's pillars, the inline equality, the tree-wide wall sweep
 docs/PLAYTEST.md       # the Gate 1 form
 .github/  .claude/     # standards from Daily-lesson/alys templates/repo/
@@ -101,8 +105,22 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
   steps** → the numbers are in the rules' `castle` and `horde` blocks; the
   functions in `src/castle.js` + a test. The live fight, the forecast and a
   horde met while away must stay one function.
-- **The prototype** (the castle screen, the stages, the pixel renderer, the screens, the DEMO set) →
-  `prototype/prototype.src.html`, then rebuild. Never edit `index.html`.
+- **The prototype** → the shell and the styles are `prototype/prototype.src.html`;
+  the game script is `prototype/game/*.js`, joined in name order inside one
+  IIFE (each fragment keeps the two-space indent and parses on its own; the
+  list is in `SKELETON.md`). Then rebuild. Never edit `index.html`, `art-sheet.html` or `embed/*`.
+- **How a run feels** (the moves, the machines, the bosses, the run upgrades,
+  what play score opens, the worlds, hard mode, the sound) → the numbers and
+  the sentences are in the rules (`stage.moves`, `juice`, `combo`, `enemies`,
+  `bosses`, `upgrades`, `meta`, `biomes`, `hard`, `terrain`; `audio`; the
+  bank's `upgrade`, `boss`, `biome`, `meta`, `story`, `sound`); the code in
+  `game/60-stage.js` to `68-stage-render.js` and `30-audio.js`. A new thing
+  play can unlock goes in `stage.meta.unlocks` with its name in
+  `bank.meta.names`; it must be for play (gotcha 2).
+- **The embed** (the game inside a host app) → `game/25-embed.js` (the
+  message contract, the world's validation) and the embed half of
+  `build.mjs`; `embed/` is rebuilt, never edited. The contract is in
+  `SKELETON.md`.
 - **What the Pages site publishes** → `prototype/site.mjs` (its file
   list and its edits; the signed-out flag is the game page's alone) + its test in `tests/check.mjs`; the deploy is
   `.github/workflows/pages.yml`. Add nothing to the site that the page does
@@ -151,9 +169,15 @@ repo.
    from `castle.by_kind` and `castle.by_grade` on an evidence event and from
    nowhere else. The page sets the castle in one line (`CAS =
    C.castleOf(st.log, RULES)`) and nothing writes into it. A kill, a spark, a
-   cleared stage and a machine downed from the wall pay play score, which
-   buys paint: never XP, a level, an item or a piece. `tests/check.mjs`
-   reads the page's source for both. **One DEMO stand-in:** a waypoint
+   boss, a cleared stage and a machine downed from the wall pay play score.
+   **Play powers play:** lifetime play score (`S.play.life`, never lowered)
+   opens run upgrades, a move, a starting pick, worlds and paint, all of them
+   for play; it never yields XP, a level, an item or a piece, and a run's
+   upgrades end with the run. `tests/check.mjs` reads the page's source for
+   all of it (`PLAY_FNS` may not touch the evidence; the evidence path may
+   not read play). Embedded in a host app the events are the host's,
+   validated by the engine and assigned whole in one place; the buttons that
+   fake evidence in the DEMO ask the host to open its own screen instead. **One DEMO stand-in:** a waypoint
    card's button ticks the lesson (the app would open the lesson and the
    tick made there is the evidence); the card says so and no key does it.
 3. **Nothing is ever lost (pillar 2).** No change may take XP, an item, a

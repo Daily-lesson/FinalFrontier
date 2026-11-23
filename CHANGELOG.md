@@ -5,6 +5,93 @@ schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
 merged; `## Unreleased — <title>` while the PR is open (date it at merge).
 Name the files touched and say what a user or operator will notice.
 
+## Unreleased — the feel pass (phase 1 of the redesign) and an embeddable build
+
+The owner played prototype 4 and found it flat: one robot, flat ground, quiet,
+grey. His rulings (2026-11-23): upgrades during a run, bosses and more
+machines, feel, secrets; **play powers play** (play score opens things for
+play, for good; it still never yields XP, a level, an item or a castle piece,
+and nothing is ever lost); short and long sessions; tough but fair, with a
+hard-mode switch; sound made in code; a look per world; a light story from the
+bank. Later phases (real work orders as bosses, repo worlds, a codex, recall
+gates, loot in play) are not built here.
+
+What a player will notice:
+
+- **Moves:** a dash with a moment of invulnerability and a cooldown (a Dash
+  button on the pad; Shift or K), a charged shot (hold fire, release), a jump
+  as high as the press is long, forgiven a moment after a ledge and buffered a
+  moment before landing, and a second jump once play has opened it.
+- **Feel:** screen shake, hit flash, a brief hit-stop, particles, a combo that
+  raises play score. `prefers-reduced-motion` turns the shake, flash and
+  hit-stop off.
+- **Six machines**, brought in over the weeks (crawler, hopper, a drone that
+  fires, a turret, a shielded warden, a brute that charges), each announcing
+  its attack.
+- **Bosses:** one at the end of every roadmap stage and every so often in the
+  Wilds; three designs in turn (the Hauler, the Kiln Eye, the Undertow), each
+  with a bar, a second phase and announced attacks.
+- **Run upgrades:** at each checkpoint and after a Wilds boss, one of three
+  (eleven in all), for the run; the build is on the HUD.
+- **Play powers play:** lifetime play score opens more of the upgrade pool, the
+  second jump, a starting pick and four more worlds for the Wilds, besides the
+  paints. The stage list shows the track.
+- **Terrain and secrets:** ledges at two heights, moving platforms over
+  chasms, spikes, vents, and cracked walls with a relic and a line of story
+  behind them. Layouts stay seeded.
+- **Five worlds** (meadow, canyon, marsh, foundry, frost), each with its own
+  sky, ridges, ground, life and weather, across the weeks and the Wilds. The
+  castle screen has flags, lit windows and smoke; while a horde is announced
+  the sky darkens, the portcullis drops and the flags turn red. The horde
+  itself works exactly as before.
+- **The Keeper** is larger (14 × 18) with run, jump, fall, dash, hurt, charge
+  and blink frames and its tool arm showing.
+- **Hard mode** (one heart, faster machines, no restarts, score ×2) and
+  **sound** (effects and a looping tune per world, a boss theme, a warning
+  theme; WebAudio, no audio file; nothing before the first input) are two
+  switches on the stage list, kept in the save.
+- A roadmap stage has two restarts from the last checkpoint; the Wilds and
+  hard mode have none. A death ends the run and keeps every unlock. A run
+  walked away from banks its score.
+
+Files:
+
+- `prototype/game/*.js` (new): the page's script, split into fourteen
+  fragments that `build.mjs` joins in name order (`SKELETON.md` lists them).
+  `prototype/prototype.src.html` keeps the shell and the styles.
+- `prototype/build.mjs`: joins the fragments; exports `source()` and `build()`;
+  also writes **`embed/`** (new, committed): `play.html` (its own policy, no
+  inline script, no `connect-src`), `play.js` (one classic script that builds
+  its own body, so a `srcdoc` host works) and `play.css`. Embedded the game has
+  no DEMO chrome and no DEMO world: it posts `ready`, takes a validated `world`
+  from its same-origin parent, asks the host to open its own screens where the
+  DEMO fakes evidence, runs no horde clock of its own, and keeps play only
+  under two keys of its own. The contract is in `SKELETON.md`.
+- `rules/fieldworks.json`: **version 3**. New in `stage`: `moves`, `juice`,
+  `combo`, `shots`, `terrain`, `bosses`, `upgrades`, `meta`, `biomes`, `hard`,
+  `continues`, `checkpoint`, `checkpoints_min`; `enemies` gains `turret` and
+  `warden` and a `from` level each; `length_tiles` 150 → 170 and
+  `score.par_seconds` 80 → 150 (a stage is longer and ends in a boss). New
+  top-level `audio` and `embed`; `castle.draw.sky_darken`. New bank blocks
+  `upgrade`, `boss`, `biome`, `meta`, `story`, `sound`, `embed`, and lines in
+  `stage`, `castle` and `horde`. Nothing the engine, the castle module or the
+  sim reads has changed.
+- The save's play record gains `life` (lifetime play score), `mute`, `hard`
+  and two counts; an older record starts its lifetime score at its bests.
+  Paint now reads the lifetime score.
+- `tests/check.mjs`: 58 tests (was 50). The pillars are held over every
+  function a run uses (`PLAY_FNS`), the unlock track is checked to open only
+  things for play, the built files (pages and `embed/`) must equal a rebuild,
+  and the embed's intake is run against the real engine.
+- `prototype/shots.mjs`: 86 checks (was 41), a boss-fight frame-time scene, and
+  the embed section (a local server, an `iframe src` host and a `srcdoc` one).
+  Frame time on the main thread stays about 1 ms.
+- `sim/economy.mjs`: its source audit reads `prototype/game/*.js`. **Not
+  re-run:** `sim/REPORT.md` is as generated before, so its last section still
+  names lines of the old single source file. The next sim run rewrites it.
+- `.github/skeleton/skeleton.config.json`: the fragments and `embed/` are in
+  the guard. `SKELETON.md`, `CLAUDE.md`, `README.md` updated.
+
 ## Unreleased — the public site plays signed out
 
 The first deploy opened on the DEMO world (54 castle pieces, invented orders,
