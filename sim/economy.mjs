@@ -297,9 +297,8 @@ const fmtTarget = (t) => {
 
 /** The places in the prototype where evidence enters, where the castle is derived and where play score changes, read from its source at report time. */
 export function sourceAudit() {
-  const src = readFileSync(join(ROOT, 'prototype', 'prototype.src.html'), 'utf8').split('\n');
-  const hits = [];
-  src.forEach((l, i) => { if (/S\.events\.push\(|C\.castleOf\(|\.score \+=|S\.play\.wall \+=|player\.xp\s*\+=/.test(l)) hits.push({ line: i + 1, text: l.trim().slice(0, 118) }); });
+  const dir = join(ROOT, 'prototype', 'game'), hits = [];   // the game script's fragments, which build.mjs joins into the page
+  for (const f of readdirSync(dir).filter((x) => x.endsWith('.js')).sort()) readFileSync(join(dir, f), 'utf8').split('\n').forEach((l, i) => { if (/S\.events\.push\(|S\.events = |C\.castleOf\(|\.score \+=|S\.play\.(wall|life) \+=|player\.xp\s*\+=/.test(l)) hits.push({ line: `${f}:${i + 1}`, text: l.trim().slice(0, 118) }); });
   return hits;
 }
 
@@ -338,8 +337,8 @@ export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, 
     L.push(`| ${i} | ${t ? `\`${t.key}\`` : 'the first cut of the rework'} | ${t ? `${JSON.stringify(t.before)} → ${JSON.stringify(t.after)}` : '—'} | ${t ? t.why : 'the baseline'} | ${run.map((x) => (x.met ? '✓' : '✗')).join(' | ')} |`);
   });
   L.push('', '**Not touched:** the engine; rarity, XP bases and multipliers, the player step (200, from the first sim), medals, the skill step and the siege\'s ages and weights (the design\'s definition of an order at the walls, not a balance knob).', '');
-  L.push('## Where evidence enters, where the castle comes from, where score changes', '', 'Read from `prototype/prototype.src.html` when this report was generated. Evidence enters the event list on a finished task, a survey or a logged lift (and when a save or the DEMO history is replayed); the castle is derived from the fold\'s log in one place; score changes only inside a stage or at the wall, and no line carries it into the event list.', '');
-  for (const h of sourceAudit()) L.push(`- line ${h.line}: \`${h.text.replace(/`/g, "'")}\``);
+  L.push('## Where evidence enters, where the castle comes from, where score changes', '', 'Read from `prototype/game/*.js` (the page\'s script, in fragments) when this report was generated. Evidence enters the event list on a finished task, a survey or a logged lift (and when a save or the DEMO history is replayed; embedded in a host app, the host\'s validated events replace the list whole); the castle is derived from the fold\'s log in one place; score changes only inside a stage or at the wall, and no line carries it into the event list.', '');
+  for (const h of sourceAudit()) L.push(`- ${h.line}: \`${h.text.replace(/`/g, "'")}\``);
   L.push('');
   return L.join('\n');
 }

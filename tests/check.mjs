@@ -402,7 +402,8 @@ test('the superseded blocks are gone: no fortress map, no cells, no third-person
 });
 
 // ── prototype 4: the page itself ────────────────────────────────────────────
-const SRC = read('prototype/prototype.src.html');
+const BUILD = await import('../prototype/build.mjs');
+const SRC = BUILD.source();   // the page's source with the game's fragments (prototype/game/*.js) joined in, as build.mjs joins them
 const scripts = (html) => [...html.matchAll(/<script(?![^>]*type="application\/json")[^>]*>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 /** The source of one top-level function of the page, by name. */
 const fn = (name) => { const a = SRC.indexOf(`\n  function ${name}(`); assert.ok(a >= 0, `function ${name}`); const eol = SRC.indexOf('\n', a + 1), first = SRC.slice(a + 1, eol); if (/\}\s*(\/\/.*)?$/.test(first)) return '\n' + first; const b = SRC.indexOf('\n  }\n', a); return SRC.slice(a, b); };   // a one-line function is its line
@@ -428,20 +429,41 @@ test('pillar 1 in the page: the castle comes from the evidence log in one place,
   assert.ok(fires.length >= 3); for (const f of fires) assert.match(f, /^(ev|lessonEvent\(p\.id, TODAY\)|liftEvent\(TODAY\))$/, `fire() carries evidence only: ${f}`);
   assert.match(fn('closeOrder'), /const ev = closeEvent\(o\);/, 'and that event is a finished order');
   // the DEMO's one stand-in, named: a waypoint's button ticks the lesson (the app opens the lesson instead); no key does it, and it needs a post
-  assert.match(fn('survey'), /const p = ST && ST\.near; if \(!p \|\| S\.ticks\.includes\(p\.id\)\) return;/);
+  assert.match(fn('survey'), /const p = ST && ST\.near; if \(!p \|\| !p\.id \|\| S\.ticks\.includes\(p\.id\)\) return;/);
+  // embedded in a host app: the events are the host's, checked by the engine's own validator and assigned whole in one place; none is made here
+  assert.equal((SRC.match(/\bS\.events = /g) || []).length, 1, 'one line replaces the event list');
+  assert.match(fn('applyWorld'), /S\.events = w\.events;/); assert.match(fn('readWorld'), /const v = E\.validateEvents\(m\.events\); if \(v\.refused\.length\) return null;/);
+  for (const [f, to] of [['closeOrder', 'workorders'], ['logLift', 'health'], ['survey', 'learning']]) {
+    const body = fn(f), at = body.indexOf(`if (EMBED) { hostGo('${to}'); return; }`), made = body.search(/fire\(|S\.ticks\.push|S\.closed\.push|S\.liftsLogged\.push/);
+    assert.ok(at > 0 && made > at, `${f}: embedded, it asks the host to open ${to} before any evidence could be made`);
+  }
+  assert.ok(!/fire\(|closeEvent|lessonEvent|liftEvent|S\.events\.push/.test(fn('applyWorld') + fn('readWorld') + fn('embedListen')), 'the embed\'s intake builds no event of its own');
   assert.ok(!/survey\(\)/.test(SRC.split('\n').filter((l) => /addEventListener\('keydown'/.test(l)).join('')), 'no key ticks a lesson');
   assert.ok(RULES.bank.stage.card_demo && /DEMO/.test(RULES.bank.stage.card_demo), 'and the card says it is the DEMO standing in');
 });
 
+// Everything a run does: the stage, the machines, the bosses, the upgrades, what play score opens. None of it may touch the evidence.
+const PLAY_FNS = ['updateStage', 'finishStage', 'updateCastle', 'endFight', 'hurt', 'die', 'grow', 'arena', 'cache', 'newStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'startBoss', 'bossDown', 'bossReset',
+  'award', 'kill', 'strike', 'shoot', 'crackHit', 'reachPost', 'relicFound', 'recalc', 'takeUpgrade', 'offerUpgrade', 'wildsBiomes'];
 test('pillar 1 in the page: score is play. No line carries it into the evidence, XP or the castle', () => {
   const lines = SRC.split('\n');
   for (const l of lines) if (/score/i.test(l) && !/^\s*(\/\/|\/\*|\*)/.test(l)) assert.ok(!/S\.events|closeEvent|lessonEvent|liftEvent|setState\(|castleOf/.test(l) || /function |\/\/ /.test(l) && !/score[^;]*S\.events\.push/.test(l), `a score line touches the evidence: ${l.trim().slice(0, 90)}`);
-  for (const f of ['updateStage', 'finishStage', 'updateCastle', 'endFight', 'hurt', 'grow', 'newStage']) { const body = fn(f); assert.ok(!/S\.events|fire\(|setState\(|derive\(|S\.st\s*=|S\.ticks\.push|S\.closed\.push|S\.liftsLogged\.push/.test(body), `${f} never touches the evidence`); }
+  for (const f of PLAY_FNS) { const body = fn(f); assert.ok(!/S\.events|fire\(|setState\(|derive\(|S\.st\s*=|S\.ticks\.push|S\.closed\.push|S\.liftsLogged\.push/.test(body), `${f} never touches the evidence`); }
   assert.ok(!/\.xp\s*[+\-*]?=(?!=)/.test(SRC.replace(/hudEls\.xp/g, '')), 'no XP write outside the engine');
-  assert.match(fn('updateStage'), /ST\.score \+= RS\.enemies\[z\.type\]\.score/, 'a stage kill pays play score');
+  assert.match(fn('kill'), /award\(RS\.enemies\[z\.type\]\.score, /, 'a stage kill pays play score'); assert.match(fn('award'), /ST\.score \+= n;/, 'and score is all award() adds to');
+  assert.match(fn('bossDown'), /award\(RS\.bosses\.score, /, 'a boss pays play score: no item, no piece');
+  // play powers play: lifetime play score is fed by runs and by the Keeper's kills at the wall, and what it opens is for play
+  const lifeAdds = SRC.split('\n').filter((l) => /S\.play\.life \+= /.test(l));
+  assert.equal(lifeAdds.length, 2); assert.ok(lifeAdds.some((l) => /S\.play\.life \+= score;/.test(l)) && lifeAdds.some((l) => /S\.play\.life \+= sum\.keeperDowned \* RS\.score\.horde_machine;/.test(l)), 'a run\'s score and the wall\'s score, nothing else');
+  for (const l of lines) if (/S\.play\.|unlocked\(|RS\.meta|RS\.upgrades/.test(l) && !/^\s*(\/\/|\/\*|\*)/.test(l)) assert.ok(!/S\.events|closeEvent\(|lessonEvent\(|liftEvent\(|castleOf|setState\(|S\.st\s*=/.test(l) || /function (loadSave|reset)\b|\bS = \{ events/.test(l), `a play line touches the evidence: ${l.trim().slice(0, 100)}`);
+  assert.deepEqual([...new Set(RULES.stage.meta.unlocks.map((u) => u.kind))].sort(), ['biome', 'move', 'slot', 'upgrade'], 'what play score opens: upgrades, a move, a slot, worlds. All for play');
+  assert.ok(!/xp|level|item|piece|medal|rank/i.test(JSON.stringify(RULES.stage.meta.unlocks)), 'nothing it opens is XP, a level, an item or a castle piece');
+  assert.ok(!/S\.play|unlocked\(|ST\./.test(fn('setState') + fn('moment') + fn('fire')), 'the evidence path never reads play');
+  assert.match(fn('die'), /finishStage\(false\);/, 'a death ends the run');
+  assert.ok(!/S\.play\.life\s*(-=|=(?!=)\s*0)|S\.play\.life--/.test(SRC.replace(/life: 0/g, '')), 'and nothing ever lowers the lifetime score: every unlock is kept');
   assert.match(fn('endFight'), /S\.play\.wall \+= sum\.keeperDowned \* RS\.score\.horde_machine/, 'the Keeper\'s kills at the wall pay play score');
   assert.match(fn('endFight'), /if \(sum\.outcome !== 'held'\) S\.horde\.dim = true;/, 'a breach sets one flag, and a held horde does not clear it');
-  assert.match(fn('fire'), /if \(relit\) S\.horde\.dim = false;/, 'and only evidence clears it');
+  assert.match(fn('moment'), /const relit = !EMBED && S\.horde\.dim && pieces\.length > 0; if \(relit\) S\.horde\.dim = false;/, 'and only evidence clears it (embedded, the flag is the host\'s)');
   assert.equal((SRC.match(/S\.horde\.dim\s*=[^=]/g) || []).length, 2, 'the fight sets the flag and fire() clears it: nothing else writes it');
   for (const f of ['endFight', 'skipFight', 'showSummary']) assert.ok(!/S\.closed|S\.ticks|S\.liftsLogged|S\.events|S\.lastLevel|S\.shown/.test(fn(f)), `${f} takes nothing`);
 });
@@ -455,11 +477,11 @@ test('the save holds no map and nothing the evidence can rebuild', () => {
 
 test('the update and render paths allocate nothing per frame (the HUD, four times a second, builds its strings)', () => {
   assert.match(fn('backdrop'), /if \(bg && bgKey\) return bg;/, 'the backdrop is painted once per theme and size');
-  for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'drawCastle', 'ground', 'text', 'stone', 'crenels', 'frame', 'burst', 'pop']) {
+  for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'renderBoss', 'drawWorld', 'drawAir', 'drawCastle', 'ground', 'tuft', 'text', 'stone', 'crenels', 'frame', 'burst', 'puff', 'pop', 'emit', 'ebullet', 'aim', 'strike', 'kill', 'hurt', 'shoot', 'jolt']) {
     const src = fn(f).replace(/\/\/.*$/gm, ''), body = src.slice(src.indexOf('{') + 1);
     const bad = body.match(/\.(map|filter|slice|concat|flatMap|reduce|forEach|split|join|find|some|every|includes)\(|\bnew \w|Array\.from|\[[^\]]*,[^\]]*\]\s*[;)]|=>|`|\bString\(|\.toUpperCase\(|\{ ?\w+: /g) || [];
     // the few allowed, each exactly as often as it stands today: the cached score and horde count, and a ticked-post lookup
-    const allowed = { renderCastle: { 'String(': 1 }, renderStage: { 'String(': 1, '.includes(': 1 } }[f] || {};
+    const allowed = { renderCastle: { 'String(': 1 }, renderStage: { 'String(': 1 } }[f] || {};
     const seen = {}; for (const b of bad) seen[b] = (seen[b] || 0) + 1;
     assert.deepEqual(seen, allowed, `${f}: ${bad.join(' ')}`);
   }
@@ -477,6 +499,10 @@ test('storage: the page touches localStorage only through its helper, under exac
   assert.equal((SRC.match(/localStorage\./g) || []).length, 3, 'get, set and remove, in the helper');
   const keys = [...new Set(SRC.match(/'fieldworks-[a-z]+'/g))].sort();
   assert.deepEqual(keys, ["'fieldworks-keeper'", "'fieldworks-onboarded'", "'fieldworks-save'", "'fieldworks-telemetry'"]);
+  // embedded, two keys of its own and no others: play only
+  assert.deepEqual([...new Set(SRC.match(/'fieldworks-[a-z-]+'/g))].sort(), ["'fieldworks-embed-onboarded'", "'fieldworks-embed-play'", "'fieldworks-keeper'", "'fieldworks-onboarded'", "'fieldworks-save'", "'fieldworks-telemetry'"]);
+  assert.match(SRC, /const KEYS = EMBED \? \{ keeper: '', save: 'fieldworks-embed-play', onboarded: 'fieldworks-embed-onboarded', telemetry: '' \}/, 'embedded: no name and no telemetry are kept');
+  assert.match(fn('snapshot'), /if \(EMBED\) return \{ version: RULES\.save\.version, rules: RULES_HASH, play: S\.play \};/, 'and the embed\'s save is the play record alone');
   assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource|navigator\.share/.test(SRC), 'nothing is sent anywhere');
 });
 
@@ -529,24 +555,179 @@ test('the Pages site: the two pages and the faces only, noindex, nothing loaded 
   } finally { rmSync(out, { recursive: true, force: true }); }
 });
 
+// ── version 3: the feel pass, in the rules ─────────────────────────────────
+test('rules.stage (version 3): the moves, six machines brought in by degrees, three bosses, the worlds and hard mode', () => {
+  const S = RULES.stage, B = RULES.bank;
+  assert.equal(RULES.game.version, 3);
+  const M = S.moves; for (const k of ['dash_speed', 'dash_s', 'dash_cooldown_s', 'dash_invulnerable_s', 'coyote_s', 'buffer_s', 'jump_cut', 'double_jump', 'charge_s', 'charge_damage', 'charge_speed']) assert.ok(M[k] > 0, `moves.${k}`);
+  assert.ok(M.dash_speed > S.keeper.speed * 2 && M.dash_invulnerable_s >= M.dash_s && M.dash_cooldown_s > M.dash_s, 'a dash is fast, safe while it lasts, and then rests');
+  assert.ok(M.charge_damage > S.keeper.shot_damage && M.coyote_s <= .15 && M.buffer_s <= .2);
+  assert.deepEqual(Object.keys(S.enemies).sort(), ['brute', 'crawler', 'drone', 'hopper', 'turret', 'warden'], 'six kinds');
+  const from = Object.values(S.enemies).map((e) => e.from); assert.ok(from.every((n) => Number.isInteger(n) && n >= 1) && Math.min(...from) === 1 && new Set(from).size >= 5, 'brought in by degrees, the first in week 1');
+  for (const k of ['shot_every_s', 'shot_speed']) { assert.ok(S.enemies.drone[k] > 0); assert.ok(S.enemies.turret[k] > 0); }
+  assert.ok(S.shots.tell_s >= .3, 'a shot is announced');
+  assert.deepEqual(S.bosses.order, ['hauler', 'eye', 'undertow']);
+  for (const k of S.bosses.order) { const D = S.bosses[k]; assert.ok(D.hp > 20 && D.w > 16 && D.h > 16 && D.phase2_at > 0 && D.phase2_at < 1, `boss ${k}`); for (const w of ['name', 'sign', 'intro', 'phase', 'down']) assert.ok(B.boss[k][w], `bank boss.${k}.${w}`); assert.match(B.boss[k].sign, /^[A-Z ]+$/, 'a sign is drawn in the pixel face'); }
+  assert.ok(S.bosses.hauler.tell_s >= .4 && S.bosses.eye.tell_s >= .4 && S.bosses.eye.beam_tell_s >= .5 && S.bosses.undertow.rumble2_s >= .4, 'every attack is announced long enough to be learned');
+  assert.ok(S.bosses.hauler.h < 3 * S.tile, 'a ledge three tiles up clears the Hauler\'s charge');
+  assert.ok(S.bosses.arena_tiles * S.tile >= 220, 'an arena is wider than the widest view');
+  assert.ok(S.biomes.list.length >= 4 && S.biomes.list[0].at === 0 && S.biomes.list[0].slug === S.biomes.home);
+  for (const b of S.biomes.list) {
+    for (const k of ['sun', 'far_light', 'far_dark', 'near_light', 'near_dark', 'feature_light', 'feature_dark', 'glow', 'top', 'top2', 'soil', 'soil2', 'slab', 'slab2', 'bloom']) assert.match(b[k], /^#[0-9a-f]{6}$/i, `${b.slug}.${k}`);
+    assert.equal(b.sky_light.length, 5); assert.equal(b.sky_dark.length, 5); assert.ok(b.life.length >= 1 && ['trees', 'mesas', 'reeds', 'stacks', 'spires'].includes(b.feature));
+    assert.ok(B.biome[b.slug].name && /^[A-Z ]+$/.test(B.biome[b.slug].sign) && RULES.audio.songs[b.song], `${b.slug}: a name, a sign and a song`);
+  }
+  assert.ok(new Set(S.biomes.weeks).size >= 4 && S.biomes.weeks.every((w) => S.biomes.list.some((b) => b.slug === w)), 'the weeks wear at least four worlds');
+  assert.ok(S.hard.hearts === 1 && S.hard.speed > 1 && S.hard.score > 1, 'hard mode: one heart, faster machines, a bigger score');
+  assert.ok(Number.isInteger(S.continues) && S.continues >= 0 && S.checkpoints_min >= 1 && S.checkpoint.heal >= 0);
+  assert.ok(S.combo.window_s > 0 && S.combo.step > 0 && Number.isInteger(S.combo.cap));
+  for (const k of ['hard', 'hard_note', 'checkpoint', 'restart', 'cache_open', 'relic', 'pad_dash', 'warning_sign', 'title_wilds', 'title_week']) assert.ok(B.stage[k], `bank stage.${k}`);
+  assert.ok(/dash/i.test(B.castle.keys) && /charge/i.test(B.castle.keys) && /Shift|K\b/.test(B.castle.keys), 'the on-screen help names the new moves and their keys');
+  assert.ok(B.story.fragments.length >= 6 && B.story.fragments.every((f) => typeof f === 'string' && f.length > 12), 'the story is fragments, from the bank');
+});
+
+test('rules.stage.upgrades and rules.stage.meta: a run\'s picks, and what lifetime play score opens for play', () => {
+  const U = RULES.stage.upgrades, M = RULES.stage.meta, B = RULES.bank;
+  assert.equal(U.offer, 3, 'one of three');
+  assert.ok(U.list.length >= 9); assert.equal(new Set(U.list.map((u) => u.slug)).size, U.list.length); assert.equal(new Set(U.list.map((u) => u.code)).size, U.list.length);
+  for (const u of U.list) { assert.match(u.code, /^[A-Z]{2}$/, `${u.slug}: a two-letter code for the HUD`); assert.ok(Number.isInteger(u.max) && u.max >= 1 && u.at >= 0); assert.ok(B.upgrade[u.slug].name && B.upgrade[u.slug].line, `bank upgrade.${u.slug}`); }
+  assert.ok(U.list.filter((u) => u.at === 0).length >= U.offer, 'a new player is always offered three');
+  for (const w of ['checkpoint', 'boss', 'perk']) assert.ok(B.upgrade.why[w]);
+  const at = M.unlocks.map((u) => u.at); assert.ok(at.every((n, i) => n > 0 && (i === 0 || n > at[i - 1])), 'the thresholds climb');
+  for (const u of M.unlocks) {
+    assert.ok(B.meta.names[u.slug], `bank meta.names.${u.slug}`);
+    if (u.kind === 'upgrade') assert.equal(U.list.find((x) => x.slug === u.slug).at, u.at, `${u.slug}: the pool and the track agree`);
+    if (u.kind === 'biome') assert.equal(RULES.stage.biomes.list.find((x) => x.slug === u.slug).at, u.at, `${u.slug}: the world and the track agree`);
+  }
+  for (const u of U.list.filter((x) => x.at > 0)) assert.ok(M.unlocks.some((m) => m.slug === u.slug && m.kind === 'upgrade'), `${u.slug} is on the track`);
+  for (const b of RULES.stage.biomes.list.filter((x) => x.at > 0)) assert.ok(M.unlocks.some((m) => m.slug === b.slug && m.kind === 'biome'), `${b.slug} is on the track`);
+  assert.ok(M.unlocks.some((u) => u.slug === 'double_jump' && u.kind === 'move') && M.unlocks.some((u) => u.slug === 'perk' && u.kind === 'slot'));
+  assert.ok(/only for play/i.test(B.meta.note) && /finished work/i.test(B.meta.note), 'the track says what it is not');
+  assert.ok(/never power/.test(B.stage.score_note));
+});
+
+test('rules.audio: sound is data for a synth in code; every effect and song the page asks for exists', () => {
+  const A = RULES.audio; assert.ok(A.volume > 0 && A.volume <= 1 && A.lookahead_ms > 0 && A.ahead_s > 0);
+  for (const [k, d] of Object.entries(A.sfx)) { assert.ok(['square', 'sawtooth', 'triangle', 'sine', 'noise'].includes(d.wave) && d.s > 0 && d.vol > 0 && d.vol <= .3, `sfx.${k}`); if (d.notes) assert.match(d.notes, /^\d+( \d+)*$/); else assert.ok(d.from > 0 && d.to > 0, `sfx.${k}`); }
+  for (const [k, s] of Object.entries(A.songs)) { assert.ok(s.bpm >= 60 && s.bpm <= 200 && s.vol > 0 && s.vol <= .1, `songs.${k}`); for (const line of [s.lead, s.bass]) { assert.match(line, /^\d+( \d+)*$/); assert.equal(line.split(' ').length, 32, `songs.${k}: two bars of sixteenths`); } }
+  for (const need of ['jump', 'shot', 'charged', 'hit', 'kill', 'pickup', 'hurt', 'upgrade', 'boss', 'warning']) assert.ok(A.sfx[need], `the effect the brief names: ${need}`);
+  for (const m of SRC.matchAll(/\bsfx\('([a-z]+)'\)/g)) assert.ok(A.sfx[m[1]], `sfx('${m[1]}') is in the rules`);
+  for (const m of SRC.matchAll(/\bmusic\('([a-z]+)'/g)) assert.ok(A.songs[m[1]], `music('${m[1]}') is in the rules`);
+  assert.ok(A.songs.boss && A.songs.castle && A.songs.warning);
+  // no audio file, nothing before the first input, and a mute that is remembered
+  assert.ok(!/<audio|new Audio|\.mp3\b|\.ogg\b|\.wav\b|decodeAudioData/.test(SRC), 'no audio file anywhere');
+  assert.equal((SRC.match(/new AC\(\)/g) || []).length, 1); assert.match(fn('auUnlock'), /AU\.ctx = new AC\(\);/, 'the one AudioContext is made in auUnlock');
+  const calls = SRC.split('\n').filter((l) => /auUnlock\(\)|, auUnlock,/.test(l) && !/function auUnlock/.test(l)); assert.ok(calls.length >= 3 && calls.every((l) => /pointerdown|keydown|closest\(|const k = b\.dataset\.key/.test(l)), 'and auUnlock is called only from an input handler');
+  assert.match(fn('setMute'), /S\.play\.mute = !!on; .*saveNow\(\);/, 'mute is part of the play record, and saved');
+  assert.match(SRC, /const CALM = matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches;/); assert.match(fn('jolt'), /if \(CALM\) return;/, 'reduced motion: no shake and no hit-stop');
+});
+
+// ── the embeddable build (embed/): the same code for a host app's frame ─────
+const EMBED_FILES = ['play.html', 'play.js', 'play.css'];
+test('the built files equal a rebuild: the two pages and embed/', () => {
+  const out = BUILD.build();
+  assert.equal(read('prototype/index.html'), out.index, 'prototype/index.html'); assert.equal(read('prototype/art-sheet.html'), out.art, 'prototype/art-sheet.html');
+  assert.deepEqual(Object.keys(out.embed).sort(), EMBED_FILES.slice().sort()); assert.deepEqual(readdirSync(join(root, 'embed')).sort(), EMBED_FILES.slice().sort(), 'embed/ holds the three files and nothing else (the faces are copied beside it by the host)');
+  for (const f of EMBED_FILES) assert.equal(read(`embed/${f}`), out.embed[f], `embed/${f}: run node prototype/build.mjs`);
+  assert.ok(BUILD.gameFiles().length >= 8 && BUILD.gameFiles().every((f) => /^\d\d-[a-z-]+\.js$/.test(f)), 'the game is its fragments, in name order');
+  for (const f of BUILD.gameFiles()) assert.doesNotThrow(() => new vm.Script(read(`prototype/game/${f}`)), `prototype/game/${f} parses on its own`);
+});
+
+test('embed/play.html: no inline script, its own policy with no connect-src, nothing from another host', () => {
+  const html = read('embed/play.html');
+  assert.ok(html.startsWith('<!doctype html>\n<html lang="en" class="embed">\n<meta charset="utf-8">'));
+  assert.deepEqual([...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((m) => [m[0].startsWith('<script src="play.js">'), m[1]]), [[true, '']], 'one script, by src, with no body');
+  assert.ok(!/\son[a-z]+\s*=|javascript:|<style|style="/i.test(html), 'no inline handler, style or javascript: URL');
+  const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(html)[1]; assert.equal(csp, BUILD.EMBED_CSP);
+  assert.equal(csp, "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self' blob:");
+  assert.ok(!/connect-src|unsafe-eval|https?:|\*/.test(csp), 'no connect-src (default-src none stands), no eval, no other origin');
+  assert.ok(html.includes('<meta name="robots" content="noindex">') && html.includes('name="viewport"'));
+  assert.deepEqual([...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]), ['play.css', 'fonts/fonts.css', 'play.js'], 'three relative links: the styles, the faces, the script');
+  const EXTERNAL = /\b(?:https?|wss?|ftp):\/\/[a-z0-9-]|(?:["'(=,]\s*|url=)\/\/[a-z0-9-]+\.[a-z]/gi;
+  for (const f of EMBED_FILES) assert.equal(read(`embed/${f}`).match(EXTERNAL), null, `embed/${f} names no other host`);
+  assert.ok(!new RegExp('fonts\\.googleapis|@' + 'import').test(read('embed/play.css')), 'the embed\'s styles ask no third party for a face');
+  for (const f of EMBED_FILES) assert.deepEqual(sweep(read(`embed/${f}`)), [], `the wall sweep over embed/${f}`);
+  assert.ok([...files(root)].some((f) => relative(root, f) === join('embed', 'play.js')), 'and the tree-wide sweep reads embed/ too');
+});
+
+test('embed/play.js: one classic script carrying the flag, the body, the rules, the engine, the castle module and the same game', () => {
+  const js = read('embed/play.js');
+  assert.doesNotThrow(() => new vm.Script(js));
+  assert.ok(js.indexOf('globalThis.FIELDWORKS_EMBED = true;') >= 0 && js.indexOf('globalThis.FIELDWORKS_EMBED = true;') < js.indexOf('(function () {'), 'the flag is set at its top, before any code runs');
+  assert.ok(js.includes(read('src/engine.js').trimEnd()) && js.includes(read('src/castle.js').trimEnd()) && js.includes(`globalThis.FIELDWORKS_RULES = ${read('rules/fieldworks.json').trim()};`), 'the engine, the castle module and the rules, byte for byte');
+  const game = /<script>\n(\(\(\) => \{\n[\s\S]*?\n\}\)\(\);)\n<\/script>\s*$/.exec(SRC)[1]; assert.ok(js.includes(game), 'and the page\'s own game script, unchanged');
+  // the body it builds: the page's, without the DEMO's chrome
+  const body = JSON.parse(/globalThis\.FIELDWORKS_BODY = (".*");\n/.exec(js)[1]);
+  for (const gone of ['class="dev"', 'seg-clock', 'id="reset"', 'class="ribbon"', 'SocialOS', 'bar-nav', 'homebtn', '<script']) assert.ok(!body.includes(gone), `the embed's body has no ${gone}`);
+  for (const kept of ['id="phone"', 'id="screen"', 'id="overlay"', 'id="live"', 'id="i-fort"']) assert.ok(body.includes(kept), `the embed's body keeps ${kept}`);
+  // it never reads its own URL (a srcdoc frame has none) and can call nowhere
+  assert.ok(!/\blocation\b|document\.URL|document\.referrer|document\.cookie|document\.currentScript/.test(SRC), 'the game never reads a URL, a referrer or a cookie');
+  assert.ok(!/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource|\bimport\(|new Worker|navigator\.serviceWorker/.test(js), 'and makes no network call');
+  assert.match(fn('embedListen'), /if \(ev\.source !== window\.parent \|\| ev\.origin !== self\.origin\) return;/, 'a message is taken only from the parent, on this origin');
+  assert.match(fn('hostPost'), /window\.parent\.postMessage\(msg, self\.origin\)/, 'and posted only to this origin');
+  assert.equal((SRC.match(/postMessage\(/g) || []).length, 1, 'one postMessage in the page'); assert.equal((SRC.match(/addEventListener\('message'/g) || []).length, 1, 'one listener');
+  assert.match(SRC, /const HOST_PLACES = \['workorders', 'learning', 'health', 'close'\];/);
+});
+
+test('the embed in the page\'s code: the host\'s world, never the DEMO; play only on the device; the pillars hold', () => {
+  assert.match(SRC, /const EMBED = !!globalThis\.FIELDWORKS_EMBED;/); assert.ok(!/FIELDWORKS_EMBED = true/.test(read('prototype/index.html')), 'the page never sets the flag');
+  assert.match(SRC, /let OUT = !!globalThis\.FIELDWORKS_SIGNED_OUT \|\| EMBED;/, 'embedded, the game starts signed out: reset() lays no DEMO evidence, order, lesson, lift or horde');
+  assert.equal((SRC.match(/\bOUT = /g) || []).length, 2, 'OUT is set where it is declared and where a world is applied'); assert.match(fn('applyWorld'), /TODAY = w\.today; OUT = false; EMB\.state = 'world';/);
+  for (const demo of ['PRIOR', 'OPEN0', 'TICKS0', 'HORDE0', 'QUESTS', 'DEMO_PLAN']) assert.ok(!new RegExp(`\\b${demo}\\b`).test(fn('applyWorld') + fn('readWorld') + fn('readOrder') + fn('readPlan') + fn('embedListen')), `the embed's intake never reads the DEMO's ${demo}`);
+  assert.match(fn('applyWorld'), /S\.hordeKnown = !!w\.horde; S\.horde = w\.horde \|\| HORDE_NONE\(\);/, 'the horde is the host\'s, or none');
+  assert.match(fn('advanceDays'), /if \(EMBED\) return;/); assert.match(fn('hordeNow'), /if \(EMBED\) return;/, 'the game runs no horde clock of its own when embedded');
+  assert.match(SRC, /const hdate = \(\) => \(EMBED \? TODAY : /, 'the day is the host\'s');
+  assert.match(fn('hordeLine'), /if \(EMBED && !OUT && !S\.hordeKnown\) return BANK\.horde\.unknown;/); assert.ok(RULES.bank.horde.unknown, 'a horde the host did not send is said, not guessed');
+  for (const k of ['reading', 'none', 'unread']) { assert.ok(RULES.bank.embed[k] && RULES.bank.embed.head[k], `bank embed.${k}`); } assert.ok(RULES.embed.wait_ms >= 1000);
+  const ls = fn('loadSave'), at = ls.indexOf('if (EMBED) {'), branch = ls.slice(at, ls.indexOf("return 'loaded';", at)).replace(/\/\/.*$/gm, '');
+  assert.ok(at > 0 && at < ls.indexOf('const old = ') && !/S\.events|S\.horde|S\.ticks|S\.liftsLogged|S\.closed|journal/.test(branch), 'an embed save is read before any journal or horde, and is the play record alone');
+  assert.match(fn('playOf'), /const q = \{ \.\.\.PLAY0\(\), best: p\.best, wilds: p\.wilds, paint: p\.paint, wall: p\.wall, /, 'and only known play fields are kept from it');
+  // pillar 1, embedded: the castle still comes from the one fold; the world's intake sets no castle and pays nothing
+  assert.ok(!/CAS\b|castleOf|\.xp\b|S\.play/.test(fn('readWorld') + fn('readOrder') + fn('readPlan')), 'reading a world touches neither the castle nor the play record');
+  assert.match(fn('applyWorld'), /setState\(derive\(\)\)|moment\(before, null\)/, 'the castle is the fold over the host\'s events, through the same two functions');
+});
+
+test('the embed\'s intake, run: a good world is taken, anything malformed is refused whole, a name never crosses the wall', () => {
+  // the page's own readers, lifted from its source and run against the real engine
+  const box = { E, RULES, globalThis: null }; box.globalThis = box;
+  const pick = (re) => { const m = re.exec(SRC); assert.ok(m, String(re)); return m[0]; };
+  vm.runInNewContext([pick(/  const isInt = .*\n/), pick(/  const isDay = .*\n/), fn('validHorde') + '\n  }', pick(/  const isStr = .*\n/), pick(/  const NAME_FIELDS = .*\n/), fn('readOrder') + '\n  }', fn('readPlan') + '\n  }', pick(/  const hordeShape = .*\n/), fn('readWorld') + '\n  }', 'globalThis.readWorld = readWorld;'].join('\n'), box);
+  const ev = (id, more = {}) => ({ id, kind: 'close', at: '2026-11-20', tier: 'public', zone: 'alpha', weight: 50, facts: { pn: 'P2' }, evidence: { kind: 'commit', ref: `demo/${id}` }, ...more });
+  const world = (more = {}) => ({ fw: 1, type: 'world', today: '2026-12-01', theme: 'light', events: [ev('WO-401'), ev('WO-402')], open: [{ id: 'WO-410', written: '2026-10-01', pn: 'P1', options: 0, steps: 2, zone: 'alpha', tier: 'public', band: 'now' }, { id: 'sealed-1', written: '2026-10-02', tier: 'private' }],
+    plan: { weeks: [{ n: 1, lessons: ['w1a', 'w1b'] }] }, horde: { day: 0, clock: { gather: 3, warned: null, due: null, count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null }, lanes: { workorders: true, learning: true, body: true }, ...more });
+  const ok = box.readWorld(world());
+  assert.ok(ok && ok.events.length === 2 && ok.open.length === 2 && ok.today === '2026-12-01' && ok.horde.clock.gather === 3);
+  assert.deepEqual(Object.keys(ok.open[0]).sort(), ['band', 'id', 'options', 'pn', 'steps', 'tier', 'written', 'zone'], 'an order is its eight fields');
+  assert.equal(JSON.stringify(E.siege(ok.open, RULES, ok.today).map((w) => w.zone).sort()), '["alpha","keep"]', 'and E.siege takes them as they are');
+  assert.ok(box.readWorld(world({ horde: null })) && box.readWorld(world({ plan: null })).plan.weeks.length === 0, 'the horde and the plan may be null');
+  assert.ok(box.readWorld(world({ briefing: { anything: [1, 2, 3] } })), 'a briefing is carried, never a reason to refuse');
+  assert.equal(box.readWorld(world({ open: [{ id: 'WO-410', written: '2026-10-01', tier: 'public', title: 'a title' }] })).open[0].title, undefined, 'a public order\'s title is dropped: none is ever shown');
+  const bad = { 'a private event with a name': world({ events: [ev('lesson/x', { kind: 'lesson', tier: 'private', zone: null, title: 'named' })] }), 'a private order with a name': world({ open: [{ id: 's', written: '2026-10-02', tier: 'private', name: 'named' }] }),
+    'a duplicate id': world({ events: [ev('WO-401'), ev('WO-401')] }), 'an event without evidence': world({ events: [{ ...ev('WO-401'), evidence: null }] }), 'an order without a date': world({ open: [{ id: 'x', written: 'soon', tier: 'public' }] }),
+    'a bad day': world({ today: '12/01/2026' }), 'a bad theme': world({ theme: 'sepia' }), 'no lanes': world({ lanes: null }), 'a lane that is not a boolean': world({ lanes: { workorders: 1, learning: true, body: true } }), 'a horde with a broken clock': world({ horde: { day: 0, clock: { gather: -1 }, history: [], dim: false, arrived: null, fresh: null } }),
+    'a plan that is not weeks': world({ plan: { weeks: [{ n: 0, lessons: 'all' }] } }), 'another protocol version': world({ fw: 2 }), 'another type': world({ type: 'theme' }), 'events that are not a list': world({ events: {} }) };
+  for (const [why, m] of Object.entries(bad)) assert.equal(box.readWorld(m), null, why);
+  assert.equal(box.readWorld(null), null); assert.equal(box.readWorld('world'), null);
+});
+
 test('signed out (the public site): the page starts empty and hides what reads an account', () => {
-  assert.match(SRC, /const OUT = !!globalThis\.FIELDWORKS_SIGNED_OUT;/);
+  assert.match(SRC, /let OUT = !!globalThis\.FIELDWORKS_SIGNED_OUT \|\| EMBED;/);
   const r = fn('reset');
   for (const k of ['events: OUT ? [] : PRIOR.slice()', 'open: OUT ? [] : OPEN0()', 'ticks: OUT ? [] : TICKS0.slice()', 'liftsLogged: OUT ? [] : ', 'horde: OUT ? HORDE_NONE() : HORDE0()', 'if (!OUT) S.events.push({ id: `pace/']) assert.ok(r.includes(k), `reset: ${k}`);
   { const ls = fn('loadSave'), at = ls.indexOf('if (OUT) {'), branch = ls.slice(at, ls.indexOf("return 'loaded';", at));
     assert.ok(at > 0 && at < ls.indexOf('for (const id of j.closed)') && !/S\.events|S\.horde|S\.ticks|S\.liftsLogged|S\.closed/.test(branch), 'a signed-out save returns before the journal and the horde, touching neither'); }
   assert.match(fn('stageRows'), /if \(OUT\) return `\$\{wildsCard\}/, 'the Wilds only: the roadmap is the account\'s');
-  assert.match(SRC, /if \(OUT && !\['castle', 'stage', 'stages', 'keeper'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
+  assert.match(SRC, /if \(\(OUT \|\| EMBED\) && !\['castle', 'stage', 'stages', 'keeper'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
   assert.match(SRC, /if \(OUT && n !== 0\) return;/, 'no roadmap stage by click either');
   assert.ok(RULES.bank.castle.signed_out && RULES.bank.castle.signed_out_short, 'the sentences are in the bank');
   // what hides the account's chrome, held here because CI never runs the walk
   assert.match(SRC, /html\.signed-out \.wrap > \.dev, html\.signed-out \.bar-nav, html\.signed-out \.ribbon \.pill\.lit \{ display: none !important; \}/, 'the prototype bar, Home and Create are hidden by CSS before any script runs');
-  assert.match(SRC, /if \(OUT\) \{   \/\/ the account's chrome[^\n]*\n    document\.querySelector\('\.wrap > \.dev'\)\.style\.display = 'none'; document\.getElementById\('homebtn'\)\.parentElement\.style\.display = 'none';\n    document\.querySelector\('\.ribbon \.brand'\)\.textContent = 'Fieldworks'; document\.querySelector\('\.ribbon \.pill\.lit'\)\.style\.display = 'none';/, 'and again at start-up');
+  assert.match(SRC, /if \(OUT && !EMBED\) \{   \/\/ the account's chrome[^\n]*\n      document\.querySelector\('\.wrap > \.dev'\)\.style\.display = 'none'; document\.getElementById\('homebtn'\)\.parentElement\.style\.display = 'none';\n      document\.querySelector\('\.ribbon \.brand'\)\.textContent = 'Fieldworks'; document\.querySelector\('\.ribbon \.pill\.lit'\)\.style\.display = 'none';/, 'and again at start-up');
   const shell = fn('gameShell');
   assert.match(shell, /const strip = OUT \? \(mode === 'castle' \? `<button class="pri" data-go="stages">[^`]*<button data-go="keeper">[^`]*` : `<button data-go="castle">[^`]*`\)/, 'the signed-out strip: out the gate and the Keeper; in a stage, home');
   assert.ok(!/data-go="siege"/.test(shell.slice(0, shell.indexOf(': mode === '))), 'and no backlog button');
   assert.match(fn('needLine'), /if \(OUT\) return BANK\.castle\.signed_out_short;/);
-  assert.match(fn('showStart'), /\$\{OUT \? `<p><b>\$\{esc\(BANK\.castle\.signed_out\)\}<\/b><\/p>`/);
+  assert.match(fn('showStart'), /: OUT \? `<p><b>\$\{esc\(BANK\.castle\.signed_out\)\}<\/b><\/p>`/);
   assert.match(SRC, /if \(OUT\) TEL = \{ \.\.\.TEL0\(\), opens: TEL\.opens, session_seconds: TEL\.session_seconds \};/, 'no DEMO counts on the Keeper screen');
   assert.match(fn('loadSave'), /if \(validPlay\(s\.play\)\) \{ S\.play\.wilds = s\.play\.wilds;/, 'of an old play record, the Wilds alone');
   assert.ok(!/FIELDWORKS_SIGNED_OUT = true/.test(read('prototype/index.html')), 'the committed page (the DEMO) never sets the flag');

@@ -1,7 +1,7 @@
 {
-  "$note": "FIELDWORKS rules, version 2 (the rework, design D34) — the owner's instance as the first of the template. Every number the engine, the castle module and the prototype read lives here; the code carries none of its own except the hash and the fight's fixed step. Re-theme by writing another file; re-balance by editing this one and running the sim. The bank is the game's every sentence, seeded once for the owner's review (D14) and then data. Public-tier text only: ward names come from the public project seed at run time, never from here.",
+  "$note": "FIELDWORKS rules, version 3 (the rework, design D34; version 3 adds the feel pass: moves, machines, bosses, run upgrades, what play score opens, the worlds, hard mode, sound and the embed) — the owner's instance as the first of the template. Every number the engine, the castle module and the prototype read lives here; the code carries none of its own except the hash and the fight's fixed step. Re-theme by writing another file; re-balance by editing this one and running the sim. The bank is the game's every sentence, seeded once for the owner's review (D14) and then data. Public-tier text only: ward names come from the public project seed at run time, never from here.",
   "game": {
-    "version": 2,
+    "version": 3,
     "site": "fieldworks",
     "name": "Fieldworks",
     "enterprise": "daily-lesson"
@@ -608,7 +608,7 @@
     "castle": {
       "start": "The castle is the work you finished. It holds on its own.",
       "how": "Every closed order, lesson, lift and answered decision adds a piece. Nothing you do in play can add one, and nothing can take one.",
-      "keys": "Left and right to move, jump, fire. On a keyboard: arrows or A and D, space to jump, J or X to fire.",
+      "keys": "Left and right to move, jump, dash, fire; hold fire to charge a shot. On a keyboard: arrows or A and D, space to jump, Shift or K to dash, J or X to fire.",
       "piece": "{what} added to the castle.",
       "parts": {
         "wall": "A wall section",
@@ -630,7 +630,8 @@
       "orders": "Finish a task (evidence)",
       "signed_out": "Signed out, so nothing is built here. Every piece comes from work you finish in SocialOS, and nothing in play can add one. The Wilds are open.",
       "signed_out_short": "Built only by work finished in SocialOS",
-      "keeper": "The Keeper"
+      "keeper": "The Keeper",
+      "power_on": "Power on"
     },
     "horde": {
       "gathering": "A horde gathers: {pct}%",
@@ -670,7 +671,8 @@
       "tile_need": "{n} tasks to hold",
       "tile_holds": "the castle holds",
       "tile_many": "more than {n} tasks",
-      "tile_dim": "walls dim"
+      "tile_dim": "walls dim",
+      "unknown": "The horde's clock was not read"
     },
     "stage": {
       "heading": "Stages",
@@ -689,7 +691,7 @@
       "over": "Run over",
       "score": "Score {score}",
       "new_best": "A new best.",
-      "score_note": "Score is play. It buys paint, never power: XP and castle pieces come only from finished work.",
+      "score_note": "Score is play. It opens paint and things for play, never power: XP and castle pieces come only from finished work.",
       "again": "Run it again",
       "home": "Back to the castle",
       "offline": "Offline. Rebooting where you last stood.",
@@ -705,7 +707,26 @@
         "clean": "no hull lost"
       },
       "walk_closer": "Walk closer",
-      "card_demo": "Not surveyed yet. The app opens the lesson; the DEMO ticks it."
+      "card_demo": "Not surveyed yet. The app opens the lesson; the DEMO ticks it.",
+      "title_wilds": "THE WILDS",
+      "title_week": "WEEK {n}",
+      "warning_sign": "WARNING",
+      "hard_sign": "HARD",
+      "pad_dash": "Dash",
+      "pad_fire": "Fire",
+      "pad_jump": "Jump",
+      "hard": "Hard mode",
+      "hard_note": "One heart, faster machines, no restarts. Play score ×{x}.",
+      "hard_line": "Hard mode: score ×{x}",
+      "roadmap": "The roadmap",
+      "roadmap_meta": "{n} regions mapped · {rank}",
+      "wilds_biomes": "{n} of {of} worlds open.",
+      "checkpoint": "Checkpoint. Hull patched; pick one.",
+      "restart": "Offline. Back at the checkpoint; {n} restarts left.",
+      "cache_open": "The wall gives. Something was kept behind it.",
+      "relic": "A relic.",
+      "combo_best": "best chain ×{n}",
+      "bosses_down": "bosses downed: {n}"
     },
     "keeper": {
       "hearts": "{n} hull · level {level}",
@@ -733,7 +754,7 @@
       },
       "stages": {
         "title": "Out the gate is a game",
-        "body": "Run, jump and shoot through a stage for each week of the roadmap, or as far as you can in the Wilds. Score is for fun and paint. Power comes only from real work."
+        "body": "Run, jump, dash and shoot through a stage for each week of the roadmap, with a boss at its end, or as far as you can in the Wilds. Score opens paint and things for play. The castle is built only by real work."
       }
     },
     "telemetry": {
@@ -745,10 +766,172 @@
       "stages_cleared": "stages cleared",
       "hordes_seen": "hordes seen",
       "regions_mapped": "regions mapped"
+    },
+    "sound": {
+      "label": "Sound",
+      "note": "Music and effects, made in code. Kept on this device.",
+      "on": "Sound on",
+      "off": "Sound off"
+    },
+    "upgrade": {
+      "title": "Pick one",
+      "note": "It lasts for this run. Play score opens more of them, for good.",
+      "why": {
+        "checkpoint": "Checkpoint",
+        "boss": "The way is clear",
+        "perk": "A head start"
+      },
+      "spread": {
+        "name": "Spread shot",
+        "line": "Two more shots, fanned."
+      },
+      "rapid": {
+        "name": "Rapid fire",
+        "line": "The tool arm cycles faster."
+      },
+      "heart": {
+        "name": "Hull plate",
+        "line": "One more heart, and one patched."
+      },
+      "magnet": {
+        "name": "Spark magnet",
+        "line": "Sparks come to you from further off."
+      },
+      "charge": {
+        "name": "Deep charge",
+        "line": "Charges sooner and hits harder."
+      },
+      "shield": {
+        "name": "Shield",
+        "line": "Takes one hit, then recharges."
+      },
+      "pierce": {
+        "name": "Piercing",
+        "line": "A shot passes through one more machine."
+      },
+      "strike": {
+        "name": "Dash strike",
+        "line": "A dash cuts whatever it crosses."
+      },
+      "buddy": {
+        "name": "Companion",
+        "line": "A small drone that fires on its own."
+      },
+      "overclock": {
+        "name": "Overclock",
+        "line": "The dash is ready sooner."
+      },
+      "salvage": {
+        "name": "Salvage",
+        "line": "Downed machines pay extra."
+      }
+    },
+    "boss": {
+      "hauler": {
+        "name": "The Hauler",
+        "sign": "THE HAULER",
+        "intro": "It rears before it charges. Be somewhere else.",
+        "phase": "It is angry now. Mind where it lands.",
+        "down": "The Hauler is scrap. The way is clear."
+      },
+      "eye": {
+        "name": "The Kiln Eye",
+        "sign": "THE KILN EYE",
+        "intro": "It glows before it fires. Use the ledges.",
+        "phase": "It sweeps a beam. Dash through it.",
+        "down": "The Kiln Eye is dark. The way is clear."
+      },
+      "undertow": {
+        "name": "The Undertow",
+        "sign": "THE UNDERTOW",
+        "intro": "The ground shakes where it will rise.",
+        "phase": "It rises faster, and the ground breaks with it.",
+        "down": "The Undertow is still. The way is clear."
+      }
+    },
+    "biome": {
+      "meadow": {
+        "name": "Gate meadow",
+        "sign": "GATE MEADOW"
+      },
+      "canyon": {
+        "name": "Rust canyon",
+        "sign": "RUST CANYON"
+      },
+      "marsh": {
+        "name": "Lantern marsh",
+        "sign": "LANTERN MARSH"
+      },
+      "foundry": {
+        "name": "The old foundry",
+        "sign": "THE OLD FOUNDRY"
+      },
+      "frost": {
+        "name": "Frost ridge",
+        "sign": "FROST RIDGE"
+      }
+    },
+    "meta": {
+      "heading": "Play powers play",
+      "total": "Lifetime play score {score}.",
+      "next": "Next at {at}: {what}.",
+      "all": "Everything is open.",
+      "opened": "Opened: {what}",
+      "note": "Opened for good by play score, and only for play. The castle is built by finished work alone.",
+      "names": {
+        "pierce": "Piercing shots",
+        "strike": "Dash strike",
+        "buddy": "Companion drone",
+        "overclock": "Overclock",
+        "salvage": "Salvage",
+        "double_jump": "A second jump",
+        "perk": "A starting pick",
+        "canyon": "Rust canyon",
+        "marsh": "Lantern marsh",
+        "foundry": "The old foundry",
+        "frost": "Frost ridge"
+      }
+    },
+    "story": {
+      "fragments": [
+        "A brass tag: 'Line 4. Do not run unattended.' Something ran it anyway.",
+        "A shift roster, every name scratched out but the Keeper's number.",
+        "A map of the valley with the castle drawn in pencil, before there was one.",
+        "A lamp that still works. Whoever left it meant to come back.",
+        "A note in machine code. Read aloud it is only: more, more, more.",
+        "A wrench worn to the shape of one hand.",
+        "A ledger of promised work, ending mid-line. The machines began where it stops.",
+        "A child's drawing of a robot holding a wall up."
+      ]
+    },
+    "embed": {
+      "reading": "One moment: the castle is being read from your finished work.",
+      "none": "Nothing is built here without your work. The Wilds are open.",
+      "unread": "What arrived could not be read, so nothing is built here. The Wilds are open.",
+      "close": "Close Fieldworks",
+      "where": "Where the castle is built",
+      "no_plan": "Your roadmap was not read, so there are no week stages. The Wilds are open.",
+      "places": {
+        "workorders": "Work orders",
+        "learning": "Learning",
+        "health": "Health"
+      },
+      "place_notes": {
+        "workorders": "Finish an order there; its piece lands here.",
+        "learning": "Tick a lesson there; a course of stone lands here.",
+        "health": "Log a session there; a gate brace lands here."
+      },
+      "open_lesson": "Open the lesson",
+      "card_open": "Not surveyed yet. Tick the lesson in Learning.",
+      "head": {
+        "reading": "Reading your work",
+        "none": "No world arrived",
+        "unread": "Could not read your work"
+      }
     }
   },
   "save": {
-    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2).",
+    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored.",
     "version": 2,
     "autosave_seconds": 5
   },
@@ -865,7 +1048,8 @@
       "courses_per_row": 12,
       "rows_max": 8,
       "tower_levels_max": 7,
-      "keep_levels_max": 7
+      "keep_levels_max": 7,
+      "sky_darken": 0.42
     }
   },
   "horde": {
@@ -924,10 +1108,10 @@
     }
   },
   "stage": {
-    "$note": "The stages (D34, D43–D46): a side-scrolling run for each stated week of the plan (positions, never a title) and one free-standing endless stage. Stage enemies pay play score, never XP or a castle piece. The Keeper's hull grows with the evidence level. Score unlocks paint and nothing else.",
+    "$note": "The stages (D34, D43–D46) and the feel pass (version 3): a side-scrolling run for each stated week of the plan (positions, never a title) and one free-standing endless stage. Everything here is play. A kill, a spark, a boss and a cleared stage pay play score, never XP, a level, an item or a castle piece. Lifetime play score opens things for PLAY (more of the upgrade pool, a second jump, a starting pick, worlds for the Wilds) and paint; a run's upgrades last for the run. The Keeper's hull grows with the evidence level. Nothing a run does can take anything.",
     "view_w": 180,
     "tile": 12,
-    "length_tiles": 150,
+    "length_tiles": 170,
     "length_per_week": 12,
     "keeper": {
       "hearts_base": 3,
@@ -945,28 +1129,57 @@
       "crawler": {
         "hp": 2,
         "speed": 14,
-        "score": 100
+        "score": 100,
+        "from": 1
       },
       "hopper": {
         "hp": 1,
         "speed": 26,
-        "score": 150
+        "score": 150,
+        "from": 1,
+        "hop": 130,
+        "hop_every_s": 1.1
       },
       "drone": {
         "hp": 2,
         "speed": 22,
-        "score": 200
+        "score": 200,
+        "from": 2,
+        "keep_away": 70,
+        "shot_every_s": 2.4,
+        "shot_speed": 62
+      },
+      "turret": {
+        "hp": 3,
+        "speed": 1,
+        "score": 250,
+        "from": 3,
+        "sight": 110,
+        "shot_every_s": 2.2,
+        "shot_speed": 80,
+        "burst": 2
+      },
+      "warden": {
+        "hp": 4,
+        "speed": 12,
+        "score": 300,
+        "from": 4
       },
       "brute": {
         "hp": 8,
         "speed": 9,
-        "score": 500
+        "score": 500,
+        "from": 5,
+        "sight": 62,
+        "windup_s": 0.55,
+        "charge_speed": 120,
+        "charge_s": 0.8
       }
     },
     "score": {
       "spark": 10,
       "clear": 1000,
-      "par_seconds": 80,
+      "par_seconds": 150,
       "per_second_under_par": 10,
       "clean": 500,
       "wilds_per_tile": 2,
@@ -976,7 +1189,8 @@
       "sparks_share": 0.8
     },
     "wilds": {
-      "ramp_tiles": 60
+      "ramp_tiles": 60,
+      "checkpoint_tiles": 80
     },
     "paints": [
       {
@@ -1009,6 +1223,708 @@
         "at": 20000,
         "colour": "#8FD3FF"
       }
-    ]
+    ],
+    "checkpoints_min": 3,
+    "continues": 2,
+    "checkpoint": {
+      "heal": 1
+    },
+    "moves": {
+      "dash_speed": 215,
+      "dash_s": 0.16,
+      "dash_cooldown_s": 0.85,
+      "dash_invulnerable_s": 0.28,
+      "coyote_s": 0.09,
+      "buffer_s": 0.12,
+      "jump_cut": 60,
+      "double_jump": 0.86,
+      "charge_s": 0.7,
+      "charge_min_s": 0.2,
+      "charge_damage": 4,
+      "charge_speed": 235,
+      "spread_vy": 34
+    },
+    "juice": {
+      "shake_hit": 0.1,
+      "shake_hurt": 0.22,
+      "shake_boss": 0.5,
+      "hitstop_kill_s": 0.03,
+      "hitstop_hurt_s": 0.08,
+      "hitstop_boss_s": 0.3,
+      "flash_s": 0.08
+    },
+    "combo": {
+      "window_s": 2.6,
+      "step": 0.25,
+      "cap": 9
+    },
+    "shots": {
+      "tell_s": 0.45
+    },
+    "terrain": {
+      "mover_from": 2,
+      "mover_speed": 26,
+      "chasm_tiles": 6,
+      "spike_from": 2,
+      "vent_from": 3,
+      "vent_on_s": 1.1,
+      "vent_off_s": 1.7,
+      "vent_reach": 34,
+      "crack_hp": 3,
+      "cache_first_tiles": 48,
+      "cache_every_tiles": 85,
+      "cache_score": 250
+    },
+    "hard": {
+      "hearts": 1,
+      "speed": 1.3,
+      "score": 2
+    },
+    "bosses": {
+      "order": [
+        "hauler",
+        "eye",
+        "undertow"
+      ],
+      "arena_tiles": 19,
+      "hp_per_level": 4,
+      "wilds_first_tiles": 190,
+      "wilds_every_tiles": 230,
+      "score": 1500,
+      "sparks": 10,
+      "death_s": 1.4,
+      "hauler": {
+        "w": 54,
+        "h": 32,
+        "hp": 46,
+        "phase2_at": 0.5,
+        "speed": 20,
+        "walk_s": 1.5,
+        "tell_s": 0.65,
+        "tell2_s": 0.5,
+        "charge_speed": 150,
+        "stun_s": 1.1,
+        "crouch_s": 0.45,
+        "leap": 200,
+        "wave_speed": 92,
+        "debris": 3
+      },
+      "eye": {
+        "w": 38,
+        "h": 30,
+        "hp": 38,
+        "phase2_at": 0.5,
+        "hover": 70,
+        "speed": 30,
+        "drift_s": 1.3,
+        "drift2_s": 1,
+        "tell_s": 0.5,
+        "burst": 3,
+        "burst_gap_s": 0.2,
+        "shot_speed": 78,
+        "bombs": 3,
+        "bomb_gap_s": 0.3,
+        "bomb_run_speed": 60,
+        "reposition_speed": 110,
+        "beam_height": 52,
+        "beam_tell_s": 0.75,
+        "beam_speed": 62
+      },
+      "undertow": {
+        "w": 26,
+        "h": 58,
+        "hp": 34,
+        "phase2_at": 0.5,
+        "under_s": 0.6,
+        "under2_s": 0.35,
+        "rumble_s": 0.85,
+        "rumble2_s": 0.6,
+        "rise_s": 0.22,
+        "up_s": 1.7,
+        "sink_s": 0.3,
+        "spit": 3,
+        "spit_at_s": 0.45,
+        "spit_vx": 46,
+        "spit_vy": 175,
+        "spit_g": 300,
+        "wave_speed": 88
+      },
+      "enter_s": 1.6
+    },
+    "upgrades": {
+      "offer": 3,
+      "rapid_factor": 0.75,
+      "charge_factor": 0.7,
+      "charge_damage": 2,
+      "overclock_factor": 0.7,
+      "magnet_reach": 30,
+      "shield_recharge_s": 14,
+      "strike_damage": 3,
+      "buddy_every_s": 1.1,
+      "buddy_reach": 90,
+      "salvage_sparks": 3,
+      "list": [
+        {
+          "slug": "spread",
+          "code": "SP",
+          "max": 2,
+          "at": 0
+        },
+        {
+          "slug": "rapid",
+          "code": "RF",
+          "max": 3,
+          "at": 0
+        },
+        {
+          "slug": "heart",
+          "code": "HP",
+          "max": 3,
+          "at": 0
+        },
+        {
+          "slug": "magnet",
+          "code": "MG",
+          "max": 2,
+          "at": 0
+        },
+        {
+          "slug": "charge",
+          "code": "CH",
+          "max": 2,
+          "at": 0
+        },
+        {
+          "slug": "shield",
+          "code": "SH",
+          "max": 2,
+          "at": 0
+        },
+        {
+          "slug": "pierce",
+          "code": "PC",
+          "max": 3,
+          "at": 2500
+        },
+        {
+          "slug": "strike",
+          "code": "DS",
+          "max": 2,
+          "at": 10000
+        },
+        {
+          "slug": "buddy",
+          "code": "BD",
+          "max": 2,
+          "at": 21000
+        },
+        {
+          "slug": "overclock",
+          "code": "OC",
+          "max": 2,
+          "at": 45000
+        },
+        {
+          "slug": "salvage",
+          "code": "SV",
+          "max": 2,
+          "at": 66000
+        }
+      ]
+    },
+    "meta": {
+      "$note": "What lifetime play score opens, for good: more of the run-upgrade pool, a second jump, a starting pick, worlds for the Wilds. All of it is for play. None of it is XP, a level, an item or a castle piece, and a death takes none of it.",
+      "unlocks": [
+        {
+          "slug": "pierce",
+          "kind": "upgrade",
+          "at": 2500
+        },
+        {
+          "slug": "canyon",
+          "kind": "biome",
+          "at": 6000
+        },
+        {
+          "slug": "strike",
+          "kind": "upgrade",
+          "at": 10000
+        },
+        {
+          "slug": "double_jump",
+          "kind": "move",
+          "at": 15000
+        },
+        {
+          "slug": "buddy",
+          "kind": "upgrade",
+          "at": 21000
+        },
+        {
+          "slug": "marsh",
+          "kind": "biome",
+          "at": 28000
+        },
+        {
+          "slug": "perk",
+          "kind": "slot",
+          "at": 36000
+        },
+        {
+          "slug": "overclock",
+          "kind": "upgrade",
+          "at": 45000
+        },
+        {
+          "slug": "foundry",
+          "kind": "biome",
+          "at": 55000
+        },
+        {
+          "slug": "salvage",
+          "kind": "upgrade",
+          "at": 66000
+        },
+        {
+          "slug": "frost",
+          "kind": "biome",
+          "at": 78000
+        }
+      ]
+    },
+    "biomes": {
+      "home": "meadow",
+      "weeks": [
+        "meadow",
+        "canyon",
+        "marsh",
+        "foundry",
+        "frost",
+        "canyon",
+        "marsh",
+        "foundry"
+      ],
+      "list": [
+        {
+          "slug": "meadow",
+          "at": 0,
+          "song": "meadow",
+          "feature": "trees",
+          "life": [
+            "clouds",
+            "birds",
+            "motes"
+          ],
+          "sky_light": [
+            "#62bdee",
+            "#84cff2",
+            "#a8e0f2",
+            "#c9eeec",
+            "#e6f6dc"
+          ],
+          "sky_dark": [
+            "#141833",
+            "#1c2142",
+            "#262c52",
+            "#343a63",
+            "#474c74"
+          ],
+          "sun": "#fff3b0",
+          "far_light": "#9fd3c2",
+          "far_dark": "#2c3558",
+          "near_light": "#6fbb8e",
+          "near_dark": "#222a44",
+          "feature_light": "#3f935c",
+          "feature_dark": "#18223a",
+          "glow": "#ffe08a",
+          "top": "#5fcf6c",
+          "top2": "#3a9d55",
+          "soil": "#9a7b55",
+          "soil2": "#7a5f40",
+          "slab": "#b98a4e",
+          "slab2": "#8a6232",
+          "bloom": "#ff8fb1"
+        },
+        {
+          "slug": "canyon",
+          "at": 6000,
+          "song": "canyon",
+          "feature": "mesas",
+          "life": [
+            "clouds",
+            "birds",
+            "dust"
+          ],
+          "sky_light": [
+            "#f6a65c",
+            "#f9bd7c",
+            "#fbd39b",
+            "#fde6bd",
+            "#fff3dc"
+          ],
+          "sky_dark": [
+            "#2a1638",
+            "#3d1f47",
+            "#5a2a4e",
+            "#7a3a4f",
+            "#9c5449"
+          ],
+          "sun": "#fff0c2",
+          "far_light": "#e59866",
+          "far_dark": "#4a2545",
+          "near_light": "#c9693f",
+          "near_dark": "#34183a",
+          "feature_light": "#a94f33",
+          "feature_dark": "#261230",
+          "glow": "#ffd27a",
+          "top": "#edb85c",
+          "top2": "#c98a3a",
+          "soil": "#b5593a",
+          "soil2": "#8f3f2c",
+          "slab": "#d9a066",
+          "slab2": "#a8683a",
+          "bloom": "#7fe0c8"
+        },
+        {
+          "slug": "marsh",
+          "at": 28000,
+          "song": "marsh",
+          "feature": "reeds",
+          "life": [
+            "fireflies",
+            "rain"
+          ],
+          "sky_light": [
+            "#4f879f",
+            "#669daf",
+            "#84b6b9",
+            "#a4cdc0",
+            "#c4e1c8"
+          ],
+          "sky_dark": [
+            "#0c1a2a",
+            "#102636",
+            "#163443",
+            "#1d4450",
+            "#28565c"
+          ],
+          "sun": "#eafff0",
+          "far_light": "#5e9aa0",
+          "far_dark": "#143040",
+          "near_light": "#3f7f7a",
+          "near_dark": "#0f2530",
+          "feature_light": "#2f6f66",
+          "feature_dark": "#0a1c24",
+          "glow": "#eaff8a",
+          "top": "#52d6b0",
+          "top2": "#2d8f7c",
+          "soil": "#4f4a78",
+          "soil2": "#3a3560",
+          "slab": "#7f9a8c",
+          "slab2": "#55705f",
+          "bloom": "#eaff8a"
+        },
+        {
+          "slug": "foundry",
+          "at": 55000,
+          "song": "foundry",
+          "feature": "stacks",
+          "life": [
+            "embers"
+          ],
+          "sky_light": [
+            "#4a2030",
+            "#742a2e",
+            "#a63f2c",
+            "#d9642b",
+            "#f79a45"
+          ],
+          "sky_dark": [
+            "#120a12",
+            "#22101a",
+            "#3a1620",
+            "#5c1f22",
+            "#8a2f1f"
+          ],
+          "sun": "#ffd27a",
+          "far_light": "#6b2d2f",
+          "far_dark": "#2a1018",
+          "near_light": "#43202a",
+          "near_dark": "#1a0a12",
+          "feature_light": "#2a1a22",
+          "feature_dark": "#0c0609",
+          "glow": "#ff9a3c",
+          "top": "#f0764a",
+          "top2": "#b84a30",
+          "soil": "#3d3a44",
+          "soil2": "#2a2830",
+          "slab": "#8a8f96",
+          "slab2": "#5a5f66",
+          "bloom": "#ffe08a"
+        },
+        {
+          "slug": "frost",
+          "at": 78000,
+          "song": "frost",
+          "feature": "spires",
+          "life": [
+            "clouds",
+            "snow"
+          ],
+          "sky_light": [
+            "#8fcfff",
+            "#aee0ff",
+            "#c9ecff",
+            "#e1f5ff",
+            "#f6fcff"
+          ],
+          "sky_dark": [
+            "#0f1c3a",
+            "#162a52",
+            "#1f3a6a",
+            "#2c4d82",
+            "#40649a"
+          ],
+          "sun": "#ffffff",
+          "far_light": "#c5e6f7",
+          "far_dark": "#22386a",
+          "near_light": "#9fcbe8",
+          "near_dark": "#182a52",
+          "feature_light": "#86b6dc",
+          "feature_dark": "#122046",
+          "glow": "#ffffff",
+          "top": "#f4fbff",
+          "top2": "#cfe6f5",
+          "soil": "#6f8fb5",
+          "soil2": "#55729a",
+          "slab": "#b6d6ee",
+          "slab2": "#7fa6c8",
+          "bloom": "#9b7bff"
+        }
+      ]
+    }
+  },
+  "embed": {
+    "$note": "The embeddable build (embed/play.js) in a host app's same-origin frame. The world arrives by postMessage and is never stored; if none arrives in wait_ms the game plays signed out. The embed's save holds play only.",
+    "wait_ms": 3000
+  },
+  "audio": {
+    "$note": "Sound is made in code (WebAudio): no audio file. An effect is a swept tone (from → to Hz over s seconds), optionally with a noise burst, or a run of MIDI notes; a song is a lead and a bass line in sixteenth steps (MIDI numbers in one string, 0 a rest), looped. Nothing plays before the first input; mute is remembered in the play record.",
+    "volume": 0.5,
+    "lookahead_ms": 40,
+    "ahead_s": 0.14,
+    "sfx": {
+      "jump": {
+        "wave": "square",
+        "from": 300,
+        "to": 640,
+        "s": 0.12,
+        "vol": 0.12
+      },
+      "land": {
+        "wave": "noise",
+        "from": 900,
+        "to": 300,
+        "s": 0.05,
+        "vol": 0.1
+      },
+      "dash": {
+        "wave": "noise",
+        "from": 3000,
+        "to": 700,
+        "s": 0.14,
+        "vol": 0.14
+      },
+      "shot": {
+        "wave": "square",
+        "from": 900,
+        "to": 420,
+        "s": 0.07,
+        "vol": 0.1
+      },
+      "charged": {
+        "wave": "sawtooth",
+        "from": 240,
+        "to": 1040,
+        "s": 0.26,
+        "vol": 0.16,
+        "noise": 2400
+      },
+      "ready": {
+        "wave": "square",
+        "from": 1320,
+        "to": 1320,
+        "s": 0.06,
+        "vol": 0.08
+      },
+      "hit": {
+        "wave": "square",
+        "from": 220,
+        "to": 130,
+        "s": 0.06,
+        "vol": 0.12
+      },
+      "clink": {
+        "wave": "square",
+        "from": 1900,
+        "to": 1500,
+        "s": 0.05,
+        "vol": 0.09
+      },
+      "kill": {
+        "wave": "square",
+        "from": 320,
+        "to": 60,
+        "s": 0.2,
+        "vol": 0.14,
+        "noise": 1200
+      },
+      "break": {
+        "wave": "sawtooth",
+        "from": 140,
+        "to": 40,
+        "s": 0.3,
+        "vol": 0.18,
+        "noise": 700
+      },
+      "pickup": {
+        "wave": "square",
+        "from": 990,
+        "to": 1480,
+        "s": 0.06,
+        "vol": 0.08
+      },
+      "hurt": {
+        "wave": "sawtooth",
+        "from": 420,
+        "to": 90,
+        "s": 0.3,
+        "vol": 0.18
+      },
+      "eshot": {
+        "wave": "square",
+        "from": 520,
+        "to": 260,
+        "s": 0.1,
+        "vol": 0.07
+      },
+      "tell": {
+        "wave": "square",
+        "from": 660,
+        "to": 880,
+        "s": 0.18,
+        "vol": 0.09
+      },
+      "upgrade": {
+        "wave": "square",
+        "notes": "72 76 79 84",
+        "s": 0.07,
+        "vol": 0.12
+      },
+      "checkpoint": {
+        "wave": "triangle",
+        "notes": "79 84 91",
+        "s": 0.08,
+        "vol": 0.16
+      },
+      "boss": {
+        "wave": "sawtooth",
+        "from": 110,
+        "to": 52,
+        "s": 0.9,
+        "vol": 0.2,
+        "noise": 400
+      },
+      "bossdown": {
+        "wave": "square",
+        "notes": "60 64 67 72 76 79 84",
+        "s": 0.07,
+        "vol": 0.14
+      },
+      "warning": {
+        "wave": "square",
+        "notes": "57 0 57 0 53 53",
+        "s": 0.15,
+        "vol": 0.12
+      },
+      "clear": {
+        "wave": "square",
+        "notes": "67 72 76 79 76 79 84",
+        "s": 0.09,
+        "vol": 0.13
+      },
+      "over": {
+        "wave": "triangle",
+        "notes": "67 63 60 55",
+        "s": 0.16,
+        "vol": 0.18
+      }
+    },
+    "songs": {
+      "castle": {
+        "bpm": 88,
+        "wave": "triangle",
+        "vol": 0.05,
+        "hat": 0,
+        "lead": "67 0 0 71 0 0 74 0 0 0 72 0 71 0 0 0 69 0 0 72 0 0 76 0 0 0 74 0 71 0 0 0",
+        "bass": "43 0 0 0 0 0 0 0 47 0 0 0 0 0 0 0 45 0 0 0 0 0 0 0 50 0 0 0 0 0 0 0"
+      },
+      "warning": {
+        "bpm": 104,
+        "wave": "square",
+        "vol": 0.035,
+        "hat": 8,
+        "lead": "67 0 0 70 0 0 74 0 0 0 72 0 70 0 0 0 65 0 0 68 0 0 72 0 0 0 70 0 67 0 0 0",
+        "bass": "43 0 43 0 0 0 0 0 39 0 39 0 0 0 0 0 41 0 41 0 0 0 0 0 38 0 38 0 0 0 0 0"
+      },
+      "meadow": {
+        "bpm": 132,
+        "wave": "square",
+        "vol": 0.04,
+        "hat": 4,
+        "lead": "72 76 79 76 72 0 67 0 69 72 76 72 69 0 67 0 65 69 72 69 65 0 64 0 67 71 74 71 67 0 74 0",
+        "bass": "48 0 48 0 48 0 55 0 45 0 45 0 45 0 52 0 41 0 41 0 41 0 48 0 43 0 43 0 43 0 50 0"
+      },
+      "canyon": {
+        "bpm": 120,
+        "wave": "square",
+        "vol": 0.04,
+        "hat": 4,
+        "lead": "74 0 77 74 72 0 69 0 74 0 77 81 79 0 77 0 72 0 76 72 69 0 67 0 69 72 74 0 74 0 0 0",
+        "bass": "50 0 0 50 0 0 57 0 50 0 0 50 0 0 57 0 48 0 0 48 0 0 55 0 50 0 0 50 0 57 50 0"
+      },
+      "marsh": {
+        "bpm": 96,
+        "wave": "triangle",
+        "vol": 0.06,
+        "hat": 8,
+        "lead": "69 0 0 72 0 0 76 0 75 0 0 72 0 0 69 0 67 0 0 71 0 0 74 0 72 0 71 0 69 0 0 0",
+        "bass": "45 0 0 0 45 0 0 0 41 0 0 0 41 0 0 0 43 0 0 0 43 0 0 0 40 0 0 0 40 0 44 0"
+      },
+      "foundry": {
+        "bpm": 144,
+        "wave": "sawtooth",
+        "vol": 0.03,
+        "hat": 2,
+        "lead": "64 64 0 65 64 0 67 0 64 64 0 65 64 0 62 0 64 64 0 65 64 0 67 0 71 0 69 0 67 65 64 0",
+        "bass": "40 40 40 40 40 40 40 40 41 41 41 41 41 41 41 41 40 40 40 40 40 40 40 40 38 38 38 38 43 43 41 41"
+      },
+      "frost": {
+        "bpm": 108,
+        "wave": "triangle",
+        "vol": 0.06,
+        "hat": 4,
+        "lead": "77 0 84 0 81 0 84 0 76 0 84 0 79 0 84 0 74 0 81 0 77 0 81 0 72 0 79 0 76 0 79 0",
+        "bass": "41 0 0 0 0 0 48 0 40 0 0 0 0 0 48 0 38 0 0 0 0 0 45 0 36 0 0 0 43 0 0 0"
+      },
+      "boss": {
+        "bpm": 160,
+        "wave": "square",
+        "vol": 0.04,
+        "hat": 2,
+        "lead": "60 0 63 0 67 0 66 67 60 0 63 0 68 0 67 0 60 0 63 0 67 0 70 72 71 0 67 0 62 0 59 0",
+        "bass": "36 36 0 36 36 0 36 36 36 36 0 36 36 0 36 36 44 44 0 44 44 0 44 44 43 43 0 43 43 0 47 47"
+      }
+    }
   }
 }
