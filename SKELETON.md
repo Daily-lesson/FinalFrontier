@@ -13,6 +13,7 @@ art sheet and the screenshots. **Public repository: public-tier content only.**
 
 ```
 src/  rules/  sim/  prototype/  tests/  docs/
+embed/                             # the embeddable build for a host app, written by prototype/build.mjs and committed
 _site/                             # the Pages site, assembled by prototype/site.mjs; ignored, never committed
 .github/  .claude/                 # standards from Daily-lesson/alys templates/repo/ (see CLAUDE.md)
 CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
@@ -29,7 +30,7 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 
 | File | What |
 |---|---|
-| `fieldworks.json` | The owner's instance: rarity, XP and curves, skills, the siege, expeditions, weather, medals, challenges, works, the Keeper's parts, the `castle`, `horde` and `stage` blocks (version 2, the rework), the `save`, `clock`, `onboarding`, `states` and `telemetry` blocks, and the bank (every sentence the game speaks). |
+| `fieldworks.json` | The owner's instance (version 3): rarity, XP and curves, skills, the siege, expeditions, weather, medals, challenges, works, the Keeper's parts, the `castle` and `horde` blocks (the rework), the `stage` block (version 3, the feel pass: `keeper`, `moves`, `juice`, `combo`, `enemies` (six kinds, each with the level it comes in at), `shots`, `terrain`, `bosses` (three designs), `upgrades` (a run's picks), `meta` (what lifetime play score opens, for play only), `biomes` (five worlds: palettes, features, life, song), `hard`, `continues`, `checkpoint`, `score`, `paints`), `audio` (the synth's effects and songs as data), `embed`, the `save`, `clock`, `onboarding`, `states` and `telemetry` blocks, and the bank (every sentence the game speaks, the story's fragments among them). |
 
 ## Sim scripts (`sim/`)
 
@@ -45,17 +46,62 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 
 | File | What |
 |---|---|
-| `prototype.src.html` | The prototype's source (version 4, the rework): the pixel renderer, the castle screen and the horde fight, the stages and the Wilds, the save without a map, onboarding, honest states, local telemetry. `/*__ENGINE__*/`, `/*__CASTLE__*/` and `/*__RULES__*/` are the inline markers. |
+| `prototype.src.html` | The prototype's shell: the styles, the icon symbols, the phone frame and the DEMO's chrome (the prototype bar, the ribbon, Home), which sits between `<!--demo-->` markers so the embed can leave it out. `/*__GAME__*/`, `/*__ENGINE__*/`, `/*__CASTLE__*/` and `/*__RULES__*/` are the inline markers; the game script itself is `game/*.js`. |
 | `index.html` | Built by `build.mjs`; never edited by hand. Published as a private artifact, and as the Pages site's root through `site.mjs`. |
 | `art-sheet.html` | Every sprite the renderers draw and the castle at four sizes, by the prototype's own functions, on a grid; light and dark. |
+
+## Game script fragments (`prototype/game/`)
+
+The page's one script, in files. `build.mjs` joins them in name order inside a
+single IIFE, so they share one scope: each is top-level statements at a
+two-space indent and parses on its own (`node --check`), and a name declared
+in one is used in the next. Never a module, never an import.
+
+| File | What |
+|---|---|
+| `10-core.js` | The flags (`EMBED`, `OUT`, `CALM`), the rules, helpers, the storage keys, the seeded `rng`, local telemetry. Embedded, it builds the page's body first. |
+| `20-world.js` | The DEMO's invented data, the state (`S`), the events, the one line that sets the castle (`setState`), the play record (`PLAY0`, `playOf`, lifetime score, `unlocked`), the save and its migrations, the horde's clock and its lines. |
+| `25-embed.js` | The embed: the message contract, `readWorld`/`readOrder`/`readPlan` (validation), `applyWorld`, `hostGo`, `embedListen`. |
+| `30-audio.js` | The synth: `auUnlock` (first input only), `tone`, `sfx`, `music`, the look-ahead scheduler, `setMute`. |
+| `40-pixels.js` | The pixel renderer: sprites (`spr`, `both`, the hit-flash `tint`), the Keeper's frames, the six machines, the worlds (`biomeOf`, `backdrop`, `drawWorld`, `drawAir`), the bitmap face, the castle's drawing. |
+| `50-castle.js` | The castle screen: the Keeper on the wall, the horde fight, the sky and the brace while a horde is announced. |
+| `60-stage.js` | A stage: the seeded generator (`grow`, `arena`, `cache`), `newStage`, the Keeper's moves and the run's loop (`updateStage`), `award`, `hurt`, `die`, checkpoints, `finishStage`. |
+| `62-foes.js` | The six machines' habits (`updateFoes`), `strike`, `kill`, and what they throw (`updateBullets`). |
+| `64-boss.js` | The three bosses: `startBoss`, `bossHauler`, `bossEye`, `bossUndertow`, `updateBoss`, `bossDown`, `renderBoss`. |
+| `66-upgrades.js` | The run's upgrades: the pool play score has opened, `offerUpgrade` (one of three, the stage's own seeded roll), `takeUpgrade`, `recalc`. |
+| `68-stage-render.js` | Drawing a stage and its HUD (`renderStage`); the waypoint card and `survey` (the DEMO's one stand-in; embedded, it asks the host). |
+| `70-moment.js` | Evidence shown: `fire`, `moment` (drop card, medal, piece), `closeOrder`, `logLift`, the horde's summary, a run's result. |
+| `80-screens.js` | The DOM screens: the game shell and pad, the HUD, the stage list with its switches and the unlock track, the backlog, the Keeper, Home, the order sheet, onboarding. |
+| `90-loop.js` | Clicks and keys, the frame loop, the art sheet, `FieldworksDebug` (the walk's window), `boot`. |
+
+## Embed build (`embed/`)
+
+Written by `node prototype/build.mjs`, committed, never edited; `tests/check.mjs`
+holds it equal to a rebuild. The faces are not duplicated here: a host copies
+`prototype/fonts/` to `fonts/` beside these files.
+
+| File | What |
+|---|---|
+| `play.html` | A minimal shell: doctype, UTF-8, viewport, `noindex`, its own policy (`default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self' blob:`; no `connect-src`, so the page can make no network call), `play.css`, `fonts/fonts.css`, `play.js`. No inline script. |
+| `play.js` | One classic script: `globalThis.FIELDWORKS_EMBED = true`, the page's body as a string (built into `document.body` by the script, so a host document that is only the stylesheets and this script works, a `srcdoc` frame included), the rules as a constant, the engine, the castle module and the same game script as the page. It never reads its own URL. |
+| `play.css` | The page's styles. |
+
+Embedded: no prototype bar, no phone frame, no host chrome; a Close button; the
+DEMO world is never used; the device keeps play only (`fieldworks-embed-play`,
+`fieldworks-embed-onboarded`). The contract (a message is accepted only when
+`ev.source === window.parent && ev.origin === self.origin`; posts go to
+`self.origin`):
+
+- play → host `{fw:1, type:'ready'}` on load; `{fw:1, type:'go', to:'workorders'|'learning'|'health'|'close'}` from the buttons that fake evidence in the DEMO, and from Close.
+- host → play `{fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?}`: `today` `YYYY-MM-DD`; `theme` `'light'|'dark'` (or absent); `events` the engine's events (all must pass `validateEvents`); `open` orders as `E.siege` takes them (`id`, `written`, `tier`, and optionally `pn`, `options`, `steps` as counts, `zone`, `band`; a private order with a name field is refused, and no title is ever kept); `plan` `{weeks:[{n, lessons:[id]}]}` or null; `horde` the page's own `S.horde` shape or null; `lanes` `{workorders, learning, body}` booleans; `briefing` carried for a later phase and ignored. Anything malformed and the whole message is ignored and the game says it could not read your work. A world that arrives during a run waits for the castle.
 
 ## Prototype scripts (`prototype/`)
 
 | File | What |
 |---|---|
-| `build.mjs` | Inlines `src/engine.js`, `src/castle.js` and `rules/fieldworks.json` into `index.html` and `art-sheet.html`. |
+| `build.mjs` | Joins `game/*.js` (name order, one IIFE) into the shell and inlines `src/engine.js`, `src/castle.js` and `rules/fieldworks.json` → `index.html` and `art-sheet.html`; and writes the embed (`embed/play.html`, `play.js`, `play.css`). Exports `source()` (the page's source with the game joined, which the tests read), `build()`, `gameFiles()`, `EMBED_CSP`. |
 | `site.mjs` | Assembles the GitHub Pages site (`node prototype/site.mjs _site`): `index.html` at the root, `art-sheet.html` beside it, `fonts/`, nothing else. On the site's copies only, the document head the artifact host would wrap around the page is added (doctype, `lang`, UTF-8 charset), the Google Fonts link becomes `fonts/fonts.css` and a robots `noindex` meta is added; the game page alone also gets the signed-out flag (`globalThis.FIELDWORKS_SIGNED_OUT`), so the public game starts empty; it refuses a page that would load anything from another origin. Exports `sitePage`, `assemble`, `PAGES`, `FONT_FILES`, `NOINDEX`, `HEAD`, `SIGNED_OUT` for the test. |
-| `shots.mjs` | The Playwright walk at 375 × 667: the screenshots in both themes, the art sheet at 2×, the frame-time measurement of two scenes (`shots/perf.json`) and 41 behavioural checks (`shots/checks.json`: the warning, a piece from a close, the horde held on its own, a stage that pays no XP, the save, touch); exits non-zero on a failure or a page error. The signed-out section assembles the site with `site.mjs` and checks the public game page: an empty castle, no horde, no account chrome, the Wilds only, and an earlier DEMO save replaying nothing but play (`shots/signed-out-*.png`). |
+| `shots.mjs` | The Playwright walk at 375 × 667: the screenshots in both themes (the castle, the horde, the stages, an upgrade pick, a secret, a boss, each world), the art sheet at 2×, the frame-time measurement of three scenes (`shots/perf.json`: a horde, a stage, a boss fight) and 86 behavioural checks (`shots/checks.json`: the warning, a piece from a close, the horde held on its own, no sound before an input, the dash, the charged shot, the jump, a checkpoint's pick, a secret, a boss and its second phase, a stage that pays no XP, what play score opens, hard mode and a death that keeps every unlock, the save, touch, reduced motion, a moving platform, the restarts, the Wilds' bosses, six machines and three bosses over the weeks, a long play record); exits non-zero on a failure or a page error. It clears `shots/` first, so no screenshot of an older game is left. The embed section serves `embed/` from a local server inside a tiny host page (an `iframe src` and an `iframe srcdoc`), posts an invented world and checks the message contract, the castle from the posted events, the `go` buttons, the queue during a run, what is stored, and that no request leaves the frame (`shots/embed-*.png`). The signed-out section assembles the site with `site.mjs` and checks the public game page: an empty castle, no horde, no account chrome, the Wilds only, and an earlier DEMO save replaying nothing but play (`shots/signed-out-*.png`). |
 
 ## Self-hosted faces (`prototype/fonts/`)
 
@@ -69,7 +115,7 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
 
 | File | What |
 |---|---|
-| `check.mjs` | The engine against the rules and the design's numbers, the castle module (pieces, the clock, the fight, the forecast, the rally), the rule blocks, the page's pillars read from its source, the inline equality, the Pages site's assembly (what is published, noindex, no other origin, the sweep over it), and the tree-wide wall sweep. |
+| `check.mjs` | The engine against the rules and the design's numbers, the castle module (pieces, the clock, the fight, the forecast, the rally), the rule blocks (version 3's too: moves, machines, bosses, upgrades, the unlock track, worlds, audio), the page's pillars read from its joined source (`PLAY_FNS`: nothing a run does touches the evidence; play score opens only things for play; no allocation per frame), the built files equal to a rebuild (the two pages and `embed/`), the embed (no inline script, its policy, no other host, no URL read, the message guards, the world's intake run against the real engine), the Pages site's assembly, and the tree-wide wall sweep. |
 
 ## CI workflows
 

@@ -47,7 +47,7 @@
   {
     "name": "the castle holds the horde on its own (nobody at the pad), as the warning forecast",
     "ok": true,
-    "detail": "forecast held → fought held; The ca tle held.\n12 of 12 machine  downed\nWall 9%  tanding\nBeacon 100%\nTower 3 mattered mo t: 10 downed\nRally +10%: 2 piece  landed  ince the warning."
+    "detail": "forecast held → fought held; The castle held. 12 of 12 machines downed Wall 9% standing Beacon 100% Tower 3 mattered most: 10 downed Rally +10%: 2 pieces landed since the warning."
   },
   {
     "name": "the summary says what held and which tower mattered",
@@ -60,24 +60,39 @@
     "detail": ""
   },
   {
+    "name": "no sound before the first input; music after it",
+    "ok": true,
+    "detail": "before: {\"started\":false,\"song\":\"\",\"wanted\":\"warning\",\"mute\":false}; now: {\"started\":true,\"song\":\"warning\",\"wanted\":\"warning\",\"mute\":false}"
+  },
+  {
     "name": "a stage is played with the keyboard: the Keeper runs, jumps and scores",
     "ok": true,
-    "detail": "x 315 · score 210"
+    "detail": "x 229 · score 20"
   },
   {
-    "name": "a cleared stage keeps its score as the best, on the device",
+    "name": "a stage has its world and its song",
     "ok": true,
-    "detail": "score 2450; best 2450"
+    "detail": "WEEK 1 · meadow · meadow"
   },
   {
-    "name": "stage score pays no XP, no event and no castle piece",
+    "name": "dash: a burst faster than a run, invulnerable while it lasts, then a cooldown",
     "ok": true,
-    "detail": "XP 2775 → 2775; events 56 → 56; pieces 56 → 56"
+    "detail": "x 40 → 82 in 0.26 s (a run covers 17)"
   },
   {
-    "name": "play score unlocks paint and nothing else (the Keeper screen says so)",
+    "name": "charged shot: hold fire to charge, release to let it go",
     "ok": true,
-    "detail": "verdigris:open signal:open ember:locked violet:locked frost:locked"
+    "detail": "charged true; in flight [true]"
+  },
+  {
+    "name": "jump: a short press is a short hop, a held one a full jump",
+    "ok": true,
+    "detail": "11 px against 46 px"
+  },
+  {
+    "name": "a checkpoint offers one of three run upgrades, and the pick joins the build shown on the HUD",
+    "ok": true,
+    "detail": "offered charge, rapid, magnet; took charge; HUD \"CH1\""
   },
   {
     "name": "a surveyed waypoint reads surveyed and offers nothing",
@@ -85,7 +100,77 @@
     "detail": ""
   },
   {
-    "name": "a reload keeps the castle, the horde clock and the best score",
+    "name": "a cracked wall breaks under fire and the alcove behind it holds a relic",
+    "ok": true,
+    "detail": "open; score 20 → 330"
+  },
+  {
+    "name": "the goal does not stand until the boss is down",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a boss arrives when the Keeper walks into its arena, with its own theme",
+    "ok": true,
+    "detail": "hauler 46/46"
+  },
+  {
+    "name": "at half its hull a boss enters a second phase",
+    "ok": true,
+    "detail": "23/46 · phase 2"
+  },
+  {
+    "name": "a boss downed pays play score, opens the arena and raises the goal",
+    "ok": true,
+    "detail": "score 330 → 1840; goal at 2388"
+  },
+  {
+    "name": "a cleared stage keeps its score as the best, on the device",
+    "ok": true,
+    "detail": "score 4200; best 4200"
+  },
+  {
+    "name": "stage score pays no XP, no level, no event and no castle piece",
+    "ok": true,
+    "detail": "XP 2775 → 2775; events 56 → 56; pieces 56 → 56"
+  },
+  {
+    "name": "play powers play: the run joins the lifetime play score, and what that opens is said and kept",
+    "ok": true,
+    "detail": "lifetime 0 → 4200; pool spread, rapid, heart, magnet, charge, shield, pierce"
+  },
+  {
+    "name": "paint is unlocked by play score, and is looks only (the Keeper screen says so)",
+    "ok": true,
+    "detail": "verdigris:open signal:open ember:locked violet:locked frost:locked"
+  },
+  {
+    "name": "the stage list shows what play score has opened and what comes next",
+    "ok": true,
+    "detail": "pierce:open canyon:locked strike:locked double_jump:locked buddy:locked marsh:locked perk:locked overclock:locked foundry:locked salvage:locked frost:locked"
+  },
+  {
+    "name": "hard mode: one heart, and a death ends the run",
+    "ok": true,
+    "detail": "hull 1; run over at 24"
+  },
+  {
+    "name": "a death keeps every unlock and the run's play score",
+    "ok": true,
+    "detail": "lifetime 4200 → 4224"
+  },
+  {
+    "name": "the hard-mode and sound switches are kept",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "week 2 opens once week 1 is cleared, in another world, with machines week 1 did not have",
+    "ok": true,
+    "detail": "canyon · crawler, drone, hopper · movers 3 · spikes 3"
+  },
+  {
+    "name": "a reload keeps the castle, the horde clock, the scores, the lifetime play score and the two switches",
     "ok": true,
     "detail": "pieces 56 (a fresh device has 54); the save holds a journal of 2 closes and no map"
   },
@@ -147,12 +232,62 @@
   {
     "name": "touch: holding the pad's right button runs the Keeper, and jump lifts it",
     "ok": true,
-    "detail": "x 30 → 77; y 144 → 113; buttons 68 × 48 px"
+    "detail": "x 30 → 77; y 139 → 107; buttons 54 × 48 px"
+  },
+  {
+    "name": "touch: the pad has a Dash button, and a tap dashes",
+    "ok": true,
+    "detail": "x 77 → 113; 54 × 48 px"
   },
   {
     "name": "the pixels are whole: the canvas is drawn at a whole-number scale",
     "ok": true,
-    "detail": "165 × 144 drawn at 330 × 288 (×2)"
+    "detail": "165 × 140 drawn at 330 × 280 (×2)"
+  },
+  {
+    "name": "reduced motion: a hit shakes and flashes nothing",
+    "ok": true,
+    "detail": "hull 3/4; shake 0; flash 0"
+  },
+  {
+    "name": "a moving platform carries the Keeper across a chasm",
+    "ok": true,
+    "detail": "the deck moved 32 px and the Keeper 32 px with it"
+  },
+  {
+    "name": "out of hull, a roadmap run restarts at its last checkpoint twice, with the build kept; the third time the run is over",
+    "ok": true,
+    "detail": "restarts 2 → 1 → 0; back at x 516 (the checkpoint is at 519)"
+  },
+  {
+    "name": "the Wilds have their own checkpoints and bosses, and a boss downed there is followed by a pick",
+    "ok": true,
+    "detail": "2 checkpoints and an arena in 212 tiles; hauler downed; 1 picks"
+  },
+  {
+    "name": "six kinds of machine come in over the weeks",
+    "ok": true,
+    "detail": "brute, crawler, drone, hopper, turret, warden"
+  },
+  {
+    "name": "the stages carry moving platforms, spikes, vents and hidden caches",
+    "ok": true,
+    "detail": "{\"movers\":15,\"vents\":12,\"spikes\":37,\"caches\":8}"
+  },
+  {
+    "name": "three boss designs rotate, and the weeks wear at least four worlds",
+    "ok": true,
+    "detail": "eye, undertow, hauler, eye, eye · canyon, marsh, foundry, frost"
+  },
+  {
+    "name": "play score opens things for play: a starting pick, a second jump, more worlds for the Wilds",
+    "ok": true,
+    "detail": "a head start of 3; one jump 46 px, two 70 px; 3 worlds; a pool of 9"
+  },
+  {
+    "name": "… and nothing for the castle: the same pieces and XP as a device that never played",
+    "ok": true,
+    "detail": "pieces 54; XP 2535"
   },
   {
     "name": "signed out: the castle starts empty, with no evidence, no XP and no horde",
@@ -177,7 +312,7 @@
   {
     "name": "signed out: the Wilds play, and their score builds nothing",
     "ok": true,
-    "detail": "x 261 · score 262; pieces 0"
+    "detail": "x 206 · score 34; pieces 0"
   },
   {
     "name": "signed out: an earlier DEMO save replays no evidence and no horde, and keeps its Wilds score alone",
@@ -185,14 +320,104 @@
     "detail": "pieces 0; horde No horde gathering; wilds best 120; play total 120"
   },
   {
+    "name": "embed: the frame posts ready to its host, and waits for a world saying so",
+    "ok": true,
+    "detail": "[{\"fw\":1,\"type\":\"ready\"}] · Reading your work"
+  },
+  {
+    "name": "embed: the castle is the fold over the host's events, on the host's day",
+    "ok": true,
+    "detail": "15 pieces from 15 posted events (the engine's fold says 15)"
+  },
+  {
+    "name": "embed: the horde is the host's, and the theme",
+    "ok": true,
+    "detail": "Horde in 2 days"
+  },
+  {
+    "name": "embed: no prototype bar, no phone frame, no host chrome; the game fills the frame and keeps a Close button",
+    "ok": true,
+    "detail": "{\"dev\":0,\"ribbon\":0,\"close\":true,\"w\":375,\"h\":667,\"inline\":0}"
+  },
+  {
+    "name": "embed: the evidence buttons post go to the host (work orders, health, learning) and create no evidence",
+    "ok": true,
+    "detail": "workorders, health, learning; events still 15; the card: Week 1 · lesson 2 of 2 Not surveyed yet. Tick the lesson in Learning. Open the lesson"
+  },
+  {
+    "name": "embed: the roadmap's weeks come from the host's plan",
+    "ok": true,
+    "detail": "0, 1, 2"
+  },
+  {
+    "name": "embed: a world posted during a run is queued, not lost, and applied back at the castle with its drop card",
+    "ok": true,
+    "detail": "queued true; then 16 events, 16 pieces"
+  },
+  {
+    "name": "embed: the device keeps play only, under its own keys; nothing of the world",
+    "ok": true,
+    "detail": "fieldworks-embed-onboarded, fieldworks-embed-play; the save holds version, rules, play"
+  },
+  {
+    "name": "embed: a horde the host marks arrived is fought here by the one stepping function, and takes nothing",
+    "ok": true,
+    "detail": "pieces 15"
+  },
+  {
+    "name": "embed: with no horde from the host, the line says it was not read",
+    "ok": true,
+    "detail": "The horde's clock was not read"
+  },
+  {
+    "name": "embed: Close posts close to the host",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "embed: no request leaves the frame: the page, its script, its styles and the faces, and nothing after",
+    "ok": true,
+    "detail": "/host.html /embed/play.html /embed/play.css /embed/fonts/fonts.css /embed/play.js /embed/fonts/silkscreen-400-latin.woff2 /embed/fonts/silkscreen-700-latin.woff2 /embed/fonts/albert-sans-latin.woff2"
+  },
+  {
+    "name": "embed: a malformed world is ignored whole, and the game says it could not read your work",
+    "ok": true,
+    "detail": "Could not read your work · What arrived could not be read, so nothing is built here. The Wilds are open."
+  },
+  {
+    "name": "embed: a good world after a bad one is applied",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "embed: with no world after three seconds, it falls back to signed-out play (an empty castle, the Wilds only)",
+    "ok": true,
+    "detail": "none; stages 0"
+  },
+  {
+    "name": "embed: opened with no parent it is signed out at once",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "embed: the srcdoc form works the same: ready, the world applied, the body built by the script",
+    "ok": true,
+    "detail": "about:srcdoc; 15 pieces"
+  },
+  {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a horde at the walls, the towers firing)",
     "ok": true,
-    "detail": "0.88 ms · 60 fps"
+    "detail": "0.89 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a stage, running and firing)",
     "ok": true,
-    "detail": "0.71 ms · 60 fps"
+    "detail": "0.75 ms · 60 fps"
+  },
+  {
+    "name": "a frame stays inside the 16.7 ms budget on the main thread (a boss fight, dashing and firing)",
+    "ok": true,
+    "detail": "1.02 ms · 60 fps"
   },
   {
     "name": "the art sheet renders in both themes",

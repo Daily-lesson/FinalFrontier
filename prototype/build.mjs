@@ -1,21 +1,69 @@
-// Inlines src/engine.js, src/castle.js and rules/fieldworks.json into prototype.src.html →
-// prototype/index.html. The published artifact is one page with no dependency;
-// tests/check.mjs holds the inlined copies equal to the files.
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+// Builds the prototype from its sources. `node prototype/build.mjs` writes:
+//
+//   prototype/index.html      the page: prototype.src.html with the game script (prototype/game/*.js, joined in
+//                             name order inside one IIFE), src/engine.js, src/castle.js and rules/fieldworks.json inlined
+//   prototype/art-sheet.html  the same page with one flag set
+//   embed/play.html, play.js, play.css   the embeddable build for a host app (CSP script-src 'self': no inline script)
+//
+// tests/check.mjs holds every written file equal to a rebuild, and the inlined copies equal to their sources.
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
-const src = readFileSync(join(here, 'prototype.src.html'), 'utf8');
-const engine = readFileSync(join(root, 'src', 'engine.js'), 'utf8');
-const castle = readFileSync(join(root, 'src', 'castle.js'), 'utf8');
-const rules = readFileSync(join(root, 'rules', 'fieldworks.json'), 'utf8').trim();
-const out = src.replace('/*__ENGINE__*/', () => engine).replace('/*__CASTLE__*/', () => castle).replace('/*__RULES__*/', () => rules);
-for (const m of ['/*__ENGINE__*/', '/*__CASTLE__*/', '/*__RULES__*/']) if (!src.includes(m) || out.includes(m)) throw new Error(`marker ${m} not found or not replaced`);
-writeFileSync(join(here, 'index.html'), out);
-// The art sheet is the same page with one flag set: every sprite drawn by the prototype's own functions.
-const ART_FLAG = '<script>globalThis.FIELDWORKS_ART = true;</script>\n';
-const art = out.replace('<script id="rules"', () => ART_FLAG + '<script id="rules"');
-if (art === out) throw new Error('art marker not found');
-writeFileSync(join(here, 'art-sheet.html'), art.replace('<title>Fieldworks</title>', '<title>Fieldworks art sheet</title>'));
-console.log(`prototype/index.html written — ${out.length} bytes; art-sheet.html beside it`);
+const read = (...p) => readFileSync(join(...p), 'utf8');
+
+export const GAME_DIR = join(here, 'game');
+export const gameFiles = () => readdirSync(GAME_DIR).filter((f) => f.endsWith('.js')).sort();
+/** The game script: the fragments in name order. Each is top-level statements of one IIFE (two-space indent). */
+export const gameSource = () => gameFiles().map((f) => read(GAME_DIR, f).replace(/\n*$/, '\n')).join('\n');
+/** The page's source with the game joined in; the engine, castle and rules markers still stand. */
+export function source() {
+  const src = read(here, 'prototype.src.html');
+  if (!src.includes('/*__GAME__*/')) throw new Error('marker /*__GAME__*/ not found');
+  return src.replace('/*__GAME__*/', () => gameSource().replace(/\n$/, ''));
+}
+
+// The embed's own policy: scripts and styles from its own origin only, and no connect-src, so the page can make no network call.
+export const EMBED_CSP = "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self' blob:";
+const DEMO_ONLY = /<!--demo-->[\s\S]*?<!--\/demo-->\n?/g;
+
+export function build() {
+  const src = source();
+  const engine = read(root, 'src', 'engine.js'), castle = read(root, 'src', 'castle.js'), rules = read(root, 'rules', 'fieldworks.json').trim();
+  const index = src.replace('/*__ENGINE__*/', () => engine).replace('/*__CASTLE__*/', () => castle).replace('/*__RULES__*/', () => rules);
+  for (const m of ['/*__ENGINE__*/', '/*__CASTLE__*/', '/*__RULES__*/', '/*__GAME__*/']) if (index.includes(m)) throw new Error(`marker ${m} not replaced`);
+  // The art sheet is the same page with one flag set: every sprite drawn by the prototype's own functions.
+  const ART_FLAG = '<script>globalThis.FIELDWORKS_ART = true;</script>\n';
+  const art = index.replace('<script id="rules"', () => ART_FLAG + '<script id="rules"').replace('<title>Fieldworks</title>', '<title>Fieldworks art sheet</title>');
+  if (!art.includes(ART_FLAG)) throw new Error('art marker not found');
+
+  // ── the embed: the same styles, the same body without the DEMO's chrome, the same code as one classic script ──
+  const css = /<style>\n([\s\S]*?)<\/style>/.exec(src); if (!css) throw new Error('style block not found');
+  const bodyAt = src.indexOf('</style>') + '</style>'.length, bodyEnd = src.indexOf('<script id="rules"');
+  const body = src.slice(bodyAt, bodyEnd).replace(DEMO_ONLY, '').trim();
+  if (/<script/i.test(body) || /<!--demo-->/.test(body)) throw new Error('the embed body carries a script or an unclosed demo block');
+  const game = /<script>\n(\(\(\) => \{\n[\s\S]*?\n\}\)\(\);)\n<\/script>\s*$/.exec(src); if (!game) throw new Error('game script not found');
+  const js = [
+    '// Fieldworks, the embeddable build. Generated by prototype/build.mjs: never edited by hand.',
+    '// One classic script: the flag, the page body (built here, so any host shell works), the engine, the castle module, the rules, the game.',
+    'globalThis.FIELDWORKS_EMBED = true;',
+    `globalThis.FIELDWORKS_BODY = ${JSON.stringify(body)};`,
+    `globalThis.FIELDWORKS_RULES = ${rules};`,
+    engine.trimEnd(), castle.trimEnd(), game[1], ''
+  ].join('\n');
+  const html = ['<!doctype html>', '<html lang="en" class="embed">', '<meta charset="utf-8">', '<title>Fieldworks</title>',
+    '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">', '<meta name="robots" content="noindex">',
+    `<meta http-equiv="Content-Security-Policy" content="${EMBED_CSP}">`,
+    '<link rel="stylesheet" href="play.css">', '<link rel="stylesheet" href="fonts/fonts.css">', '<body>', '<script src="play.js"></script>', ''].join('\n');
+  return { index, art, embed: { 'play.html': html, 'play.js': js, 'play.css': css[1] } };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const out = build();
+  writeFileSync(join(here, 'index.html'), out.index);
+  writeFileSync(join(here, 'art-sheet.html'), out.art);
+  mkdirSync(join(root, 'embed'), { recursive: true });
+  for (const [f, text] of Object.entries(out.embed)) writeFileSync(join(root, 'embed', f), text);
+  console.log(`prototype/index.html written — ${out.index.length} bytes; art-sheet.html beside it; embed/ (play.js ${out.embed['play.js'].length} bytes)`);
+}
