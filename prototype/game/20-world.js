@@ -103,12 +103,13 @@
   // ── gear and the bounty (FW2): the Keeper carries what the evidence dropped; the day's pick is journalled so a close that day carries its bonus ──
   /** What the Keeper carries: a view over the archive (S.st.items), chosen per slot in the play record. Nothing here adds, moves or removes an item. */
   const gearNow = () => E.loadout(S.st.items, S.play.gear, RULES);
-  const bountiesOf = (b) => (Array.isArray(b) ? b.filter((x) => x && isDay(x.day) && typeof x.id === 'string' && x.id.length <= 200).slice(-RULES.save.bounty_keep) : []);
+  const bountiesOf = (b) => (Array.isArray(b) ? b.filter((x) => x && isDay(x.day) && typeof x.id === 'string' && x.id.length <= 200): []);
   /** The pick for TODAY. The DEMO and the device journal it the first time it is asked (before any close, so the close carries the bonus); embedded, only the host's pick enters the fold and a local pick is for display. */
   function todaysBounty() {
     const had = S.bounties.find((b) => b.day === TODAY); if (had) return { id: had.id, day: TODAY, ...(openBounty(had.id) || {}) };
+    if (EMBED) return null;   // embedded: no bounty exists unless the host sent it (a bonus computed here could be lost later)
     const pick = E.bounty(openOrders(), RULES, TODAY); if (!pick) return null;
-    if (!EMBED) { S.bounties = bountiesOf([...S.bounties, { day: TODAY, id: pick.id }]); saveNow(); }
+    S.bounties = bountiesOf([...S.bounties, { day: TODAY, id: pick.id }]); saveNow();
     return pick;
   }
   function openBounty(id) { const o = openOrders().find((x) => x.id === id); return o ? E.bounty([o], RULES, TODAY) : null; }

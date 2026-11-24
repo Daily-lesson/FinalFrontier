@@ -145,6 +145,7 @@
   }
   /** Today's bounty (FW2, D61): the oldest public order, then the highest Pn, then the quickest. Its own day's drop is better; nothing is taken from any other day. */
   function bountyCard() {
+    if (EMBED && !S.bounties.some((x) => x.day === TODAY)) return '';   // embedded, only the host's pick is a bounty
     const B = BANK.bounty, b = OUT ? null : todaysBounty(), o = b && S.open.find((x) => x.id === b.id);
     if (!b || !o) return `<section class="card" id="bountycard"><h2>${esc(B.title)}</h2><div class="empty">${esc(B.none)}</div></section>`;
     const age = E.daysBetween(o.written, TODAY), steps = b.steps != null ? b.steps : countOf(o.steps) || 1;

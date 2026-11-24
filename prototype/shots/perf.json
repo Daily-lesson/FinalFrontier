@@ -3,12 +3,12 @@
     "scene": "a horde at the walls, the towers firing",
     "viewport": "375 × 667 @2×",
     "seconds": 6,
-    "frames": 360,
+    "frames": 361,
     "fps": 60,
-    "main_thread_ms_per_frame": 1.04,
-    "script_ms_per_frame": 0.39,
+    "main_thread_ms_per_frame": 1.18,
+    "script_ms_per_frame": 0.44,
     "heap_mb": 5,
-    "heap_growth_kb": -821
+    "heap_growth_kb": -791
   },
   "stage": {
     "scene": "a stage, running and firing",
@@ -16,20 +16,20 @@
     "seconds": 6,
     "frames": 360,
     "fps": 60,
-    "main_thread_ms_per_frame": 1.41,
-    "script_ms_per_frame": 0.36,
-    "heap_mb": 5.6,
-    "heap_growth_kb": -452
+    "main_thread_ms_per_frame": 1.07,
+    "script_ms_per_frame": 0.44,
+    "heap_mb": 6.1,
+    "heap_growth_kb": 992
   },
   "boss": {
     "scene": "a boss fight, dashing and firing",
     "viewport": "375 × 667 @2×",
     "seconds": 6,
-    "frames": 359,
+    "frames": 361,
     "fps": 60,
-    "main_thread_ms_per_frame": 1.71,
-    "script_ms_per_frame": 0.44,
-    "heap_mb": 6,
-    "heap_growth_kb": 132
+    "main_thread_ms_per_frame": 1.39,
+    "script_ms_per_frame": 0.57,
+    "heap_mb": 6.1,
+    "heap_growth_kb": -236
   }
 }

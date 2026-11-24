@@ -19,19 +19,26 @@ nothing there.
   `ctx.bounties` `[{day, id}]`; a close of that order on that day scores
   `rules.bounty.score_bonus` higher. Items now carry `evKind` and `bounty`.
 - `rules/fieldworks.json`: the `gear` and `bounty` blocks, `bank.gear` and
-  `bank.bounty`, `save.bounty_keep`.
+  `bank.bounty`, the journal's unpruned bounty list.
 - `prototype/game/`: gear enters a run only through `recalc` (faster fire,
   wider pickup, faster step, longer grace, quicker dash), shows on the Keeper
   as one small mark per slot in its grade's colour (`40-pixels.js`, the stage
   render and the Keeper screen), and is chosen on a Gear card on the Keeper
-  screen; the choice is a hash in the play record, never an item id. The
+  screen; the choice IS stored, as a hash in the play save (on the device, embedded too), never an item id. The
   bounty card sits on the backlog screen; the pick is journalled before a
   close so the bonus is never lost on a reload.
-- Embed contract: `world.bounty?` `{day, id}`, optional. Every earlier message
-  is still valid; a malformed one is ignored.
+- Review fixes: the pick that earned a bonus is never pruned (the DEMO journal
+  keeps every day's pick; embedded, the host sends `world.bounties?` `[{day,
+  id}]`, every day it holds, beside today's `world.bounty?`, and with no host
+  data nothing is computed, so a bonus can never be lost on a reload).
+  `E.bounty` takes only `tier === 'public'` orders and counts a non-integer
+  `steps`/`options` as one. Embedded with no host pick, the bounty card is
+  hidden.
+- Embed contract: `world.bounty?` `{day, id}` and `world.bounties?`, optional.
+  Every earlier message is still valid; a malformed one is ignored.
 - `sim/economy.mjs`: a Gear and the bounty section in the report (counts
-  only). The re-run's five targets read as they did on this checkout before
-  the change, the task file having moved since the last report.
+  only). The re-run's five target changes come from the live task file having
+  moved since the last report, not from FW2 (identical with FW2 stashed).
 - `tests/check.mjs`, `prototype/shots.mjs`: the gear table, the bounty order
   and its tie-breaks, the bonus, the pillars on the page and the embed's
   optional field; the walk drives gear and the bounty in the page and the

@@ -2,8 +2,8 @@
   // The game runs in a same-origin frame of the host app. It says `ready`, the host answers with a `world`, and a button that
   // fakes evidence in the DEMO asks the host to open the screen where the evidence is really made. Evidence is never created here.
   //   play → host   {fw:1, type:'ready'}   {fw:1, type:'go', to:'workorders'|'learning'|'health'|'close'}
-  //   host → play   {fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?, bounty?}
-  //   `bounty` (optional, FW2): {day, id} — the host's pick of the day's bounty (a public open order, by E.bounty's rule). The fold scores a close of that order on that day higher; absent or malformed, the game picks for display only.
+  //   host → play   {fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?, bounty?, bounties?}
+  //   `bounty` (optional, FW2): {day, id} — the host's pick for today; `bounties` (optional): [{day, id}] — every day's pick the host holds. The fold scores a close of that order on that day higher. Without host data embedded NO bonus is computed (a bonus must never be lost later); a malformed entry is ignored.
   // EMB.state: 'reading' (waiting for the host) · 'world' (applied) · 'none' (no host answered: signed-out play) · 'unread' (a world came and could not be read).
   const EMB = { state: EMBED ? 'reading' : 'world', queued: null, fought: '', seen: false };
   const HOST_PLACES = ['workorders', 'learning', 'health', 'close'];
@@ -42,11 +42,12 @@
       const c = h.clock;
       horde = { day: h.day, clock: { gather: c.gather, warned: c.warned, due: c.due, count: c.count, last: c.last, horde: c.horde ? hordeShape(c.horde) : null }, history: [], dim: h.dim, arrived: h.arrived ? hordeShape(h.arrived) : null, fresh: h.fresh };
     }
+    const bounties = []; if (Array.isArray(m.bounties)) for (const b of m.bounties.slice(0, 5000)) if (b && typeof b === 'object' && isDay(b.day) && isStr(b.id)) bounties.push({ day: b.day, id: b.id });   // optional, every day the host holds; a malformed entry is dropped
     const bounty = m.bounty && typeof m.bounty === 'object' && isDay(m.bounty.day) && isStr(m.bounty.id) ? { day: m.bounty.day, id: m.bounty.id } : null;   // optional: a malformed one is ignored, never a reason to refuse
     // `briefing` (optional) is a later phase's: carried by the host, ignored here, never a reason to refuse.
     // The eight fields an engine event has, and nothing else a host might have left on one.
     const events = v.ok.map((e) => ({ id: e.id, kind: e.kind, at: e.at, tier: e.tier, zone: e.zone ?? null, weight: e.weight, facts: e.facts, evidence: e.evidence }));
-    return { today: m.today, theme: m.theme || null, events, open, plan, horde, bounty, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
+    return { today: m.today, theme: m.theme || null, events, open, plan, horde, bounty, bounties, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
   }
   /** The host's world becomes the game's: the castle is the fold over the host's events, the horde is the host's, the day is the host's. */
   function applyWorld(w) {
@@ -59,7 +60,7 @@
     PLAN = w.lanes.learning ? w.plan : { weeks: [] };
     S.events = w.events; S.open = w.open; S.closed = []; S.liftsLogged = [];
     S.ticks = w.events.filter((e) => e.kind === 'lesson').map((e) => e.id.replace(/^lesson\//, ''));
-    S.bounties = w.bounty ? [w.bounty] : [];   // only the host's pick enters the fold; nothing of it is stored
+    S.bounties = bountiesOf([...w.bounties, ...(w.bounty ? [w.bounty] : [])]);   // only the host's pick enters the fold; nothing of it is stored
     S.lanes = w.lanes; S.state = w.lanes.workorders ? 'live' : 'unlit';
     S.hordeKnown = !!w.horde; S.horde = w.horde || HORDE_NONE();
     const sig = S.horde.arrived ? `${S.horde.arrived.ordinal}/${S.horde.arrived.n}/${S.horde.clock.last}` : '';

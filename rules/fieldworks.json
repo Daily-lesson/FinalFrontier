@@ -969,10 +969,9 @@
     }
   },
   "save": {
-    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored. Version 3 also journals the day's bounty pick (the last bounty_keep days, ids only) beside the horde clock, and the play record keeps the gear the player chose per slot as a hash, never an item id; embedded, the host's pick is used and nothing of it is stored.",
+    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored. Version 3 also journals every day's bounty pick (ids only, never pruned: the bonus on a drop must outlive any window) beside the horde clock, and the play record stores the gear the player chose per slot as a hash, never an item id (so the choice is on the device, in the play save, embedded too). Embedded, only the host's picks are used and they are not stored.",
     "version": 2,
-    "autosave_seconds": 5,
-    "bounty_keep": 14
+    "autosave_seconds": 5
   },
   "clock": {
     "$note": "The horde clock runs on real days (D25, re-cut by D34): a warning warning_hours ahead and an arrival at horde.arrive_hour in the device's own zone. The prototype steps the day from its dev bar so a horde can be met in a five-minute session. The prototype's clock is day-granular: horde.arrive_hour is the app's, and nothing here reads it yet.",
@@ -2021,7 +2020,7 @@
     "show_max": 6
   },
   "bounty": {
-    "$note": "Today's bounty (FW2, D61): one open public order picked by rule, oldest first, then the highest Pn (P0 first), then the quickest (a decision counts as one step, else its step count), then the id. A private order is never the bounty. Closing the bounty on its own day adds score_bonus to the drop's rarity score. The bonus is added on the day and never removed on another; no close is ever worth less for it.",
+    "$note": "Today's bounty (FW2, D61): one open public order picked by rule, oldest first, then the highest Pn (P0 first), then the quickest (a decision counts as one step, else its step count), then the id. A private order is never the bounty. Closing the bounty on its own day adds score_bonus to the drop's rarity score. The bonus is added on the day and never removed on another; no close is ever worth less for it. The pick that made a bonus is evidence: it is kept for as long as the item is (the journal never prunes it; embedded, the host sends every day it holds), and without a host's pick nothing is ever computed embedded, so no bonus can later be lost.",
     "pn_order": [
       "P0",
       "P1",

@@ -301,10 +301,10 @@
     const rank = (pn) => { const i = B.pn_order.indexOf(pn); return i < 0 ? B.pn_order.length : i; };
     const cands = [];
     for (const o of openOrders || []) {
-      if (!o || o.tier === 'private' || typeof o.id !== 'string' || !isDate(o.written)) continue;
+      if (!o || o.tier !== 'public' || typeof o.id !== 'string' || !isDate(o.written)) continue;
       const age = daysBetween(o.written, today); if (age < B.min_age_days) continue;
-      const decision = (o.options || 0) > 0;
-      cands.push({ id: o.id, day: today, ageDays: age, pn: o.pn || null, decision, steps: decision ? 1 : Math.max(1, o.steps || 1) });
+      const decision = Number.isInteger(o.options) && o.options > 0;   // anything else counts as one
+      cands.push({ id: o.id, day: today, ageDays: age, pn: o.pn || null, decision, steps: decision || !(Number.isInteger(o.steps) && o.steps > 0) ? 1 : o.steps });
     }
     cands.sort((a, b) => (b.ageDays - a.ageDays) || (rank(a.pn) - rank(b.pn)) || (a.steps - b.steps) || a.id.localeCompare(b.id));
     return cands[0] || null;

@@ -973,10 +973,9 @@ globalThis.FIELDWORKS_RULES = {
     }
   },
   "save": {
-    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored. Version 3 also journals the day's bounty pick (the last bounty_keep days, ids only) beside the horde clock, and the play record keeps the gear the player chose per slot as a hash, never an item id; embedded, the host's pick is used and nothing of it is stored.",
+    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored. Version 3 also journals every day's bounty pick (ids only, never pruned: the bonus on a drop must outlive any window) beside the horde clock, and the play record stores the gear the player chose per slot as a hash, never an item id (so the choice is on the device, in the play save, embedded too). Embedded, only the host's picks are used and they are not stored.",
     "version": 2,
-    "autosave_seconds": 5,
-    "bounty_keep": 14
+    "autosave_seconds": 5
   },
   "clock": {
     "$note": "The horde clock runs on real days (D25, re-cut by D34): a warning warning_hours ahead and an arrival at horde.arrive_hour in the device's own zone. The prototype steps the day from its dev bar so a horde can be met in a five-minute session. The prototype's clock is day-granular: horde.arrive_hour is the app's, and nothing here reads it yet.",
@@ -2025,7 +2024,7 @@ globalThis.FIELDWORKS_RULES = {
     "show_max": 6
   },
   "bounty": {
-    "$note": "Today's bounty (FW2, D61): one open public order picked by rule, oldest first, then the highest Pn (P0 first), then the quickest (a decision counts as one step, else its step count), then the id. A private order is never the bounty. Closing the bounty on its own day adds score_bonus to the drop's rarity score. The bonus is added on the day and never removed on another; no close is ever worth less for it.",
+    "$note": "Today's bounty (FW2, D61): one open public order picked by rule, oldest first, then the highest Pn (P0 first), then the quickest (a decision counts as one step, else its step count), then the id. A private order is never the bounty. Closing the bounty on its own day adds score_bonus to the drop's rarity score. The bonus is added on the day and never removed on another; no close is ever worth less for it. The pick that made a bonus is evidence: it is kept for as long as the item is (the journal never prunes it; embedded, the host sends every day it holds), and without a host's pick nothing is ever computed embedded, so no bonus can later be lost.",
     "pn_order": [
       "P0",
       "P1",
@@ -2339,10 +2338,10 @@ globalThis.FIELDWORKS_RULES = {
     const rank = (pn) => { const i = B.pn_order.indexOf(pn); return i < 0 ? B.pn_order.length : i; };
     const cands = [];
     for (const o of openOrders || []) {
-      if (!o || o.tier === 'private' || typeof o.id !== 'string' || !isDate(o.written)) continue;
+      if (!o || o.tier !== 'public' || typeof o.id !== 'string' || !isDate(o.written)) continue;
       const age = daysBetween(o.written, today); if (age < B.min_age_days) continue;
-      const decision = (o.options || 0) > 0;
-      cands.push({ id: o.id, day: today, ageDays: age, pn: o.pn || null, decision, steps: decision ? 1 : Math.max(1, o.steps || 1) });
+      const decision = Number.isInteger(o.options) && o.options > 0;   // anything else counts as one
+      cands.push({ id: o.id, day: today, ageDays: age, pn: o.pn || null, decision, steps: decision || !(Number.isInteger(o.steps) && o.steps > 0) ? 1 : o.steps });
     }
     cands.sort((a, b) => (b.ageDays - a.ageDays) || (rank(a.pn) - rank(b.pn)) || (a.steps - b.steps) || a.id.localeCompare(b.id));
     return cands[0] || null;
@@ -2673,12 +2672,13 @@ globalThis.FIELDWORKS_RULES = {
   // ── gear and the bounty (FW2): the Keeper carries what the evidence dropped; the day's pick is journalled so a close that day carries its bonus ──
   /** What the Keeper carries: a view over the archive (S.st.items), chosen per slot in the play record. Nothing here adds, moves or removes an item. */
   const gearNow = () => E.loadout(S.st.items, S.play.gear, RULES);
-  const bountiesOf = (b) => (Array.isArray(b) ? b.filter((x) => x && isDay(x.day) && typeof x.id === 'string' && x.id.length <= 200).slice(-RULES.save.bounty_keep) : []);
+  const bountiesOf = (b) => (Array.isArray(b) ? b.filter((x) => x && isDay(x.day) && typeof x.id === 'string' && x.id.length <= 200): []);
   /** The pick for TODAY. The DEMO and the device journal it the first time it is asked (before any close, so the close carries the bonus); embedded, only the host's pick enters the fold and a local pick is for display. */
   function todaysBounty() {
     const had = S.bounties.find((b) => b.day === TODAY); if (had) return { id: had.id, day: TODAY, ...(openBounty(had.id) || {}) };
+    if (EMBED) return null;   // embedded: no bounty exists unless the host sent it (a bonus computed here could be lost later)
     const pick = E.bounty(openOrders(), RULES, TODAY); if (!pick) return null;
-    if (!EMBED) { S.bounties = bountiesOf([...S.bounties, { day: TODAY, id: pick.id }]); saveNow(); }
+    S.bounties = bountiesOf([...S.bounties, { day: TODAY, id: pick.id }]); saveNow();
     return pick;
   }
   function openBounty(id) { const o = openOrders().find((x) => x.id === id); return o ? E.bounty([o], RULES, TODAY) : null; }
@@ -2801,8 +2801,8 @@ globalThis.FIELDWORKS_RULES = {
   // The game runs in a same-origin frame of the host app. It says `ready`, the host answers with a `world`, and a button that
   // fakes evidence in the DEMO asks the host to open the screen where the evidence is really made. Evidence is never created here.
   //   play → host   {fw:1, type:'ready'}   {fw:1, type:'go', to:'workorders'|'learning'|'health'|'close'}
-  //   host → play   {fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?, bounty?}
-  //   `bounty` (optional, FW2): {day, id} — the host's pick of the day's bounty (a public open order, by E.bounty's rule). The fold scores a close of that order on that day higher; absent or malformed, the game picks for display only.
+  //   host → play   {fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?, bounty?, bounties?}
+  //   `bounty` (optional, FW2): {day, id} — the host's pick for today; `bounties` (optional): [{day, id}] — every day's pick the host holds. The fold scores a close of that order on that day higher. Without host data embedded NO bonus is computed (a bonus must never be lost later); a malformed entry is ignored.
   // EMB.state: 'reading' (waiting for the host) · 'world' (applied) · 'none' (no host answered: signed-out play) · 'unread' (a world came and could not be read).
   const EMB = { state: EMBED ? 'reading' : 'world', queued: null, fought: '', seen: false };
   const HOST_PLACES = ['workorders', 'learning', 'health', 'close'];
@@ -2841,11 +2841,12 @@ globalThis.FIELDWORKS_RULES = {
       const c = h.clock;
       horde = { day: h.day, clock: { gather: c.gather, warned: c.warned, due: c.due, count: c.count, last: c.last, horde: c.horde ? hordeShape(c.horde) : null }, history: [], dim: h.dim, arrived: h.arrived ? hordeShape(h.arrived) : null, fresh: h.fresh };
     }
+    const bounties = []; if (Array.isArray(m.bounties)) for (const b of m.bounties.slice(0, 5000)) if (b && typeof b === 'object' && isDay(b.day) && isStr(b.id)) bounties.push({ day: b.day, id: b.id });   // optional, every day the host holds; a malformed entry is dropped
     const bounty = m.bounty && typeof m.bounty === 'object' && isDay(m.bounty.day) && isStr(m.bounty.id) ? { day: m.bounty.day, id: m.bounty.id } : null;   // optional: a malformed one is ignored, never a reason to refuse
     // `briefing` (optional) is a later phase's: carried by the host, ignored here, never a reason to refuse.
     // The eight fields an engine event has, and nothing else a host might have left on one.
     const events = v.ok.map((e) => ({ id: e.id, kind: e.kind, at: e.at, tier: e.tier, zone: e.zone ?? null, weight: e.weight, facts: e.facts, evidence: e.evidence }));
-    return { today: m.today, theme: m.theme || null, events, open, plan, horde, bounty, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
+    return { today: m.today, theme: m.theme || null, events, open, plan, horde, bounty, bounties, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
   }
   /** The host's world becomes the game's: the castle is the fold over the host's events, the horde is the host's, the day is the host's. */
   function applyWorld(w) {
@@ -2858,7 +2859,7 @@ globalThis.FIELDWORKS_RULES = {
     PLAN = w.lanes.learning ? w.plan : { weeks: [] };
     S.events = w.events; S.open = w.open; S.closed = []; S.liftsLogged = [];
     S.ticks = w.events.filter((e) => e.kind === 'lesson').map((e) => e.id.replace(/^lesson\//, ''));
-    S.bounties = w.bounty ? [w.bounty] : [];   // only the host's pick enters the fold; nothing of it is stored
+    S.bounties = bountiesOf([...w.bounties, ...(w.bounty ? [w.bounty] : [])]);   // only the host's pick enters the fold; nothing of it is stored
     S.lanes = w.lanes; S.state = w.lanes.workorders ? 'live' : 'unlit';
     S.hordeKnown = !!w.horde; S.horde = w.horde || HORDE_NONE();
     const sig = S.horde.arrived ? `${S.horde.arrived.ordinal}/${S.horde.arrived.n}/${S.horde.clock.last}` : '';
@@ -4026,6 +4027,7 @@ globalThis.FIELDWORKS_RULES = {
   }
   /** Today's bounty (FW2, D61): the oldest public order, then the highest Pn, then the quickest. Its own day's drop is better; nothing is taken from any other day. */
   function bountyCard() {
+    if (EMBED && !S.bounties.some((x) => x.day === TODAY)) return '';   // embedded, only the host's pick is a bounty
     const B = BANK.bounty, b = OUT ? null : todaysBounty(), o = b && S.open.find((x) => x.id === b.id);
     if (!b || !o) return `<section class="card" id="bountycard"><h2>${esc(B.title)}</h2><div class="empty">${esc(B.none)}</div></section>`;
     const age = E.daysBetween(o.written, TODAY), steps = b.steps != null ? b.steps : countOf(o.steps) || 1;

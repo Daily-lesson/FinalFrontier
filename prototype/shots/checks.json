@@ -87,7 +87,7 @@
   {
     "name": "jump: a short press is a short hop, a held one a full jump",
     "ok": true,
-    "detail": "14 px against 46 px"
+    "detail": "11 px against 46 px"
   },
   {
     "name": "a checkpoint offers one of three run upgrades, and the pick joins the build shown on the HUD",
@@ -287,7 +287,7 @@
   {
     "name": "a moving platform carries the Keeper across a chasm",
     "ok": true,
-    "detail": "the deck moved 31 px and the Keeper 31 px with it"
+    "detail": "the deck moved 32 px and the Keeper 32 px with it"
   },
   {
     "name": "out of hull, a roadmap run restarts at its last checkpoint twice, with the build kept; the third time the run is over",
@@ -317,7 +317,7 @@
   {
     "name": "play score opens things for play: a starting pick, a second jump, more worlds for the Wilds",
     "ok": true,
-    "detail": "a head start of 3; one jump 46 px, two 70 px; 3 worlds; a pool of 9"
+    "detail": "a head start of 3; one jump 46 px, two 71 px; 3 worlds; a pool of 9"
   },
   {
     "name": "… and nothing for the castle: the same pieces and XP as a device that never played",
@@ -347,7 +347,7 @@
   {
     "name": "signed out: the Wilds play, and their score builds nothing",
     "ok": true,
-    "detail": "x 206 · score 34; pieces 0"
+    "detail": "x 204 · score 32; pieces 0"
   },
   {
     "name": "signed out: an earlier DEMO save replays no evidence and no horde, and keeps its Wilds score alone",
@@ -447,17 +447,17 @@
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a horde at the walls, the towers firing)",
     "ok": true,
-    "detail": "1.04 ms · 60 fps"
+    "detail": "1.18 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a stage, running and firing)",
     "ok": true,
-    "detail": "1.41 ms · 60 fps"
+    "detail": "1.07 ms · 60 fps"
   },
   {
     "name": "a frame stays inside the 16.7 ms budget on the main thread (a boss fight, dashing and firing)",
     "ok": true,
-    "detail": "1.71 ms · 60 fps"
+    "detail": "1.39 ms · 60 fps"
   },
   {
     "name": "the art sheet renders in both themes",

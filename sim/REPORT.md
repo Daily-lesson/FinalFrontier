@@ -98,10 +98,10 @@ Read from `prototype/game/*.js` (the page's script, in fragments) when this repo
 - 20-world.js:83: `for (const id of S.ticks) S.events.push(lessonEvent(id, ago(6)));`
 - 20-world.js:84: `if (!OUT) S.events.push({ id: 'pace/${ago(5)}', kind: 'pace', at: ago(5), tier: 'private', zone: null, weight: 0, fact`
 - 20-world.js:91: `function setState(st) { S.st = st; CAS = C.castleOf(st.log, RULES); fcKey = ''; }`
-- 20-world.js:167: `for (const id of j.closed) { const o = S.open.find((x) => x.id === id); if (!o) continue; S.events.push(closeEvent(o))`
-- 20-world.js:168: `for (const t of j.ticks) if (!S.ticks.includes(t) && PLAN.weeks.some((w) => w.lessons.includes(t))) { S.ticks.push(t);`
-- 20-world.js:169: `for (const d of j.lifts) if (!S.liftsLogged.includes(d)) { S.liftsLogged.push(d); S.events.push(liftEvent(d)); S.shown`
-- 25-embed.js:60: `S.events = w.events; S.open = w.open; S.closed = []; S.liftsLogged = [];`
+- 20-world.js:168: `for (const id of j.closed) { const o = S.open.find((x) => x.id === id); if (!o) continue; S.events.push(closeEvent(o))`
+- 20-world.js:169: `for (const t of j.ticks) if (!S.ticks.includes(t) && PLAN.weeks.some((w) => w.lessons.includes(t))) { S.ticks.push(t);`
+- 20-world.js:170: `for (const d of j.lifts) if (!S.liftsLogged.includes(d)) { S.liftsLogged.push(d); S.events.push(liftEvent(d)); S.shown`
+- 25-embed.js:61: `S.events = w.events; S.open = w.open; S.closed = []; S.liftsLogged = [];`
 - 50-castle.js:22: `S.play.wall += sum.keeperDowned * RS.score.horde_machine; S.play.life += sum.keeperDowned * RS.score.horde_machine;   `
 - 60-stage.js:130: `ST.score += n; pop(ST.pops, x, y, label('+', n));`
 - 60-stage.js:244: `if (ST.wilds) { const tile = Math.floor(k.x / TILE); if (tile > ST.far) { ST.score += Math.round((tile - ST.far) * RS.`

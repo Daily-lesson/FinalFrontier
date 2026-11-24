@@ -821,8 +821,10 @@ test('the page: gear is a view of the archive and enters the run only through re
   assert.match(fn('recalc'), /const gm = gearNow\(\)\.mods;/); assert.ok(/ST\.mod\.inv/.test(fn('hurt')) && /ST\.mod\.speed/.test(SRC), 'gear reaches the run through ST.mod');
   assert.match(SRC, /E\.evaluate\(S\.events, RULES, TODAY, \{ plan: PLAN, bounties: S\.bounties \}\)/, 'the fold takes the day\'s pick as context, in the one place it runs');
   assert.match(fn('closeOrder'), /todaysBounty\(\);\s*\/\/[^\n]*\n\s*const ev = closeEvent\(o\);/, 'the pick is made and journalled before the close');
-  assert.match(fn('todaysBounty'), /if \(!EMBED\) \{ S\.bounties = bountiesOf/, 'embedded, a local pick is for display and is never journalled');
-  assert.match(fn('applyWorld'), /S\.bounties = w\.bounty \? \[w\.bounty\] : \[\];/, 'embedded, only the host\'s pick enters the fold');
+  assert.match(fn('todaysBounty'), /if \(EMBED\) return null;/, 'embedded, no pick is ever made locally: only the host\'s exists, so no bonus can later be lost');
+  assert.ok(!/bounty_keep|\.slice\(-/.test(SRC.match(/const bountiesOf = .*\n/)[0] + JSON.stringify(RULES.save)), 'the journal never prunes a pick');
+  assert.match(fn('applyWorld'), /S\.bounties = bountiesOf\(\[\.\.\.w\.bounties, \.\.\.\(w\.bounty \? \[w\.bounty\] : \[\]\)\]\);/, 'embedded, only the host\'s picks enter the fold');
+  assert.match(fn('bountyCard'), /if \(EMBED && !S\.bounties\.some\(\(x\) => x\.day === TODAY\)\) return '';/, 'embedded with no host pick: no bounty card');
   assert.match(fn('gearChoice'), /Number\.isInteger\(v\)/, 'the choice is a hash, never an item id');
   assert.match(SRC, /play: S\.play, horde: S\.horde, bounties: S\.bounties \}/); assert.match(fn('snapshot'), /if \(EMBED\) return \{ version: RULES\.save\.version, rules: RULES_HASH, play: S\.play \};/, 'the embed still stores play only');
   assert.ok(/\[data-gear\]/.test(SRC) && !/data-gear[^\n]*(items|S\.events)/.test(fn('gearCard')), 'the buttons choose; nothing consumes');
@@ -836,4 +838,32 @@ test('the embed\'s intake takes a bounty and ignores a bad one (an optional fiel
   assert.equal(box.readWorld(world()).bounty, null, 'a world with no bounty reads exactly as before');
   assert.deepEqual(JSON.parse(JSON.stringify(box.readWorld(world({ bounty: { day: '2026-12-01', id: 'WO-410', title: 'x' } })).bounty)), { day: '2026-12-01', id: 'WO-410' }, 'two fields, nothing else');
   for (const bad of [{ day: 'x', id: 'WO-410' }, { day: '2026-12-01' }, 'WO-410', 7, []]) { const w = box.readWorld(world({ bounty: bad })); assert.ok(w && w.bounty === null, 'a malformed bounty is dropped, never a reason to refuse the world'); }
+});
+
+test('the bounty bonus is durable: re-evaluated long after any window it keeps its grade, and the fold takes only public orders', () => {
+  const close = (id, at) => ev({ id, kind: 'close', at, weight: 50, facts: { pn: 'P2', ageDays: 10 } });
+  const picks = []; for (let i = 0; i < 400; i++) picks.push({ day: `2025-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 28)).padStart(2, '0')}`, id: `O-${i}` });
+  picks.push({ day: '2026-10-01', id: 'WO-500' });
+  const evs = [close('WO-500', '2026-10-01')];
+  const a = E.evaluate(evs, RULES, '2026-10-01', { bounties: picks }).items[0], b = E.evaluate(evs, RULES, '2026-10-31', { bounties: picks }).items[0];
+  assert.deepEqual([a.grade, a.score, a.bounty], [b.grade, b.score, b.bounty], '30 days later the same grade');
+  assert.equal(E.evaluate(evs, RULES, '2026-10-31', { bounties: picks.slice(0, 14) }).items[0].bounty, false, 'the bonus depends on the pick being kept, which is why the journal never prunes it');
+  assert.ok(!/slice\(-/.test(SRC.match(/const bountiesOf = .*\n/)[0]));
+  const o = (id, tier) => ({ id, written: '2026-10-01', pn: 'P0', options: 0, steps: 1, tier });
+  assert.equal(E.bounty([o('A', undefined), o('B', 'weird'), o('C', null)], RULES, '2026-11-20'), null, 'a missing or odd tier fails closed');
+  assert.equal(E.bounty([o('A', undefined), o('Z', 'public')], RULES, '2026-11-20').id, 'Z');
+  const q = (id, steps, options) => ({ id, written: '2026-10-01', pn: 'P1', steps, options, tier: 'public' });
+  assert.equal(E.bounty([q('S2', 2, 0), q('S9', 9, 0), q('SN', NaN, 0)], RULES, '2026-11-20').id, 'SN', 'NaN steps count as one');
+  assert.equal(E.bounty([q('A', 'abc', 0), q('B', 2.5, 0), q('C', 2, 'x')], RULES, '2026-11-20').id, 'A', 'non-integer steps/options count as one, then the id');
+  assert.equal(E.bounty([q('D', 3, 'x'), q('E', 3, 2)], RULES, '2026-11-20').id, 'E', 'a decision is one step; "x" options are not options');
+});
+test('the embed takes bounties (plural), optional, with bounty still accepted', () => {
+  const box = { E, RULES, globalThis: null }; box.globalThis = box;
+  const pick = (re) => { const m = re.exec(SRC); assert.ok(m, String(re)); return m[0]; };
+  vm.runInNewContext([pick(/  const isInt = .*\n/), pick(/  const isDay = .*\n/), fn('validHorde') + '\n  }', pick(/  const isStr = .*\n/), pick(/  const NAME_FIELDS = .*\n/), fn('readOrder') + '\n  }', fn('readPlan') + '\n  }', pick(/  const hordeShape = .*\n/), fn('readWorld') + '\n  }', 'globalThis.readWorld = readWorld;'].join('\n'), box);
+  const world = (more = {}) => ({ fw: 1, type: 'world', today: '2026-12-01', events: [], open: [], plan: null, horde: null, lanes: { workorders: true, learning: true, body: true }, ...more });
+  assert.deepEqual(JSON.parse(JSON.stringify(box.readWorld(world()).bounties)), []);
+  const w = box.readWorld(world({ bounties: [{ day: '2026-11-01', id: 'A', x: 1 }, { day: 'bad', id: 'B' }, null, { day: '2026-11-02', id: 'C' }], bounty: { day: '2026-12-01', id: 'D' } }));
+  assert.deepEqual(JSON.parse(JSON.stringify(w.bounties)), [{ day: '2026-11-01', id: 'A' }, { day: '2026-11-02', id: 'C' }]); assert.equal(w.bounty.id, 'D');
+  assert.deepEqual(JSON.parse(JSON.stringify(box.readWorld(world({ bounties: 'nope' })).bounties)), [], 'a malformed list is ignored, never a refusal');
 });
