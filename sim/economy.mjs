@@ -240,6 +240,30 @@ export function simulate(rows, rules, today, E, days = 60, opts = {}) {
   return { from, to: today, days: out, hordes, pending };
 }
 
+/**
+ * Gear and the bounty (FW2): the same replay, read for what the evidence dropped as gear and for how the day's
+ * bounty would have behaved. Counts only: no id, no title. The pick is made each morning from the public open
+ * orders (the engine's own rule), then the close events are folded with and without it.
+ */
+export function gearAndBounty(rows, rules, today, E, days = 60) {
+  const from = addDays(today, -(days - 1)); const picks = []; let hit = 0, none = 0;
+  for (let i = 0; i < days; i++) {
+    const D = addDays(from, i);
+    const open = rows.filter((r) => r.tier === 'public' && r.written <= D && (!r.done || r.done >= D)).map((r) => ({ id: r.id, written: r.written, pn: r.pn, options: r.options || 0, steps: r.steps || 0, tier: r.tier }));
+    const b = E.bounty(open, rules, D);
+    if (!b) { none++; continue; }
+    picks.push({ day: D, id: b.id, age: b.ageDays }); if (rows.some((r) => r.id === b.id && r.done === D)) hit++;
+  }
+  const closes = rows.filter((r) => r.done && r.done >= from && r.done <= today).map(closeEvent), { events: cad, plan } = cadenceEvents(from, today);
+  const all = [...closes, ...cad];
+  const base = E.evaluate(all, rules, today, { plan }), withB = E.evaluate(all, rules, today, { plan, bounties: picks.map((x) => ({ day: x.day, id: x.id })) });
+  const grades = rules.rarity.grades; const tally = (st) => Object.fromEntries(grades.map((g) => [g, st.items.filter((i) => i.grade === g).length]));
+  const lo = E.loadout(withB.items, {}, rules);
+  const slots = rules.gear.order.map((slot) => ({ slot, have: lo.slots[slot].candidates.length, best: lo.slots[slot].gear ? lo.slots[slot].gear.grade : null }));
+  const lifted = withB.items.filter((it, i) => it.grade !== base.items[i].grade).length;
+  return { picks: picks.length, none, hit, medianAge: median(picks.map((x) => x.age)), items: base.items.length, base: tally(base), withBounty: tally(withB), lifted, slots, bonus: rules.bounty.score_bonus };
+}
+
 const median = (xs) => { const s = xs.slice().sort((a, b) => a - b); const n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
 
 export function weeks(sim) {
@@ -306,7 +330,7 @@ const HORDE_HEAD = ['| Warned on day | Arrived on day | Machines | Engines | For
 const hordeRow = (h, cap) => `| ${h.warnedDay ?? '—'} | ${h.arrivedDay} | ${h.n} | ${h.bosses} | ${h.forecast ?? '—'} | ${h.tasks == null ? `more than ${cap}` : h.tasks} | ${h.band} | ${h.outcome} | ${h.wallLeft}% |`;
 const hordeTable = (sim, cap) => [...HORDE_HEAD, ...(sim.hordes.length ? sim.hordes.map((h) => hordeRow(h, cap)) : ['| — | — | — | — | — | — | — | no horde in the window | — |'])];
 
-export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef, closesOnly }) {
+export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef, closesOnly, gear }) {
   const W = weeks(sim); const T = targets(sim, rules); const H = rules.horde; const cap = H.warning.max_tasks;
   const L = [];
   L.push('# Economy sim — report', '');
@@ -337,6 +361,13 @@ export function renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, 
     L.push(`| ${i} | ${t ? `\`${t.key}\`` : 'the first cut of the rework'} | ${t ? `${JSON.stringify(t.before)} → ${JSON.stringify(t.after)}` : '—'} | ${t ? t.why : 'the baseline'} | ${run.map((x) => (x.met ? '✓' : '✗')).join(' | ')} |`);
   });
   L.push('', '**Not touched:** the engine; rarity, XP bases and multipliers, the player step (200, from the first sim), medals, the skill step and the siege\'s ages and weights (the design\'s definition of an order at the walls, not a balance knob).', '');
+  if (gear) {
+    const gr = rules.rarity.grades, row = (t) => gr.map((g) => `${g} ${t[g]}`).join(' · ');
+    L.push('## Gear and the bounty (FW2)', '', `A drop is gear by its kind (the slot) and grade (power 1 to 5); the Keeper carries the best of each slot unless the player chose another. The bounty is the day's one public open order by the engine's rule (oldest, then highest Pn, then quickest), and closing it that day adds ${gear.bonus} to the drop's rarity score. Counts only.`, '');
+    L.push(`- **Drops in the window:** ${gear.items} items. Without the bounty: ${row(gear.base)}. With it: ${row(gear.withBounty)}.`);
+    L.push(`- **The bounty:** a pick on ${gear.picks} of ${gear.picks + gear.none} days (median age ${gear.medianAge} days); on ${gear.hit} of them the bounty itself was the order closed that day, and ${gear.lifted} drops were lifted a grade by it. A bounty nobody closes costs nothing and takes nothing.`);
+    L.push(`- **Gear carried at the end:** ${gear.slots.map((x) => `${x.slot} ${x.have} piece(s)${x.best ? ' (best ' + x.best + ')' : ''}`).join(' · ')}.`, '');
+  }
   L.push('## Where evidence enters, where the castle comes from, where score changes', '', 'Read from `prototype/game/*.js` (the page\'s script, in fragments) when this report was generated. Evidence enters the event list on a finished task, a survey or a logged lift (and when a save or the DEMO history is replayed; embedded in a host app, the host\'s validated events replace the list whole); the castle is derived from the fold\'s log in one place; score changes only inside a stage or at the wall, and no line carries it into the event list.', '');
   for (const h of sourceAudit()) L.push(`- ${h.line}: \`${h.text.replace(/`/g, "'")}\``);
   L.push('');
@@ -377,7 +408,7 @@ async function main(argv) {
   const sim = simulate(rows, rules, today, E, 60, { castle: C });
   const simCloses = simulate(rows, rules, today, E, 60, { closesOnly: true, castle: C });
   const closesOnly = { sim: simCloses, targets: targets(simCloses, rules) };
-  const report = renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef: ref.replace(/^origin\//, ''), closesOnly });
+  const report = renderReport({ sim, rules, stats, sha, ref, tuning, tuningRuns, alysRef: ref.replace(/^origin\//, ''), closesOnly, gear: gearAndBounty(rows, rules, today, E) });
   guardReport(report, md, index);
   if (argv.includes('--stdout')) process.stdout.write(report); else { writeFileSync(join(here, 'REPORT.md'), report); console.log(`sim/REPORT.md written — ${sim.days.length} days, ${stats.done} done rows, targets ${targets(sim, rules).map((t) => (t.met ? 'met' : 'not met')).join(' / ')}`); }
 }

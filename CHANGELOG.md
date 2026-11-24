@@ -2,7 +2,46 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — the embed, after review
+merged; `## Unreleased — gear and the bounty (FW2, the FinalFrontier half)
+
+Design: alys `docs/FIELDWORKS.md` §17, D52 and D61. The SocialOS half (the
+hero card's bounty line, re-vendoring this build) follows; this repo changes
+nothing there.
+
+- `src/engine.js`: `gearOf(item)`, `loadout(items, chosen)` and `bounty(open,
+  today)`. A drop is gear by the kind of event that dropped it (close ·
+  blaster, task · visor, lesson · boots, lift · plating, decision · core) and
+  its grade (power 1 to 5); a sealed drop is gear with no name. The Keeper
+  carries the best piece of each slot unless the player chose another or
+  none. The bounty is one public open order, oldest first, then the highest
+  Pn, then the quickest (a decision counts as one step), then the id; a
+  private order is never the bounty. `evaluate` takes an optional
+  `ctx.bounties` `[{day, id}]`; a close of that order on that day scores
+  `rules.bounty.score_bonus` higher. Items now carry `evKind` and `bounty`.
+- `rules/fieldworks.json`: the `gear` and `bounty` blocks, `bank.gear` and
+  `bank.bounty`, `save.bounty_keep`.
+- `prototype/game/`: gear enters a run only through `recalc` (faster fire,
+  wider pickup, faster step, longer grace, quicker dash), shows on the Keeper
+  as one small mark per slot in its grade's colour (`40-pixels.js`, the stage
+  render and the Keeper screen), and is chosen on a Gear card on the Keeper
+  screen; the choice is a hash in the play record, never an item id. The
+  bounty card sits on the backlog screen; the pick is journalled before a
+  close so the bonus is never lost on a reload.
+- Embed contract: `world.bounty?` `{day, id}`, optional. Every earlier message
+  is still valid; a malformed one is ignored.
+- `sim/economy.mjs`: a Gear and the bounty section in the report (counts
+  only). The re-run's five targets read as they did on this checkout before
+  the change, the task file having moved since the last report.
+- `tests/check.mjs`, `prototype/shots.mjs`: the gear table, the bounty order
+  and its tie-breaks, the bonus, the pillars on the page and the embed's
+  optional field; the walk drives gear and the bounty in the page and the
+  frame.
+
+Pillars held: gear exists only because evidence dropped an item; play score
+adds none and equipping never changes, moves or removes one; gear's effects
+are for play; a sealed piece shows no name.
+
+## Unreleased — the embed, after review
 
 - `prototype/game/25-embed.js`: a lane read for the first time is taken as the
   castle as it stood (no drop card for its whole history); a received event

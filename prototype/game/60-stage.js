@@ -91,7 +91,7 @@
       nextBoss: wilds ? RS.bosses.wilds_first_tiles : Infinity, nextPost: wilds ? RS.wilds.checkpoint_tiles : Infinity, nextCache: RS.terrain.cache_first_tiles, bossN: 0,
       hard: S.play.hard, spd: S.play.hard ? RS.hard.speed : 1, mult: S.play.hard ? RS.hard.score : 1, cont: wilds || S.play.hard ? 0 : RS.continues,
       k: { x: 30, y: 0, vx: 0, vy: 0, face: 1, air: true, cd: 0, step: 0, inv: 0, hp, max: hp, safe: 30, cpx: 30, coy: 0, buf: 0, dash: 0, dashCd: 0, airDash: false, dj: false, hold: 0, full: false, ride: null, hurtT: 0, squash: 0, shield: false, shT: 0, trail: 0, dashId: 0, bud: 0 },
-      up: BUILD0(), mod: { cd: 1 / RS.keeper.fire_per_s, charge: RS.moves.charge_s, chargeDmg: RS.moves.charge_damage, dashCd: 1, dj: unlocked('double_jump'), magnet: 0, shieldS: 0 }, buildStr: '', picks: 0,
+      up: BUILD0(), mod: { cd: 1 / RS.keeper.fire_per_s, charge: RS.moves.charge_s, chargeDmg: RS.moves.charge_damage, dashCd: 1, dj: unlocked('double_jump'), magnet: 0, shieldS: 0, speed: RS.keeper.speed, inv: RS.keeper.invulnerable_s }, buildStr: '', picks: 0,
       shots: Array.from({ length: 28 }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, dmg: 1, pierce: 0, big: false, last: -1 })),
       eb: Array.from({ length: 24 }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, g: 0, kind: 0, t: 0 })),
       bits: Array.from({ length: 90 }, () => ({ t: 0, x: 0, y: 0, vx: 0, vy: 0, c: 0, g: 300 })), pops: Array.from({ length: 8 }, () => ({ t: 0, x: 0, y: 0, s: '' })),
@@ -110,7 +110,7 @@
     }
     ST.k.y = GROUND_ROW * TILE - KH; ST.totalSparks = ST.sparks.filter((s) => s.lock < 0).length;
     tap.jump = tap.fire = tap.dash = false;
-    music(BIO.def.song); ST.perkDue = unlocked('perk');   // a starting pick, once play score has opened the slot
+    recalc(); music(BIO.def.song); ST.perkDue = unlocked('perk');   // a starting pick, once play score has opened the slot
   }
   /** The biomes the Wilds may wear: the ones play score has opened. */
   function wildsBiomes() { return RS.biomes.list.filter((b) => S.play.life >= b.at).map((b) => b.slug); }
@@ -142,7 +142,7 @@
   function hurt() {
     const k = ST.k; if (k.inv > 0 || ST.done) return;
     if (k.shield) { k.shield = false; k.shT = ST.mod.shieldS; k.inv = .6; sfx('clink'); burst(k.x + KW / 2, k.y + 8, 8, 2); return; }   // the shield takes it
-    k.hp--; k.inv = RS.keeper.invulnerable_s; k.hurtT = .35; ST.clean = false; k.vy = -90; k.dash = 0; ST.combo = 0;
+    k.hp--; k.inv = ST.mod.inv; k.hurtT = .35; ST.clean = false; k.vy = -90; k.dash = 0; ST.combo = 0;
     sfx('hurt'); burst(k.x + KW / 2, k.y + 8, 8, 6); jolt(RS.juice.shake_hurt, RS.juice.hitstop_hurt_s); if (!CALM) ST.flash = .5;
     if (k.hp <= 0) die();
   }
@@ -184,7 +184,7 @@
     k.dashCd -= dt;
     if (dashTap && k.dashCd <= 0 && k.dash <= 0 && !(k.air && k.airDash)) { k.dash = M.dash_s; k.dashCd = M.dash_cooldown_s * ST.mod.dashCd; k.inv = Math.max(k.inv, M.dash_invulnerable_s); if (dir) k.face = dir; if (k.air) k.airDash = true; k.dashId++; sfx('dash'); burst(k.x + KW / 2, k.y + KH - 3, 4, 3, .6); }
     if (k.dash > 0) { k.dash -= dt; k.vx = k.face * M.dash_speed; k.vy = 0; }
-    else { k.vx = dir * K.speed; if (dir) { k.face = dir; k.step += dt * 11; } k.vy = Math.min(280, k.vy + K.gravity * dt); }
+    else { k.vx = dir * ST.mod.speed; if (dir) { k.face = dir; k.step += dt * 11; } k.vy = Math.min(280, k.vy + K.gravity * dt); }
     // the jump: buffered a moment before landing, forgiven a moment after a ledge, cut short by a short press; a second one once play has opened it
     if (jumpTap) k.buf = M.buffer_s; else k.buf -= dt;
     k.coy = k.air ? k.coy - dt : M.coyote_s;

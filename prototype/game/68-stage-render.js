@@ -52,6 +52,7 @@
       const s = ks[k.face > 0 ? 0 : 1], x = k.x - cam, y = k.y + oy;
       if (k.dash > 0) { ctx.globalAlpha = .3; blit(s, x - k.face * 13, y); ctx.globalAlpha = .55; blit(s, x - k.face * 6, y); ctx.globalAlpha = 1; }
       if (k.squash > 0) ctx.drawImage(s, x | 0, (y + 3) | 0, KW, KH - 3); else blit(s, x, y + (k.vx && !k.air && (k.step | 0) % 2 ? -1 : 0));
+      drawGear(ST.gearMarks, px, x, y + (k.squash > 0 ? 3 : 0), k.face);   // what the evidence dropped, carried
       if (k.hold > M.charge_min_s) { const u = Math.min(1, k.hold / ST.mod.charge), r = 1 + ((u * 3) | 0), gx = x + (k.face > 0 ? KW + 1 : -2), gy = y + 10; px(gx - r, gy - r, r * 2 + 1, r * 2 + 1, k.full && ((t * 20) | 0) % 2 ? '#ffffff' : '#9ff0d8'); if (k.full) { ctx.globalAlpha = .35; px(gx - r - 2, gy - r - 2, r * 2 + 5, r * 2 + 5, '#9ff0d8'); ctx.globalAlpha = 1; } }
       if (k.shield) { const c = '#9ff0d8'; px(x - 1, y - 1, 3, 1, c); px(x - 1, y - 1, 1, 3, c); px(x + KW - 2, y - 1, 3, 1, c); px(x + KW, y - 1, 1, 3, c); px(x - 1, y + KH, 3, 1, c); px(x - 1, y + KH - 2, 1, 3, c); px(x + KW - 2, y + KH, 3, 1, c); px(x + KW, y + KH - 2, 1, 3, c); }
     }
