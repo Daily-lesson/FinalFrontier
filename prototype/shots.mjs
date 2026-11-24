@@ -217,6 +217,36 @@ async function behaviours() {
   await go(p, 'stages');
   const track = await p.locator('[data-unlock]').evaluateAll((els) => els.map((e) => [e.dataset.unlock, e.dataset.open === 'true']));
   check('the stage list shows what play score has opened and what comes next', track.length >= 8 && track.find(([k]) => k === 'pierce')[1] && track.some(([, on]) => !on) && /Next at \d+/.test(await p.locator('#metacard').innerText()), track.map(([k, on]) => `${k}:${on ? 'open' : 'locked'}`).join(' '));
+  // 5. gear and the bounty (FW2): the drop is gear by its grade, equipped from the archive; the day's bounty is picked by rule and its close drops better
+  {
+    const ctxG = await chromium.newContext({ viewport: VIEW, timezoneId: 'UTC' }); const g = await open(ctxG); await clearCards(g);
+    const x0 = { xp: await D(g, 'xp'), level: await D(g, 'level'), events: await D(g, 'events'), castle: await D(g, 'castle') };
+    const g0 = await D(g, 'gear');
+    await go(g, 'keeper'); await g.locator('#gearcard').scrollIntoViewIfNeeded(); await wait(g, 150);
+    check('gear: the Keeper screen lists the five slots, each with the pieces the history dropped into it', (await g.locator('#gearcard .gear').count()) === 5 && g0.slots.blaster.have > 0 && g0.slots.core.have > 0 && /never lost|used up/i.test(await g.locator('#gearcard').innerText()), JSON.stringify(g0.slots));
+    await phoneShot(g, 'gear-01-keeper');
+    await g.click('[data-gear="blaster:off"]'); const g1 = await D(g, 'gear'); await g.click('[data-gear="blaster:auto"]'); const g2 = await D(g, 'gear');
+    check('gear: equipping chooses a view of the archive: carry nothing, then the best again; no piece is ever used up', g1.slots.blaster.off && g1.slots.blaster.grade === null && g1.mods.fire_cd === undefined && !g2.slots.blaster.off && g2.slots.blaster.grade === g0.slots.blaster.grade && g1.items === g0.items && g2.items === g0.items && g1.ids === g0.ids && g2.ids === g0.ids, `${g0.items} → ${g1.items} → ${g2.items} items`);
+    check('gear: and it pays no XP, no level, no event and no castle piece', JSON.stringify({ xp: await D(g, 'xp'), level: await D(g, 'level'), events: await D(g, 'events'), castle: await D(g, 'castle') }) === JSON.stringify(x0));
+    await go(g, 'stages'); await g.click('[data-stage="0"]'); await wait(g, 300);
+    const gs = await D(g, 'gear'); await leave(g);
+    check('gear: carried into a run: the blaster fires faster, the Keeper is marked, and the carried pieces reach the run only as its modifiers', gs.mod && gs.mod.cd < 0.2 && gs.mod.marks >= 2 && gs.mod.speed >= 66 && gs.mod.inv >= 1.2, JSON.stringify(gs.mod));
+    // the bounty: the oldest public open order, then the highest Pn, then the quickest (an independent reading of the DEMO's open list)
+    const orders = await D(g, 'openIds'), rank = (pn) => ['P0', 'P1', 'P2', 'P3'].indexOf(pn) < 0 ? 4 : ['P0', 'P1', 'P2', 'P3'].indexOf(pn);
+    const want = orders.slice().sort((a, b) => a.written.localeCompare(b.written) || rank(a.pn) - rank(b.pn) || (a.options > 0 ? 1 : a.steps || 1) - (b.options > 0 ? 1 : b.steps || 1) || a.id.localeCompare(b.id))[0].id;
+    await go(g, 'siege'); await g.locator('#bountycard').scrollIntoViewIfNeeded(); await wait(g, 150);
+    const b0 = await D(g, 'bounty'), shown = await g.locator('#bountycard [data-order]').getAttribute('data-order');
+    check('bounty: the day\'s pick is the oldest, then the highest Pn, then the quickest, and the siege screen shows it', b0.id === want && shown === want && /Today's bounty/.test(await g.locator('#bountycard').innerText()), `${b0.id} (wanted ${want})`);
+    await phoneShot(g, 'gear-02-bounty');
+    await closeOrder(g, want, true); await clearCards(g); await wait(g, 300);
+    const it = await g.evaluate((id) => FieldworksDebug.itemOf(id), want);
+    check('bounty: closing it that day drops better (its rarity score carries the bonus, its receipt says so)', it && it.bounty === true && /bounty/.test(it.receipt), JSON.stringify(it));
+    await g.reload(); await wait(g, 300); await clearCards(g);
+    const it2 = await g.evaluate((id) => FieldworksDebug.itemOf(id), want);
+    check('bounty: the pick is journalled, so the bonus survives a reload', it2 && it2.bounty === true, JSON.stringify(it2));
+    await ctxG.close();
+  }
+
   // 4e. hard mode: one heart, a death ends the run, and every unlock stands
   await p.click('[data-hard]'); await p.click('[data-stage="0"]'); await wait(p, 300); await run(p, 2);
   const hs = await D(p, 'stage'); await p.evaluate(() => FieldworksDebug.hurt()); await p.waitForSelector('[data-result="over"]', { timeout: 4000 });
@@ -467,6 +497,21 @@ async function embedded() {
   check('embed: Close posts close to the host', last.type === 'go' && last.to === 'close');
   check('embed: no request leaves the frame: the page, its script, its styles and the faces, and nothing after', asked.every((u) => allowed.test(u)) && h.reqs.every((u) => u.startsWith(origin)) && asked.filter((u) => /play\.js/.test(u)).length === 1, asked.join(' '));
   await h.ctx.close();
+
+  // g2. the host's bounty (FW2, optional): a close of that order on that day drops better; without it, or when malformed, the world reads as before and the drop is as it was
+  {
+    const hb = await load('/host.html');
+    const withClose = (more = {}) => { const w = WORLD(); w.events = [...w.events, ev('WO-499', 'close', '2026-12-01')]; return { ...w, ...more }; };
+    const itemOf = (fr) => fr.evaluate(() => FieldworksDebug.itemOf('WO-499'));
+    await hb.post(withClose({ bounty: { day: '2026-12-01', id: 'WO-499' } })); await wait(hb.p, 400); await cards(hb.fr);
+    const a = await itemOf(hb.fr);
+    await hb.ctx.close();
+    const hc = await load('/host.html'); await hc.post(withClose()); await wait(hc.p, 400); await cards(hc.fr);
+    const b = await itemOf(hc.fr); await hc.ctx.close();
+    const hd = await load('/host.html'); await hd.post(withClose({ bounty: { day: 'x', id: 7 } })); await wait(hd.p, 400); await cards(hd.fr);
+    const c = await itemOf(hd.fr), ed = await F(hd.fr, 'embed'); await hd.ctx.close();
+    check('embed: the host\'s bounty is optional: with it the close of that order drops better, without it or malformed the world reads exactly as before', a && b && c && a.bounty === true && a.score === b.score + 10 && b.bounty === false && c.score === b.score && ed.state === 'world', `${a && a.score} against ${b && b.score} and ${c && c.score}`);
+  }
 
   // h. a world that cannot be read is ignored, and the game says so: a private event carrying a name, then a broken order
   h = await load('/host.html'); await cards(h.fr);

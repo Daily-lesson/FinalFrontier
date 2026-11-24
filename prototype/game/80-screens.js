@@ -83,6 +83,7 @@
       const f = forecast();
       html += head('The backlog', `${wards.reduce((a, w) => a + w.attackers.length, 0)} aged orders feed the horde · finish one to build the castle`, 'castle');
       html += `<div class="content"><section class="card"><h2>${esc(hordeLine())} ${f ? `<span class="more">${esc(fill(BANK.horde.size, { n: f.horde.n, bosses: f.horde.bosses }))}</span>` : ''}</h2><div class="empty" id="needline">${esc(needLine())}</div>${S.horde.clock.due && freshNow() ? `<div class="empty" id="rallyline">${esc(fill(BANK.horde.rally, { pct: Math.round((C.rallyOf(freshNow(), RULES) - 1) * 100), n: freshNow() }))}</div>` : ''}</section>`;
+      html += bountyCard();
       for (const w of wards) {
         const keep = w.zone === 'keep';
         html += `<section class="card"><h2>${esc(wardOf(w.zone).name)} <span class="more">pressure ${w.pressure}</span></h2>`;
@@ -102,6 +103,7 @@
       html += head(S.keeperName || 'The Keeper', `L${st.player.level} · ${st.medals.length} plates · ${st.items.length} items`, 'castle');
       html += `<div class="content"><section class="card"><div class="keeper"><canvas id="keeperPic" width="28" height="36" aria-hidden="true"></canvas><div class="parts">${parts.map((p) => `<div class="part"><span>${esc(p.label)}</span><div class="tiers">${[1, 2, 3, 4, 5].map((t) => `<i class="${p.tier >= t ? 'on' : ''}"></i>`).join('')}</div><span class="chip">${esc(p.from.replace('_', ' '))} ${p.value}</span></div>`).join('')}</div></div><div class="empty" id="hullline" style="margin-top:8px"><b>${esc(fill(BANK.keeper.hearts, { n: hearts(), level: st.player.level }))}</b> · ${esc(BANK.keeper.hearts_note)}</div>${EMBED ? '' : `<div style="margin-top:10px;display:flex;gap:8px"><input class="input" id="kname" placeholder="Name the Keeper (kept on this device)" value="${esc(S.keeperName)}" aria-label="Keeper's name"><button class="btn" data-name="1">Save</button></div>`}</section>`;
       html += `<section class="card" id="paintcard"><h2>${esc(BANK.keeper.paint)} <span class="more">${esc(fill(BANK.keeper.total, { score: total }))}</span></h2><div class="empty">${esc(BANK.keeper.paint_note)}</div><div class="paints">${RS.paints.map((p) => `<button data-paint="${p.slug}" aria-pressed="${S.play.paint === p.slug}" ${total >= p.at ? '' : 'disabled'}><i style="background:${p.colour}"></i>${esc(p.label)}${total >= p.at ? '' : ` · ${esc(fill(BANK.keeper.paint_locked, { at: p.at }))}`}</button>`).join('')}</div><div class="empty" style="margin-top:8px">${esc(BANK.keeper.device)}</div></section>`;
+      html += gearCard();
       const last7 = Object.entries(TEL.opens).filter(([d]) => d >= new Date(Date.now() - 6 * DAY).toLocaleDateString('en-CA')).reduce((a, [, n]) => a + n, 0);
       if (!EMBED) html += `<section class="card" id="yournumbers"><h2>${esc(BANK.telemetry.heading)} <span class="more">${esc(BANK.telemetry.note)}</span></h2><div class="nums">${[['opens', last7], ['session_seconds', Math.round(TEL.session_seconds / 60)], ['closes_seen', TEL.closes_seen], ['stages_cleared', TEL.stages_cleared], ['hordes_seen', TEL.hordes_seen], ['regions_mapped', TEL.regions_mapped]].map(([k, v]) => `<div><b>${v}</b>${esc(BANK.telemetry[k])}</div>`).join('')}</div></section>`;
       html += `<section class="card"><h2>Plates <span class="more">${st.medals.length} medals · never lost</span></h2><div class="plates">${st.medals.map((m) => `<span class="plate-chip ${m.top ? 'top' : ''}" title="${esc(BANK.medal[m.slug])}">${icon('medal')}${esc(m.label)}<small>${m.at}</small></span>`).join('') || '<div class="empty">No plates yet.</div>'}</div></section>`;
@@ -127,8 +129,27 @@
     }
     $screen.innerHTML = html;
     if (S.screen === 'home') drawMini();
-    if (S.screen === 'keeper') { const c = document.getElementById('keeperPic'), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(KS.idle[0], 0, 0, KW, KH, 0, 0, 28, 36); }
+    if (S.screen === 'keeper') { const c = document.getElementById('keeperPic'), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(KS.idle[0], 0, 0, KW, KH, 0, 0, 28, 36); drawGear(gearMarks(), (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * 2, y * 2, w * 2, h * 2); }, 0, 0, 1); }
     renderOverlay();
+  }
+  /** The gear card (FW2): per slot what is carried and the archive's pieces for it. Equipping only chooses; no piece is ever used up, moved or lost. */
+  function gearCard() {
+    const B = BANK.gear, L = gearNow(), name = (g) => (g.sealed ? B.sealed : g.name || B.sealed);
+    const rows = RULES.gear.order.map((slot) => {
+      const o = L.slots[slot], st = RULES.gear.stats[slot], cur = o.gear;
+      const btn = (g) => `<button data-gear="${slot}:${g.key}" aria-pressed="${!!cur && cur.key === g.key && !o.off}" title="${esc(fill(B.power, { n: g.power }))}"><i style="background:${RULES.gear.colours[g.grade]}"></i>${esc(name(g))} · ${esc(fill(B.power, { n: g.power }))}</button>`;
+      const shown = o.candidates.slice(0, RULES.gear.show_max);
+      return `<div class="gear" data-slot="${slot}"><div class="row"><div class="t"><div class="name">${esc(B.slots[slot])}${cur ? ` <span class="chip g g-${cur.grade}">${cur.grade}</span>` : ''}</div><div class="meta">${esc(B.stats[st.stat])}${cur ? ` · ${esc(fill(B.power, { n: cur.power }))}${o.auto ? ' · ' + esc(B.auto) : ''}` : ''}</div></div></div>${shown.length ? `<div class="paints">${shown.map(btn).join('')}${o.off ? '' : `<button data-gear="${slot}:off">${esc(B.off_label)}</button>`}${o.auto ? '' : `<button data-gear="${slot}:auto">${esc(B.auto)}</button>`}</div>` : `<div class="empty">${esc(B.empty)}</div>`}</div>`;
+    }).join('');
+    return `<section class="card" id="gearcard"><h2>${esc(B.title)}</h2><div class="empty">${esc(B.note)}</div>${rows}<div class="empty" style="margin-top:8px">${esc(B.note_play)}</div></section>`;
+  }
+  /** Today's bounty (FW2, D61): the oldest public order, then the highest Pn, then the quickest. Its own day's drop is better; nothing is taken from any other day. */
+  function bountyCard() {
+    if (EMBED && !S.bounties.some((x) => x.day === TODAY)) return '';   // embedded, only the host's pick is a bounty
+    const B = BANK.bounty, b = OUT ? null : todaysBounty(), o = b && S.open.find((x) => x.id === b.id);
+    if (!b || !o) return `<section class="card" id="bountycard"><h2>${esc(B.title)}</h2><div class="empty">${esc(B.none)}</div></section>`;
+    const age = E.daysBetween(o.written, TODAY), steps = b.steps != null ? b.steps : countOf(o.steps) || 1;
+    return `<section class="card" id="bountycard"><h2>${esc(B.title)} <span class="more">${esc(B.note)}</span></h2><button class="row" data-order="${b.id}"><span class="id">${b.id}</span><div class="t"><div class="name">${esc(o.title)}</div><div class="meta">${esc(fill(B.line, { age, pn: o.pn || '', steps: steps === 1 ? B.steps_one : fill(B.steps, { n: steps }) }))}</div></div><span class="chip eng">${esc(BANK.gear.bounty)}</span></button><div class="empty">${esc(B.bonus)}</div></section>`;
   }
   /** The Home tile's thumbnail: the castle screen's own drawing, cropped. */
   function drawMini() {

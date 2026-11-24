@@ -7,6 +7,11 @@
     ST.mod.dashCd = Math.pow(R.overclock_factor, U.overclock);
     ST.mod.magnet = R.magnet_reach * U.magnet;
     ST.mod.shieldS = U.shield ? R.shield_recharge_s / U.shield : 0;
+    // gear (FW2): what the evidence dropped, carried into the run. For play only; reading the archive changes nothing in it.
+    const gm = gearNow().mods;
+    ST.mod.cd *= 1 - (gm.fire_cd || 0); ST.mod.charge *= 1 - (gm.charge || 0); ST.mod.dashCd *= 1 - (gm.dash_cd || 0);
+    ST.mod.magnet += gm.magnet || 0; ST.mod.speed = K.speed + (gm.speed || 0); ST.mod.inv = K.invulnerable_s + (gm.inv || 0);
+    ST.gearMarks = gearMarks();
     ST.buildStr = R.list.filter((u) => U[u.slug]).map((u) => u.code + U[u.slug]).join(' ');   // the build, as the HUD draws it
   }
   function takeUpgrade(slug) {

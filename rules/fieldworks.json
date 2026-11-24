@@ -928,10 +928,48 @@
         "none": "No world arrived",
         "unread": "Could not read your work"
       }
+    },
+    "gear": {
+      "title": "Gear",
+      "note": "Each drop is a piece of gear: its kind picks the slot, its grade the strength. Equip from your archive. Nothing is used up and nothing is lost.",
+      "slots": {
+        "blaster": "Blaster",
+        "visor": "Visor",
+        "boots": "Boots",
+        "plating": "Plating",
+        "core": "Core"
+      },
+      "stats": {
+        "fire_cd": "Faster fire",
+        "magnet": "Wider pickup",
+        "speed": "Faster step",
+        "inv": "Longer grace after a hit",
+        "dash_cd": "Quicker dash",
+        "charge": "Faster charge"
+      },
+      "power": "Power {n}",
+      "empty": "Nothing dropped for this slot yet. Finish work and it will.",
+      "auto": "best",
+      "off": "Off",
+      "off_label": "Carry nothing",
+      "sealed": "Sealed gear",
+      "equipped": "Carrying",
+      "equip": "Equip",
+      "note_play": "Gear helps in play only. It adds no XP, no level and no piece to the castle.",
+      "bounty": "bounty"
+    },
+    "bounty": {
+      "title": "Today's bounty",
+      "line": "{age} d · {pn} · {steps}",
+      "steps": "{n} step(s)",
+      "steps_one": "one step",
+      "bonus": "Finish it today and its drop is better.",
+      "none": "No open order qualifies today.",
+      "note": "Oldest first, then highest priority, then quickest."
     }
   },
   "save": {
-    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored.",
+    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored. Version 3 also journals every day's bounty pick (ids only, never pruned: the bonus on a drop must outlive any window) beside the horde clock, and the play record stores the gear the player chose per slot as a hash, never an item id (so the choice is on the device, in the play save, embedded too). Embedded, only the host's picks are used and they are not stored.",
     "version": 2,
     "autosave_seconds": 5
   },
@@ -1926,5 +1964,70 @@
         "bass": "36 36 0 36 36 0 36 36 36 36 0 36 36 0 36 36 44 44 0 44 44 0 44 44 43 43 0 43 43 0 47 47"
       }
     }
+  },
+  "gear": {
+    "$note": "Gear (FW2, D52). A drop is gear by its grade: the kind of event that dropped it gives the slot (a close the blaster, a task the visor, a lesson the boots, a lift the plating, a decision the core), its grade the power; a sealed item is gear in the same slot. The Keeper carries one piece per slot, equipped from the archive. Nothing is spent, moved or lost by equipping, and play never adds a piece: gear exists only because evidence dropped an item. A sealed item is gear with no name. What gear does is for play: it never yields XP, a level, an item or a castle piece. 'chosen' is stored as a hash of the item id, never the id.",
+    "order": [
+      "blaster",
+      "visor",
+      "boots",
+      "plating",
+      "core"
+    ],
+    "slots": {
+      "close": "blaster",
+      "task": "visor",
+      "lesson": "boots",
+      "lift": "plating",
+      "decision": "core"
+    },
+    "power": {
+      "plain": 1,
+      "fine": 2,
+      "tempered": 3,
+      "masterwork": 4,
+      "heirloom": 5
+    },
+    "stats": {
+      "blaster": {
+        "stat": "fire_cd",
+        "per_power": 0.04
+      },
+      "visor": {
+        "stat": "magnet",
+        "per_power": 5
+      },
+      "boots": {
+        "stat": "speed",
+        "per_power": 2
+      },
+      "plating": {
+        "stat": "inv",
+        "per_power": 0.06
+      },
+      "core": {
+        "stat": "dash_cd",
+        "per_power": 0.04
+      }
+    },
+    "colours": {
+      "plain": "#e9e4d6",
+      "fine": "#7ad98b",
+      "tempered": "#6cb2ff",
+      "masterwork": "#c58cff",
+      "heirloom": "#ffa24a"
+    },
+    "show_max": 6
+  },
+  "bounty": {
+    "$note": "Today's bounty (FW2, D61): one open public order picked by rule, oldest first, then the highest Pn (P0 first), then the quickest (a decision counts as one step, else its step count), then the id. A private order is never the bounty. Closing the bounty on its own day adds score_bonus to the drop's rarity score. The bonus is added on the day and never removed on another; no close is ever worth less for it. The pick that made a bonus is evidence: it is kept for as long as the item is (the journal never prunes it; embedded, the host sends every day it holds), and without a host's pick nothing is ever computed embedded, so no bonus can later be lost.",
+    "pn_order": [
+      "P0",
+      "P1",
+      "P2",
+      "P3"
+    ],
+    "min_age_days": 0,
+    "score_bonus": 10
   }
 }

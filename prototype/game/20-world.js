@@ -71,14 +71,14 @@
   }
   const LEAD = Math.round(RH.warning_hours / 24);
   // The play record: scores, the lifetime play score that unlocks things for play (never for the castle), the paint and two switches.
-  const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0, life: 0, mute: false, hard: false, bosses: 0, caches: 0 });
+  const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0, life: 0, mute: false, hard: false, bosses: 0, caches: 0, gear: {} });
   // The DEMO opens with its first horde already announced, so the warning is the first thing seen. `fresh` is the castle's size at the warning: pieces landed since then rally it.
   const HORDE0 = () => ({ day: 0, clock: { gather: 0, warned: TODAY, due: iso(utc(TODAY) + LEAD * DAY), count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
   const HORDE_NONE = () => ({ day: 0, clock: { gather: 0, warned: null, due: null, count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
   function reset() {
     sgSeen = -1;
     S = { events: OUT ? [] : PRIOR.slice(), open: OUT ? [] : OPEN0(), ticks: OUT ? [] : TICKS0.slice(), liftsLogged: OUT ? [] : [ago(2), ago(4)], shown: new Set(), closed: [], screen: S ? S.screen : 'castle', order: null, picked: null, proof: '', keeperName: S ? S.keeperName : '', lastLevel: 0,
-      state: S ? S.state : 'live', started: false, stage: null, play: PLAY0(), horde: OUT ? HORDE_NONE() : HORDE0() };
+      bounties: [], state: S ? S.state : 'live', started: false, stage: null, play: PLAY0(), horde: OUT ? HORDE_NONE() : HORDE0() };
     for (const d of S.liftsLogged) S.events.push(liftEvent(d));
     for (const id of S.ticks) S.events.push(lessonEvent(id, ago(6)));
     if (!OUT) S.events.push({ id: `pace/${ago(5)}`, kind: 'pace', at: ago(5), tier: 'private', zone: null, weight: 0, facts: {}, evidence: { kind: 'commit', ref: 'pace' } });
@@ -86,7 +86,7 @@
     if (!OUT) { S.horde.fresh = CAS.pieces; const sg = siegeCounts(); S.horde.clock.horde = C.hordeOf(sg.attackers, sg.engines, 0, RULES); }   // the announced horde is sized once, at its warning
     for (const l of S.st.log) S.shown.add(l.id);   // the drop cards for history never fire; the castle is built from all of it all the same
   }
-  const derive = () => E.evaluate(S.events, RULES, TODAY, { plan: PLAN });
+  const derive = () => E.evaluate(S.events, RULES, TODAY, { plan: PLAN, bounties: S.bounties });
   /** The one place the castle comes from: the fold's log, through the castle module. Play never reaches it. */
   function setState(st) { S.st = st; CAS = C.castleOf(st.log, RULES); fcKey = ''; }
   const countOf = (v) => (Array.isArray(v) ? v.length : Number.isInteger(v) ? v : 0);   // the DEMO holds an order's steps and options; a host sends their counts
@@ -100,6 +100,19 @@
   /** Lifetime play score: every run's score, kept. It unlocks paint and things for play; never XP, a level, an item or a castle piece. */
   const totalScore = () => S.play.life;
   const unlocked = (slug) => { const u = RS.meta.unlocks.find((x) => x.slug === slug); return !u || S.play.life >= u.at; };
+  // ── gear and the bounty (FW2): the Keeper carries what the evidence dropped; the day's pick is journalled so a close that day carries its bonus ──
+  /** What the Keeper carries: a view over the archive (S.st.items), chosen per slot in the play record. Nothing here adds, moves or removes an item. */
+  const gearNow = () => E.loadout(S.st.items, S.play.gear, RULES);
+  const bountiesOf = (b) => (Array.isArray(b) ? b.filter((x) => x && isDay(x.day) && typeof x.id === 'string' && x.id.length <= 200): []);
+  /** The pick for TODAY. The DEMO and the device journal it the first time it is asked (before any close, so the close carries the bonus); embedded, only the host's pick enters the fold and a local pick is for display. */
+  function todaysBounty() {
+    const had = S.bounties.find((b) => b.day === TODAY); if (had) return { id: had.id, day: TODAY, ...(openBounty(had.id) || {}) };
+    if (EMBED) return null;   // embedded: no bounty exists unless the host sent it (a bonus computed here could be lost later)
+    const pick = E.bounty(openOrders(), RULES, TODAY); if (!pick) return null;
+    S.bounties = bountiesOf([...S.bounties, { day: TODAY, id: pick.id }]); saveNow();
+    return pick;
+  }
+  function openBounty(id) { const o = openOrders().find((x) => x.id === id); return o ? E.bounty([o], RULES, TODAY) : null; }
   const paintOf = (slug) => RS.paints.find((p) => p.slug === slug) || RS.paints[0];
 
   // ── the save (rules.save): the journal, the horde clock, the play record. No map: the castle is derived. ──
@@ -107,7 +120,7 @@
     if (EMBED) return { version: RULES.save.version, rules: RULES_HASH, play: S.play };   // embedded: play only, nothing about the world
     return { version: RULES.save.version, rules: RULES_HASH,
       journal: { closed: S.closed.slice(), ticks: S.ticks.slice(), lifts: S.liftsLogged.slice(), lastLevel: S.lastLevel },
-      play: S.play, horde: S.horde };
+      play: S.play, horde: S.horde, bounties: S.bounties };
   }
   let savedAt = 0;
   function saveNow() { if (!S || globalThis.FIELDWORKS_ART) return;   /* the art sheet never writes the player's save */ store.set(KEYS.save, JSON.stringify(snapshot())); savedAt = performance.now(); }
@@ -119,9 +132,11 @@
   function validPlay(p) {
     return p && p.best && typeof p.best === 'object' && Object.values(p.best).every((b) => b && isInt(b.score) && isInt(b.stars) && b.stars <= 3) && p.wilds && isInt(p.wilds.best) && isInt(p.wilds.runs) && RS.paints.some((x) => x.slug === p.paint) && isInt(p.wall);
   }
+  /** The gear a player chose, per slot: a hash of an item id (never the id) or 'off'. Only known slots and shapes are kept. */
+  function gearChoice(g) { const out = {}; if (g && typeof g === 'object') for (const slot of RULES.gear.order) { const v = g[slot]; if (v === 'off' || (Number.isInteger(v) && v >= 0 && v <= 0xffffffff)) out[slot] = v; } return out; }
   /** A read play record under today's shape: a save from before lifetime score starts it at its bests. Only known fields are kept. */
   function playOf(p) {
-    const q = { ...PLAY0(), best: p.best, wilds: p.wilds, paint: p.paint, wall: p.wall, mute: p.mute === true, hard: p.hard === true, bosses: isInt(p.bosses) ? p.bosses : 0, caches: isInt(p.caches) ? p.caches : 0 };
+    const q = { ...PLAY0(), best: p.best, wilds: p.wilds, paint: p.paint, wall: p.wall, mute: p.mute === true, hard: p.hard === true, bosses: isInt(p.bosses) ? p.bosses : 0, caches: isInt(p.caches) ? p.caches : 0, gear: gearChoice(p.gear) };
     q.life = Math.max(isInt(p.life) ? p.life : 0, Object.values(q.best).reduce((a, b) => a + b.score, 0) + q.wilds.best + q.wall);
     return q;
   }
@@ -142,7 +157,7 @@
     const old = s && s.version === 1;   // prototype 3's fortress map: its journal is kept, its map belongs to the old game
     if (!s || !(old || s.version === RULES.save.version) || !validJournal(s.journal)) { store.del(KEYS.save); reset(); return 'corrupt'; }
     const j = s.journal;
-    reset();
+    reset(); S.bounties = bountiesOf(s.bounties);
     if (OUT) {   // signed out: no journal and no horde to replay; of the play record, the Wilds alone (the weeks and the wall were the DEMO's)
       if (validPlay(s.play)) { S.play.wilds = s.play.wilds;
         const demo = Object.keys(s.play.best).length > 0 || s.play.wall > 0;   // a DEMO build's weeks and wall were the DEMO's: of such a record, the Wilds alone

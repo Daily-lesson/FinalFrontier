@@ -79,7 +79,7 @@ design's D32 (how the game feeds SocialOS). Neither workflow runs the walk.
 ## Directory map
 
 ```
-src/engine.js          # the fold: pure, window-free, every number from the rules
+src/engine.js          # the fold: pure, window-free, every number from the rules (and, since FW2, gearOf / loadout / bounty)
 src/castle.js          # the castle from the fold's log, the horde's clock, the fight as one stepping function
 rules/fieldworks.json  # the owner's instance of the rules: every number and sentence the game reads
 sim/                   # the economy sim (economy.mjs), its test and fixture, REPORT.md (generated)
@@ -117,6 +117,14 @@ CLAUDE.md  SKELETON.md  README.md  CHANGELOG.md
   `game/60-stage.js` to `68-stage-render.js` and `30-audio.js`. A new thing
   play can unlock goes in `stage.meta.unlocks` with its name in
   `bank.meta.names`; it must be for play (gotcha 2).
+- **Gear and the bounty** (FW2, D52 and D61) → the numbers and sentences are
+  `rules.gear`, `rules.bounty`, `bank.gear`, `bank.bounty`; the functions are
+  `E.gearOf` / `E.loadout` / `E.bounty` in `src/engine.js` + a test; the page
+  reads gear through `gearNow()` and lets it into a run only through
+  `recalc()` (`game/66-upgrades.js`), draws it with `gearMarks`/`drawGear`
+  (`game/40-pixels.js`), chooses it in `gearCard()` and shows the pick in
+  `bountyCard()` (`game/80-screens.js`). A new slot is a `rules.gear.order`
+  entry with a stat and a mark's pixels.
 - **The embed** (the game inside a host app) → `game/25-embed.js` (the
   message contract, the world's validation) and the embed half of
   `build.mjs`; `embed/` is rebuilt, never edited. The contract is in
@@ -165,7 +173,11 @@ repo.
    shapes) and CI fails on a hit. The DEMO ids in the prototype (WO-281 and
    up) are invented; any id below 280 is refused by the sweep, so a real
    id cannot land here as the real file grows toward them.
-2. **Evidence is the only power source (pillar 1).** A castle piece comes
+2. **Evidence is the only power source (pillar 1).** Gear is a view of the
+   items the fold dropped (`E.loadout` over `S.st.items`): equipping chooses,
+   consumes nothing and pays nothing, a sealed piece has no name, and a
+   close of the day's bounty is the only timing the fold rewards (added on
+   the day, never taken away). A castle piece comes
    from `castle.by_kind` and `castle.by_grade` on an evidence event and from
    nowhere else. The page sets the castle in one line (`CAS =
    C.castleOf(st.log, RULES)`) and nothing writes into it. A kill, a spark, a

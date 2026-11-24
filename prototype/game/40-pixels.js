@@ -30,6 +30,12 @@
   const kRows = (legs, visor) => [...K_BODY.slice(0, 4), ...(visor ? K_VISOR[visor] : K_BODY.slice(4, 6)), ...K_BODY.slice(6), ...K_LEGS[legs]];
   const KEEPER_ROWS = { idle: kRows('idle'), blink: kRows('idle', 'blink'), run1: kRows('run1'), run2: kRows('run2'), run3: kRows('run3'), jump: kRows('jump'), fall: kRows('fall'), dash: kRows('dash'), hurt: kRows('jump', 'hurt'), charge: kRows('idle', 'charge') };
   const K_RUN = ['run1', 'run2', 'run3', 'run2'];
+  // Gear on the Keeper (FW2): one small mark per slot in the colour of its grade, over the sprite. [x, y, w, h] on the 14 × 18 sprite, facing right.
+  const GEAR_PX = { blaster: [[11, 9, 3, 1]], visor: [[4, 3, 6, 1]], boots: [[3, 17, 3, 1], [8, 17, 3, 1]], plating: [[2, 8, 1, 2], [11, 8, 1, 2]], core: [[6, 10, 2, 2]] };
+  /** The marks of what is carried: [{px, c}] — built when a run starts or its build changes, never per frame. A slot carrying nothing draws nothing. */
+  function gearMarks() { const L = gearNow().slots, out = []; for (const slot of RULES.gear.order) { const g = L[slot].gear; if (g) out.push({ px: GEAR_PX[slot], c: RULES.gear.colours[g.grade] }); } return out; }
+  /** Draw the marks at the sprite's corner (x, y) through `put(x, y, w, h, colour)`; a left-facing Keeper is the mirror. */
+  function drawGear(marks, put, x, y, face) { for (let i = 0; i < marks.length; i++) { const m = marks[i]; for (let j = 0; j < m.px.length; j++) { const r = m.px[j]; put(face > 0 ? x + r[0] : x + KW - r[0] - r[2], y + r[1], r[2], r[3], m.c); } } }
   let KS = null;
   function paintKeeper() { const pal = { ...PAL, t: paintOf(S.play.paint).colour }; KS = Object.fromEntries(Object.entries(KEEPER_ROWS).map(([k, rows]) => [k, both(rows, pal)])); KS.run = K_RUN.map((k) => KS[k]); }
   // The blight's machines (facing left, the way a horde walks). Six kinds out the gate; three of them also walk in a horde.

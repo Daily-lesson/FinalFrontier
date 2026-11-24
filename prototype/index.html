@@ -1134,10 +1134,48 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
         "none": "No world arrived",
         "unread": "Could not read your work"
       }
+    },
+    "gear": {
+      "title": "Gear",
+      "note": "Each drop is a piece of gear: its kind picks the slot, its grade the strength. Equip from your archive. Nothing is used up and nothing is lost.",
+      "slots": {
+        "blaster": "Blaster",
+        "visor": "Visor",
+        "boots": "Boots",
+        "plating": "Plating",
+        "core": "Core"
+      },
+      "stats": {
+        "fire_cd": "Faster fire",
+        "magnet": "Wider pickup",
+        "speed": "Faster step",
+        "inv": "Longer grace after a hit",
+        "dash_cd": "Quicker dash",
+        "charge": "Faster charge"
+      },
+      "power": "Power {n}",
+      "empty": "Nothing dropped for this slot yet. Finish work and it will.",
+      "auto": "best",
+      "off": "Off",
+      "off_label": "Carry nothing",
+      "sealed": "Sealed gear",
+      "equipped": "Carrying",
+      "equip": "Equip",
+      "note_play": "Gear helps in play only. It adds no XP, no level and no piece to the castle.",
+      "bounty": "bounty"
+    },
+    "bounty": {
+      "title": "Today's bounty",
+      "line": "{age} d · {pn} · {steps}",
+      "steps": "{n} step(s)",
+      "steps_one": "one step",
+      "bonus": "Finish it today and its drop is better.",
+      "none": "No open order qualifies today.",
+      "note": "Oldest first, then highest priority, then quickest."
     }
   },
   "save": {
-    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored.",
+    "$note": "The device keeps the journal (which evidence it has seen and shown), the horde clock and its history, the play scores and the paint (key fieldworks-save). It keeps no map: the castle is derived from the evidence each time. A save carries this version and a hash of the rules it was made under; another rules hash loads under the current rules and says so once; a version-1 save (the old fortress map) keeps its journal and says so once; an unreadable save is discarded and the castle still stands on its evidence (pillar 2). Version 3 of the rules adds to the play record a lifetime play score (what it opens is for play only), the mute and hard-mode switches and two counts; an older play record starts its lifetime score at its bests. Embedded in a host app the device keeps the play record alone, under its own key (fieldworks-embed-play): nothing about the world is stored. Version 3 also journals every day's bounty pick (ids only, never pruned: the bonus on a drop must outlive any window) beside the horde clock, and the play record stores the gear the player chose per slot as a hash, never an item id (so the choice is on the device, in the play save, embedded too). Embedded, only the host's picks are used and they are not stored.",
     "version": 2,
     "autosave_seconds": 5
   },
@@ -2132,6 +2170,71 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
         "bass": "36 36 0 36 36 0 36 36 36 36 0 36 36 0 36 36 44 44 0 44 44 0 44 44 43 43 0 43 43 0 47 47"
       }
     }
+  },
+  "gear": {
+    "$note": "Gear (FW2, D52). A drop is gear by its grade: the kind of event that dropped it gives the slot (a close the blaster, a task the visor, a lesson the boots, a lift the plating, a decision the core), its grade the power; a sealed item is gear in the same slot. The Keeper carries one piece per slot, equipped from the archive. Nothing is spent, moved or lost by equipping, and play never adds a piece: gear exists only because evidence dropped an item. A sealed item is gear with no name. What gear does is for play: it never yields XP, a level, an item or a castle piece. 'chosen' is stored as a hash of the item id, never the id.",
+    "order": [
+      "blaster",
+      "visor",
+      "boots",
+      "plating",
+      "core"
+    ],
+    "slots": {
+      "close": "blaster",
+      "task": "visor",
+      "lesson": "boots",
+      "lift": "plating",
+      "decision": "core"
+    },
+    "power": {
+      "plain": 1,
+      "fine": 2,
+      "tempered": 3,
+      "masterwork": 4,
+      "heirloom": 5
+    },
+    "stats": {
+      "blaster": {
+        "stat": "fire_cd",
+        "per_power": 0.04
+      },
+      "visor": {
+        "stat": "magnet",
+        "per_power": 5
+      },
+      "boots": {
+        "stat": "speed",
+        "per_power": 2
+      },
+      "plating": {
+        "stat": "inv",
+        "per_power": 0.06
+      },
+      "core": {
+        "stat": "dash_cd",
+        "per_power": 0.04
+      }
+    },
+    "colours": {
+      "plain": "#e9e4d6",
+      "fine": "#7ad98b",
+      "tempered": "#6cb2ff",
+      "masterwork": "#c58cff",
+      "heirloom": "#ffa24a"
+    },
+    "show_max": 6
+  },
+  "bounty": {
+    "$note": "Today's bounty (FW2, D61): one open public order picked by rule, oldest first, then the highest Pn (P0 first), then the quickest (a decision counts as one step, else its step count), then the id. A private order is never the bounty. Closing the bounty on its own day adds score_bonus to the drop's rarity score. The bonus is added on the day and never removed on another; no close is ever worth less for it. The pick that made a bonus is evidence: it is kept for as long as the item is (the journal never prunes it; embedded, the host sends every day it holds), and without a host's pick nothing is ever computed embedded, so no bonus can later be lost.",
+    "pn_order": [
+      "P0",
+      "P1",
+      "P2",
+      "P3"
+    ],
+    "min_age_days": 0,
+    "score_bonus": 10
   }
 }</script>
 <script>// FIELDWORKS engine — reference implementation of docs/FIELDWORKS.md §7.3.
@@ -2198,8 +2301,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     const diff = r.difficulty[f.difficulty] ?? r.difficulty.none;
     const age = Math.min(r.age_cap, (f.ageDays ?? 0) / r.age_divisor);
     const dec = ev.kind === 'decision' || f.options ? r.decision_bonus : 0;
+    const bounty = f.bounty === true ? ((rules.bounty || {}).score_bonus || 0) : 0;   // FW2: added on the day, never taken away
     const v = (hash(ev.id) % (2 * r.variance + 1)) - r.variance;
-    return Math.round(r.weight_factor * weight + pn + diff + age + dec + v);
+    return Math.round(r.weight_factor * weight + pn + diff + age + dec + bounty + v);
   }
   function gradeOf(score, rules) {
     const t = rules.rarity.thresholds; const g = rules.rarity.grades;
@@ -2222,8 +2326,8 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     const names = (((rules.bank || {}).item || {})[kind] || {})[grade] || [];
     const name = names.length ? names[hash(ev.id + '/name') % names.length] : null;
     const f = ev.facts || {};
-    const receipt = sealed ? null : [ev.id, f.pn, f.ageDays != null ? `${f.ageDays} d` : null, f.band ? `${f.band} lane` : null, ev.at].filter(Boolean).join(' · ');
-    return { id: ev.id, event: ev.id, kind, grade, score, name, receipt, zone: sealed ? null : ev.zone || null, sealed, provisional: !(f.verified === true), at: ev.at };
+    const receipt = sealed ? null : [ev.id, f.pn, f.ageDays != null ? `${f.ageDays} d` : null, f.band ? `${f.band} lane` : null, f.bounty === true ? 'bounty' : null, ev.at].filter(Boolean).join(' · ');
+    return { id: ev.id, event: ev.id, kind, grade, score, name, receipt, evKind: ev.kind, bounty: !sealed && f.bounty === true, zone: sealed ? null : ev.zone || null, sealed, provisional: !(f.verified === true), at: ev.at };
   }
 
   // ── xp and levels (§6.2) ────────────────────────────────────────────────
@@ -2288,11 +2392,14 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
    * week is a live lesson event (the lesson id is the event id after `lesson/`);
    * with quests, a task event completes its quest the same way (`task/<quest>/<id>`).
    * Without ctx the adapter's facts.weekComplete / facts.questComplete stand.
+   * ctx.bounties (optional, FW2): [{day, id}] — the day's bounty. A close of that order on that day
+   * carries facts.bounty and its drop scores rules.bounty.score_bonus higher. Nothing else changes, ever.
    */
   function evaluate(events, rules, today, ctx) {
     const { ok, refused } = validateEvents(events);
     const plan = ctx && ctx.plan ? ctx.plan : null;
     const quests = ctx && ctx.quests ? ctx.quests : null;
+    const bounties = new Set(((ctx && ctx.bounties) || []).filter((b) => b && isDate(b.day) && typeof b.id === 'string').map((b) => `${b.day}|${b.id}`));
     const lessonId = (id) => String(id).replace(/^lesson\//, '');
     const taskOf = (id) => { const m = /^task\/([^/]+)\/(.+)$/.exec(String(id)); return m ? { quest: m[1], task: m[2] } : null; };
     const sorted = ok.slice().sort((a, b) => utc(a.at) - utc(b.at) || a.id.localeCompare(b.id));
@@ -2318,6 +2425,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
         const have = new Set(st.live.filter((e) => e.kind === 'task').map((e) => (taskOf(e.id) || {}).task));
         ev = { ...ev, facts: { ...(ev.facts || {}), questComplete: !!all && all.every((x) => have.has(x)) } };
       }
+      if ((ev.kind === 'close' || ev.kind === 'decision') && ev.tier === 'public' && bounties.has(`${ev.at}|${ev.id}`)) ev = { ...ev, facts: { ...(ev.facts || {}), bounty: true } };
       let item = drop(ev, rules);
       if (item && verified.has(ev.id)) item = { ...item, provisional: false };
       // the Return floor (§3): the first drop after a quiet week is at least the return grade
@@ -2396,6 +2504,51 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     return { daily: pickChallenge(rules.challenges.daily, avail, `daily/${date}`), weekly: pickChallenge(rules.challenges.weekly, avail, `weekly/${mondayOf(date)}`) };
   }
 
+
+  // ── gear and the bounty (FW2; docs/FIELDWORKS.md §17, D52 and D61) ───────
+  /**
+   * The gear an item is: its slot from its kind, its power from its grade. Pure; the item is untouched.
+   * A sealed item is gear with no name (counts through the walls); its grade already reads Pn alone.
+   */
+  function gearOf(item, rules) {
+    const G = rules.gear; const slot = G.slots[item.evKind]; if (!slot) return null;
+    const power = G.power[item.grade] ?? 1;
+    return { item: item.id, slot, grade: item.grade, power, stat: G.stats[slot].stat, name: item.sealed ? null : item.name, sealed: !!item.sealed, at: item.at, key: hash(item.id) };
+  }
+  /**
+   * What the Keeper carries. chosen: {slot: key | 'off'} (a key is hash(item.id); absent = the best of that slot).
+   * An unknown key falls back to the best; 'off' carries nothing in that slot. Equipping is a view over the
+   * archive: no item is ever consumed, moved or removed (pillar 2), and no play ever adds one (pillar 1).
+   */
+  function loadout(items, chosen, rules) {
+    const G = rules.gear; const all = (items || []).map((i) => gearOf(i, rules)).filter(Boolean);
+    const out = {}; const mods = {};
+    for (const slot of G.order) {
+      const cands = all.filter((g) => g.slot === slot).sort((a, b) => (b.power - a.power) || (utc(b.at) - utc(a.at)) || a.item.localeCompare(b.item));
+      const pick = chosen && chosen[slot];
+      let gear = null; let auto = true;
+      if (pick === 'off') { auto = false; }
+      else { const hit = pick != null ? cands.find((c) => c.key === pick) : null; gear = hit || cands[0] || null; auto = !hit; }
+      out[slot] = { gear, auto, off: pick === 'off', candidates: cands };
+      if (gear) mods[G.stats[slot].stat] = gear.power * G.stats[slot].per_power;
+    }
+    return { slots: out, mods };
+  }
+  /** The pick for a day: public open orders only; oldest first, then the highest Pn, then the quickest, then the id. */
+  function bounty(openOrders, rules, today) {
+    const B = rules.bounty; if (!isDate(today)) return null;
+    const rank = (pn) => { const i = B.pn_order.indexOf(pn); return i < 0 ? B.pn_order.length : i; };
+    const cands = [];
+    for (const o of openOrders || []) {
+      if (!o || o.tier !== 'public' || typeof o.id !== 'string' || !isDate(o.written)) continue;
+      const age = daysBetween(o.written, today); if (age < B.min_age_days) continue;
+      const decision = Number.isInteger(o.options) && o.options > 0;   // anything else counts as one
+      cands.push({ id: o.id, day: today, ageDays: age, pn: o.pn || null, decision, steps: decision || !(Number.isInteger(o.steps) && o.steps > 0) ? 1 : o.steps });
+    }
+    cands.sort((a, b) => (b.ageDays - a.ageDays) || (rank(a.pn) - rank(b.pn)) || (a.steps - b.steps) || a.id.localeCompare(b.id));
+    return cands[0] || null;
+  }
+
   // ── the keeper and the works ────────────────────────────────────────────
   function tierOf(value, tiers) { let t = 0; tiers.forEach((th, i) => { if (value >= th) t = i + 1; }); return t; }
   function keeper(state, figures, rules) {
@@ -2404,7 +2557,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   }
   function works(playerLevel, rules) { return rules.works.map((w) => ({ ...w, unlocked: playerLevel >= w.level })); }
 
-  const api = { KINDS, EVIDENCE, hash, validateEvent, validateEvents, rarityScore, gradeOf, drop, xp, level, progress, evaluate, medalsFor, siege, expedition, challenges, keeper, works, mondayOf, daysBetween };
+  const api = { KINDS, EVIDENCE, hash, validateEvent, validateEvents, rarityScore, gradeOf, drop, xp, level, progress, evaluate, medalsFor, siege, expedition, challenges, keeper, works, mondayOf, daysBetween, gearOf, loadout, bounty };
   if (typeof globalThis !== 'undefined') globalThis.FieldworksEngine = api;
 })();
 </script>
@@ -2692,14 +2845,14 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   }
   const LEAD = Math.round(RH.warning_hours / 24);
   // The play record: scores, the lifetime play score that unlocks things for play (never for the castle), the paint and two switches.
-  const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0, life: 0, mute: false, hard: false, bosses: 0, caches: 0 });
+  const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0, life: 0, mute: false, hard: false, bosses: 0, caches: 0, gear: {} });
   // The DEMO opens with its first horde already announced, so the warning is the first thing seen. `fresh` is the castle's size at the warning: pieces landed since then rally it.
   const HORDE0 = () => ({ day: 0, clock: { gather: 0, warned: TODAY, due: iso(utc(TODAY) + LEAD * DAY), count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
   const HORDE_NONE = () => ({ day: 0, clock: { gather: 0, warned: null, due: null, count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
   function reset() {
     sgSeen = -1;
     S = { events: OUT ? [] : PRIOR.slice(), open: OUT ? [] : OPEN0(), ticks: OUT ? [] : TICKS0.slice(), liftsLogged: OUT ? [] : [ago(2), ago(4)], shown: new Set(), closed: [], screen: S ? S.screen : 'castle', order: null, picked: null, proof: '', keeperName: S ? S.keeperName : '', lastLevel: 0,
-      state: S ? S.state : 'live', started: false, stage: null, play: PLAY0(), horde: OUT ? HORDE_NONE() : HORDE0() };
+      bounties: [], state: S ? S.state : 'live', started: false, stage: null, play: PLAY0(), horde: OUT ? HORDE_NONE() : HORDE0() };
     for (const d of S.liftsLogged) S.events.push(liftEvent(d));
     for (const id of S.ticks) S.events.push(lessonEvent(id, ago(6)));
     if (!OUT) S.events.push({ id: `pace/${ago(5)}`, kind: 'pace', at: ago(5), tier: 'private', zone: null, weight: 0, facts: {}, evidence: { kind: 'commit', ref: 'pace' } });
@@ -2707,7 +2860,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     if (!OUT) { S.horde.fresh = CAS.pieces; const sg = siegeCounts(); S.horde.clock.horde = C.hordeOf(sg.attackers, sg.engines, 0, RULES); }   // the announced horde is sized once, at its warning
     for (const l of S.st.log) S.shown.add(l.id);   // the drop cards for history never fire; the castle is built from all of it all the same
   }
-  const derive = () => E.evaluate(S.events, RULES, TODAY, { plan: PLAN });
+  const derive = () => E.evaluate(S.events, RULES, TODAY, { plan: PLAN, bounties: S.bounties });
   /** The one place the castle comes from: the fold's log, through the castle module. Play never reaches it. */
   function setState(st) { S.st = st; CAS = C.castleOf(st.log, RULES); fcKey = ''; }
   const countOf = (v) => (Array.isArray(v) ? v.length : Number.isInteger(v) ? v : 0);   // the DEMO holds an order's steps and options; a host sends their counts
@@ -2721,6 +2874,19 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   /** Lifetime play score: every run's score, kept. It unlocks paint and things for play; never XP, a level, an item or a castle piece. */
   const totalScore = () => S.play.life;
   const unlocked = (slug) => { const u = RS.meta.unlocks.find((x) => x.slug === slug); return !u || S.play.life >= u.at; };
+  // ── gear and the bounty (FW2): the Keeper carries what the evidence dropped; the day's pick is journalled so a close that day carries its bonus ──
+  /** What the Keeper carries: a view over the archive (S.st.items), chosen per slot in the play record. Nothing here adds, moves or removes an item. */
+  const gearNow = () => E.loadout(S.st.items, S.play.gear, RULES);
+  const bountiesOf = (b) => (Array.isArray(b) ? b.filter((x) => x && isDay(x.day) && typeof x.id === 'string' && x.id.length <= 200): []);
+  /** The pick for TODAY. The DEMO and the device journal it the first time it is asked (before any close, so the close carries the bonus); embedded, only the host's pick enters the fold and a local pick is for display. */
+  function todaysBounty() {
+    const had = S.bounties.find((b) => b.day === TODAY); if (had) return { id: had.id, day: TODAY, ...(openBounty(had.id) || {}) };
+    if (EMBED) return null;   // embedded: no bounty exists unless the host sent it (a bonus computed here could be lost later)
+    const pick = E.bounty(openOrders(), RULES, TODAY); if (!pick) return null;
+    S.bounties = bountiesOf([...S.bounties, { day: TODAY, id: pick.id }]); saveNow();
+    return pick;
+  }
+  function openBounty(id) { const o = openOrders().find((x) => x.id === id); return o ? E.bounty([o], RULES, TODAY) : null; }
   const paintOf = (slug) => RS.paints.find((p) => p.slug === slug) || RS.paints[0];
 
   // ── the save (rules.save): the journal, the horde clock, the play record. No map: the castle is derived. ──
@@ -2728,7 +2894,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     if (EMBED) return { version: RULES.save.version, rules: RULES_HASH, play: S.play };   // embedded: play only, nothing about the world
     return { version: RULES.save.version, rules: RULES_HASH,
       journal: { closed: S.closed.slice(), ticks: S.ticks.slice(), lifts: S.liftsLogged.slice(), lastLevel: S.lastLevel },
-      play: S.play, horde: S.horde };
+      play: S.play, horde: S.horde, bounties: S.bounties };
   }
   let savedAt = 0;
   function saveNow() { if (!S || globalThis.FIELDWORKS_ART) return;   /* the art sheet never writes the player's save */ store.set(KEYS.save, JSON.stringify(snapshot())); savedAt = performance.now(); }
@@ -2740,9 +2906,11 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function validPlay(p) {
     return p && p.best && typeof p.best === 'object' && Object.values(p.best).every((b) => b && isInt(b.score) && isInt(b.stars) && b.stars <= 3) && p.wilds && isInt(p.wilds.best) && isInt(p.wilds.runs) && RS.paints.some((x) => x.slug === p.paint) && isInt(p.wall);
   }
+  /** The gear a player chose, per slot: a hash of an item id (never the id) or 'off'. Only known slots and shapes are kept. */
+  function gearChoice(g) { const out = {}; if (g && typeof g === 'object') for (const slot of RULES.gear.order) { const v = g[slot]; if (v === 'off' || (Number.isInteger(v) && v >= 0 && v <= 0xffffffff)) out[slot] = v; } return out; }
   /** A read play record under today's shape: a save from before lifetime score starts it at its bests. Only known fields are kept. */
   function playOf(p) {
-    const q = { ...PLAY0(), best: p.best, wilds: p.wilds, paint: p.paint, wall: p.wall, mute: p.mute === true, hard: p.hard === true, bosses: isInt(p.bosses) ? p.bosses : 0, caches: isInt(p.caches) ? p.caches : 0 };
+    const q = { ...PLAY0(), best: p.best, wilds: p.wilds, paint: p.paint, wall: p.wall, mute: p.mute === true, hard: p.hard === true, bosses: isInt(p.bosses) ? p.bosses : 0, caches: isInt(p.caches) ? p.caches : 0, gear: gearChoice(p.gear) };
     q.life = Math.max(isInt(p.life) ? p.life : 0, Object.values(q.best).reduce((a, b) => a + b.score, 0) + q.wilds.best + q.wall);
     return q;
   }
@@ -2763,7 +2931,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     const old = s && s.version === 1;   // prototype 3's fortress map: its journal is kept, its map belongs to the old game
     if (!s || !(old || s.version === RULES.save.version) || !validJournal(s.journal)) { store.del(KEYS.save); reset(); return 'corrupt'; }
     const j = s.journal;
-    reset();
+    reset(); S.bounties = bountiesOf(s.bounties);
     if (OUT) {   // signed out: no journal and no horde to replay; of the play record, the Wilds alone (the weeks and the wall were the DEMO's)
       if (validPlay(s.play)) { S.play.wilds = s.play.wilds;
         const demo = Object.keys(s.play.best).length > 0 || s.play.wall > 0;   // a DEMO build's weeks and wall were the DEMO's: of such a record, the Wilds alone
@@ -2838,7 +3006,8 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   // The game runs in a same-origin frame of the host app. It says `ready`, the host answers with a `world`, and a button that
   // fakes evidence in the DEMO asks the host to open the screen where the evidence is really made. Evidence is never created here.
   //   play → host   {fw:1, type:'ready'}   {fw:1, type:'go', to:'workorders'|'learning'|'health'|'close'}
-  //   host → play   {fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?}
+  //   host → play   {fw:1, type:'world', today, theme, events, open, plan, horde, lanes, briefing?, bounty?, bounties?}
+  //   `bounty` (optional, FW2): {day, id} — the host's pick for today; `bounties` (optional): [{day, id}] — every day's pick the host holds. The fold scores a close of that order on that day higher. Without host data embedded NO bonus is computed (a bonus must never be lost later); a malformed entry is ignored.
   // EMB.state: 'reading' (waiting for the host) · 'world' (applied) · 'none' (no host answered: signed-out play) · 'unread' (a world came and could not be read).
   const EMB = { state: EMBED ? 'reading' : 'world', queued: null, fought: '', seen: false };
   const HOST_PLACES = ['workorders', 'learning', 'health', 'close'];
@@ -2877,10 +3046,12 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       const c = h.clock;
       horde = { day: h.day, clock: { gather: c.gather, warned: c.warned, due: c.due, count: c.count, last: c.last, horde: c.horde ? hordeShape(c.horde) : null }, history: [], dim: h.dim, arrived: h.arrived ? hordeShape(h.arrived) : null, fresh: h.fresh };
     }
+    const bounties = []; if (Array.isArray(m.bounties)) for (const b of m.bounties.slice(0, 5000)) if (b && typeof b === 'object' && isDay(b.day) && isStr(b.id)) bounties.push({ day: b.day, id: b.id });   // optional, every day the host holds; a malformed entry is dropped
+    const bounty = m.bounty && typeof m.bounty === 'object' && isDay(m.bounty.day) && isStr(m.bounty.id) ? { day: m.bounty.day, id: m.bounty.id } : null;   // optional: a malformed one is ignored, never a reason to refuse
     // `briefing` (optional) is a later phase's: carried by the host, ignored here, never a reason to refuse.
     // The eight fields an engine event has, and nothing else a host might have left on one.
     const events = v.ok.map((e) => ({ id: e.id, kind: e.kind, at: e.at, tier: e.tier, zone: e.zone ?? null, weight: e.weight, facts: e.facts, evidence: e.evidence }));
-    return { today: m.today, theme: m.theme || null, events, open, plan, horde, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
+    return { today: m.today, theme: m.theme || null, events, open, plan, horde, bounty, bounties, lanes: { workorders: L.workorders, learning: L.learning, body: L.body } };
   }
   /** The host's world becomes the game's: the castle is the fold over the host's events, the horde is the host's, the day is the host's. */
   function applyWorld(w) {
@@ -2893,6 +3064,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     PLAN = w.lanes.learning ? w.plan : { weeks: [] };
     S.events = w.events; S.open = w.open; S.closed = []; S.liftsLogged = [];
     S.ticks = w.events.filter((e) => e.kind === 'lesson').map((e) => e.id.replace(/^lesson\//, ''));
+    S.bounties = bountiesOf([...w.bounties, ...(w.bounty ? [w.bounty] : [])]);   // only the host's pick enters the fold; nothing of it is stored
     S.lanes = w.lanes; S.state = w.lanes.workorders ? 'live' : 'unlit';
     S.hordeKnown = !!w.horde; S.horde = w.horde || HORDE_NONE();
     const sig = S.horde.arrived ? `${S.horde.arrived.ordinal}/${S.horde.arrived.n}/${S.horde.clock.last}` : '';
@@ -2998,6 +3170,12 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   const kRows = (legs, visor) => [...K_BODY.slice(0, 4), ...(visor ? K_VISOR[visor] : K_BODY.slice(4, 6)), ...K_BODY.slice(6), ...K_LEGS[legs]];
   const KEEPER_ROWS = { idle: kRows('idle'), blink: kRows('idle', 'blink'), run1: kRows('run1'), run2: kRows('run2'), run3: kRows('run3'), jump: kRows('jump'), fall: kRows('fall'), dash: kRows('dash'), hurt: kRows('jump', 'hurt'), charge: kRows('idle', 'charge') };
   const K_RUN = ['run1', 'run2', 'run3', 'run2'];
+  // Gear on the Keeper (FW2): one small mark per slot in the colour of its grade, over the sprite. [x, y, w, h] on the 14 × 18 sprite, facing right.
+  const GEAR_PX = { blaster: [[11, 9, 3, 1]], visor: [[4, 3, 6, 1]], boots: [[3, 17, 3, 1], [8, 17, 3, 1]], plating: [[2, 8, 1, 2], [11, 8, 1, 2]], core: [[6, 10, 2, 2]] };
+  /** The marks of what is carried: [{px, c}] — built when a run starts or its build changes, never per frame. A slot carrying nothing draws nothing. */
+  function gearMarks() { const L = gearNow().slots, out = []; for (const slot of RULES.gear.order) { const g = L[slot].gear; if (g) out.push({ px: GEAR_PX[slot], c: RULES.gear.colours[g.grade] }); } return out; }
+  /** Draw the marks at the sprite's corner (x, y) through `put(x, y, w, h, colour)`; a left-facing Keeper is the mirror. */
+  function drawGear(marks, put, x, y, face) { for (let i = 0; i < marks.length; i++) { const m = marks[i]; for (let j = 0; j < m.px.length; j++) { const r = m.px[j]; put(face > 0 ? x + r[0] : x + KW - r[0] - r[2], y + r[1], r[2], r[3], m.c); } } }
   let KS = null;
   function paintKeeper() { const pal = { ...PAL, t: paintOf(S.play.paint).colour }; KS = Object.fromEntries(Object.entries(KEEPER_ROWS).map(([k, rows]) => [k, both(rows, pal)])); KS.run = K_RUN.map((k) => KS[k]); }
   // The blight's machines (facing left, the way a horde walks). Six kinds out the gate; three of them also walk in a horde.
@@ -3330,7 +3508,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       nextBoss: wilds ? RS.bosses.wilds_first_tiles : Infinity, nextPost: wilds ? RS.wilds.checkpoint_tiles : Infinity, nextCache: RS.terrain.cache_first_tiles, bossN: 0,
       hard: S.play.hard, spd: S.play.hard ? RS.hard.speed : 1, mult: S.play.hard ? RS.hard.score : 1, cont: wilds || S.play.hard ? 0 : RS.continues,
       k: { x: 30, y: 0, vx: 0, vy: 0, face: 1, air: true, cd: 0, step: 0, inv: 0, hp, max: hp, safe: 30, cpx: 30, coy: 0, buf: 0, dash: 0, dashCd: 0, airDash: false, dj: false, hold: 0, full: false, ride: null, hurtT: 0, squash: 0, shield: false, shT: 0, trail: 0, dashId: 0, bud: 0 },
-      up: BUILD0(), mod: { cd: 1 / RS.keeper.fire_per_s, charge: RS.moves.charge_s, chargeDmg: RS.moves.charge_damage, dashCd: 1, dj: unlocked('double_jump'), magnet: 0, shieldS: 0 }, buildStr: '', picks: 0,
+      up: BUILD0(), mod: { cd: 1 / RS.keeper.fire_per_s, charge: RS.moves.charge_s, chargeDmg: RS.moves.charge_damage, dashCd: 1, dj: unlocked('double_jump'), magnet: 0, shieldS: 0, speed: RS.keeper.speed, inv: RS.keeper.invulnerable_s }, buildStr: '', picks: 0,
       shots: Array.from({ length: 28 }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, dmg: 1, pierce: 0, big: false, last: -1 })),
       eb: Array.from({ length: 24 }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, g: 0, kind: 0, t: 0 })),
       bits: Array.from({ length: 90 }, () => ({ t: 0, x: 0, y: 0, vx: 0, vy: 0, c: 0, g: 300 })), pops: Array.from({ length: 8 }, () => ({ t: 0, x: 0, y: 0, s: '' })),
@@ -3349,7 +3527,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     }
     ST.k.y = GROUND_ROW * TILE - KH; ST.totalSparks = ST.sparks.filter((s) => s.lock < 0).length;
     tap.jump = tap.fire = tap.dash = false;
-    music(BIO.def.song); ST.perkDue = unlocked('perk');   // a starting pick, once play score has opened the slot
+    recalc(); music(BIO.def.song); ST.perkDue = unlocked('perk');   // a starting pick, once play score has opened the slot
   }
   /** The biomes the Wilds may wear: the ones play score has opened. */
   function wildsBiomes() { return RS.biomes.list.filter((b) => S.play.life >= b.at).map((b) => b.slug); }
@@ -3381,7 +3559,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function hurt() {
     const k = ST.k; if (k.inv > 0 || ST.done) return;
     if (k.shield) { k.shield = false; k.shT = ST.mod.shieldS; k.inv = .6; sfx('clink'); burst(k.x + KW / 2, k.y + 8, 8, 2); return; }   // the shield takes it
-    k.hp--; k.inv = RS.keeper.invulnerable_s; k.hurtT = .35; ST.clean = false; k.vy = -90; k.dash = 0; ST.combo = 0;
+    k.hp--; k.inv = ST.mod.inv; k.hurtT = .35; ST.clean = false; k.vy = -90; k.dash = 0; ST.combo = 0;
     sfx('hurt'); burst(k.x + KW / 2, k.y + 8, 8, 6); jolt(RS.juice.shake_hurt, RS.juice.hitstop_hurt_s); if (!CALM) ST.flash = .5;
     if (k.hp <= 0) die();
   }
@@ -3423,7 +3601,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     k.dashCd -= dt;
     if (dashTap && k.dashCd <= 0 && k.dash <= 0 && !(k.air && k.airDash)) { k.dash = M.dash_s; k.dashCd = M.dash_cooldown_s * ST.mod.dashCd; k.inv = Math.max(k.inv, M.dash_invulnerable_s); if (dir) k.face = dir; if (k.air) k.airDash = true; k.dashId++; sfx('dash'); burst(k.x + KW / 2, k.y + KH - 3, 4, 3, .6); }
     if (k.dash > 0) { k.dash -= dt; k.vx = k.face * M.dash_speed; k.vy = 0; }
-    else { k.vx = dir * K.speed; if (dir) { k.face = dir; k.step += dt * 11; } k.vy = Math.min(280, k.vy + K.gravity * dt); }
+    else { k.vx = dir * ST.mod.speed; if (dir) { k.face = dir; k.step += dt * 11; } k.vy = Math.min(280, k.vy + K.gravity * dt); }
     // the jump: buffered a moment before landing, forgiven a moment after a ledge, cut short by a short press; a second one once play has opened it
     if (jumpTap) k.buf = M.buffer_s; else k.buf -= dt;
     k.coy = k.air ? k.coy - dt : M.coyote_s;
@@ -3733,6 +3911,11 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     ST.mod.dashCd = Math.pow(R.overclock_factor, U.overclock);
     ST.mod.magnet = R.magnet_reach * U.magnet;
     ST.mod.shieldS = U.shield ? R.shield_recharge_s / U.shield : 0;
+    // gear (FW2): what the evidence dropped, carried into the run. For play only; reading the archive changes nothing in it.
+    const gm = gearNow().mods;
+    ST.mod.cd *= 1 - (gm.fire_cd || 0); ST.mod.charge *= 1 - (gm.charge || 0); ST.mod.dashCd *= 1 - (gm.dash_cd || 0);
+    ST.mod.magnet += gm.magnet || 0; ST.mod.speed = K.speed + (gm.speed || 0); ST.mod.inv = K.invulnerable_s + (gm.inv || 0);
+    ST.gearMarks = gearMarks();
     ST.buildStr = R.list.filter((u) => U[u.slug]).map((u) => u.code + U[u.slug]).join(' ');   // the build, as the HUD draws it
   }
   function takeUpgrade(slug) {
@@ -3806,6 +3989,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       const s = ks[k.face > 0 ? 0 : 1], x = k.x - cam, y = k.y + oy;
       if (k.dash > 0) { ctx.globalAlpha = .3; blit(s, x - k.face * 13, y); ctx.globalAlpha = .55; blit(s, x - k.face * 6, y); ctx.globalAlpha = 1; }
       if (k.squash > 0) ctx.drawImage(s, x | 0, (y + 3) | 0, KW, KH - 3); else blit(s, x, y + (k.vx && !k.air && (k.step | 0) % 2 ? -1 : 0));
+      drawGear(ST.gearMarks, px, x, y + (k.squash > 0 ? 3 : 0), k.face);   // what the evidence dropped, carried
       if (k.hold > M.charge_min_s) { const u = Math.min(1, k.hold / ST.mod.charge), r = 1 + ((u * 3) | 0), gx = x + (k.face > 0 ? KW + 1 : -2), gy = y + 10; px(gx - r, gy - r, r * 2 + 1, r * 2 + 1, k.full && ((t * 20) | 0) % 2 ? '#ffffff' : '#9ff0d8'); if (k.full) { ctx.globalAlpha = .35; px(gx - r - 2, gy - r - 2, r * 2 + 5, r * 2 + 5, '#9ff0d8'); ctx.globalAlpha = 1; } }
       if (k.shield) { const c = '#9ff0d8'; px(x - 1, y - 1, 3, 1, c); px(x - 1, y - 1, 1, 3, c); px(x + KW - 2, y - 1, 3, 1, c); px(x + KW, y - 1, 1, 3, c); px(x - 1, y + KH, 3, 1, c); px(x - 1, y + KH - 2, 1, 3, c); px(x + KW - 2, y + KH, 3, 1, c); px(x + KW, y + KH - 2, 1, 3, c); }
     }
@@ -3880,6 +4064,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function closeOrder(id) {
     if (EMBED) { hostGo('workorders'); return; }   // embedded, an order is finished in the host's own screen: no evidence is made here
     const o = S.open.find((x) => x.id === id); if (!o) return;
+    todaysBounty();   // the day's pick is journalled before the close, so a close of the bounty carries its bonus
     const ev = closeEvent(o); S.closed.push(o.id); teleAdd('closes_seen');
     S.open = S.open.filter((x) => x.id !== id); S.order = null; S.picked = null; S.proof = ''; renderOverlay();
     fire([ev], () => { if (S.screen === 'siege') render(); });
@@ -3985,6 +4170,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       const f = forecast();
       html += head('The backlog', `${wards.reduce((a, w) => a + w.attackers.length, 0)} aged orders feed the horde · finish one to build the castle`, 'castle');
       html += `<div class="content"><section class="card"><h2>${esc(hordeLine())} ${f ? `<span class="more">${esc(fill(BANK.horde.size, { n: f.horde.n, bosses: f.horde.bosses }))}</span>` : ''}</h2><div class="empty" id="needline">${esc(needLine())}</div>${S.horde.clock.due && freshNow() ? `<div class="empty" id="rallyline">${esc(fill(BANK.horde.rally, { pct: Math.round((C.rallyOf(freshNow(), RULES) - 1) * 100), n: freshNow() }))}</div>` : ''}</section>`;
+      html += bountyCard();
       for (const w of wards) {
         const keep = w.zone === 'keep';
         html += `<section class="card"><h2>${esc(wardOf(w.zone).name)} <span class="more">pressure ${w.pressure}</span></h2>`;
@@ -4004,6 +4190,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       html += head(S.keeperName || 'The Keeper', `L${st.player.level} · ${st.medals.length} plates · ${st.items.length} items`, 'castle');
       html += `<div class="content"><section class="card"><div class="keeper"><canvas id="keeperPic" width="28" height="36" aria-hidden="true"></canvas><div class="parts">${parts.map((p) => `<div class="part"><span>${esc(p.label)}</span><div class="tiers">${[1, 2, 3, 4, 5].map((t) => `<i class="${p.tier >= t ? 'on' : ''}"></i>`).join('')}</div><span class="chip">${esc(p.from.replace('_', ' '))} ${p.value}</span></div>`).join('')}</div></div><div class="empty" id="hullline" style="margin-top:8px"><b>${esc(fill(BANK.keeper.hearts, { n: hearts(), level: st.player.level }))}</b> · ${esc(BANK.keeper.hearts_note)}</div>${EMBED ? '' : `<div style="margin-top:10px;display:flex;gap:8px"><input class="input" id="kname" placeholder="Name the Keeper (kept on this device)" value="${esc(S.keeperName)}" aria-label="Keeper's name"><button class="btn" data-name="1">Save</button></div>`}</section>`;
       html += `<section class="card" id="paintcard"><h2>${esc(BANK.keeper.paint)} <span class="more">${esc(fill(BANK.keeper.total, { score: total }))}</span></h2><div class="empty">${esc(BANK.keeper.paint_note)}</div><div class="paints">${RS.paints.map((p) => `<button data-paint="${p.slug}" aria-pressed="${S.play.paint === p.slug}" ${total >= p.at ? '' : 'disabled'}><i style="background:${p.colour}"></i>${esc(p.label)}${total >= p.at ? '' : ` · ${esc(fill(BANK.keeper.paint_locked, { at: p.at }))}`}</button>`).join('')}</div><div class="empty" style="margin-top:8px">${esc(BANK.keeper.device)}</div></section>`;
+      html += gearCard();
       const last7 = Object.entries(TEL.opens).filter(([d]) => d >= new Date(Date.now() - 6 * DAY).toLocaleDateString('en-CA')).reduce((a, [, n]) => a + n, 0);
       if (!EMBED) html += `<section class="card" id="yournumbers"><h2>${esc(BANK.telemetry.heading)} <span class="more">${esc(BANK.telemetry.note)}</span></h2><div class="nums">${[['opens', last7], ['session_seconds', Math.round(TEL.session_seconds / 60)], ['closes_seen', TEL.closes_seen], ['stages_cleared', TEL.stages_cleared], ['hordes_seen', TEL.hordes_seen], ['regions_mapped', TEL.regions_mapped]].map(([k, v]) => `<div><b>${v}</b>${esc(BANK.telemetry[k])}</div>`).join('')}</div></section>`;
       html += `<section class="card"><h2>Plates <span class="more">${st.medals.length} medals · never lost</span></h2><div class="plates">${st.medals.map((m) => `<span class="plate-chip ${m.top ? 'top' : ''}" title="${esc(BANK.medal[m.slug])}">${icon('medal')}${esc(m.label)}<small>${m.at}</small></span>`).join('') || '<div class="empty">No plates yet.</div>'}</div></section>`;
@@ -4029,8 +4216,27 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     }
     $screen.innerHTML = html;
     if (S.screen === 'home') drawMini();
-    if (S.screen === 'keeper') { const c = document.getElementById('keeperPic'), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(KS.idle[0], 0, 0, KW, KH, 0, 0, 28, 36); }
+    if (S.screen === 'keeper') { const c = document.getElementById('keeperPic'), g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(KS.idle[0], 0, 0, KW, KH, 0, 0, 28, 36); drawGear(gearMarks(), (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x * 2, y * 2, w * 2, h * 2); }, 0, 0, 1); }
     renderOverlay();
+  }
+  /** The gear card (FW2): per slot what is carried and the archive's pieces for it. Equipping only chooses; no piece is ever used up, moved or lost. */
+  function gearCard() {
+    const B = BANK.gear, L = gearNow(), name = (g) => (g.sealed ? B.sealed : g.name || B.sealed);
+    const rows = RULES.gear.order.map((slot) => {
+      const o = L.slots[slot], st = RULES.gear.stats[slot], cur = o.gear;
+      const btn = (g) => `<button data-gear="${slot}:${g.key}" aria-pressed="${!!cur && cur.key === g.key && !o.off}" title="${esc(fill(B.power, { n: g.power }))}"><i style="background:${RULES.gear.colours[g.grade]}"></i>${esc(name(g))} · ${esc(fill(B.power, { n: g.power }))}</button>`;
+      const shown = o.candidates.slice(0, RULES.gear.show_max);
+      return `<div class="gear" data-slot="${slot}"><div class="row"><div class="t"><div class="name">${esc(B.slots[slot])}${cur ? ` <span class="chip g g-${cur.grade}">${cur.grade}</span>` : ''}</div><div class="meta">${esc(B.stats[st.stat])}${cur ? ` · ${esc(fill(B.power, { n: cur.power }))}${o.auto ? ' · ' + esc(B.auto) : ''}` : ''}</div></div></div>${shown.length ? `<div class="paints">${shown.map(btn).join('')}${o.off ? '' : `<button data-gear="${slot}:off">${esc(B.off_label)}</button>`}${o.auto ? '' : `<button data-gear="${slot}:auto">${esc(B.auto)}</button>`}</div>` : `<div class="empty">${esc(B.empty)}</div>`}</div>`;
+    }).join('');
+    return `<section class="card" id="gearcard"><h2>${esc(B.title)}</h2><div class="empty">${esc(B.note)}</div>${rows}<div class="empty" style="margin-top:8px">${esc(B.note_play)}</div></section>`;
+  }
+  /** Today's bounty (FW2, D61): the oldest public order, then the highest Pn, then the quickest. Its own day's drop is better; nothing is taken from any other day. */
+  function bountyCard() {
+    if (EMBED && !S.bounties.some((x) => x.day === TODAY)) return '';   // embedded, only the host's pick is a bounty
+    const B = BANK.bounty, b = OUT ? null : todaysBounty(), o = b && S.open.find((x) => x.id === b.id);
+    if (!b || !o) return `<section class="card" id="bountycard"><h2>${esc(B.title)}</h2><div class="empty">${esc(B.none)}</div></section>`;
+    const age = E.daysBetween(o.written, TODAY), steps = b.steps != null ? b.steps : countOf(o.steps) || 1;
+    return `<section class="card" id="bountycard"><h2>${esc(B.title)} <span class="more">${esc(B.note)}</span></h2><button class="row" data-order="${b.id}"><span class="id">${b.id}</span><div class="t"><div class="name">${esc(o.title)}</div><div class="meta">${esc(fill(B.line, { age, pn: o.pn || '', steps: steps === 1 ? B.steps_one : fill(B.steps, { n: steps }) }))}</div></div><span class="chip eng">${esc(BANK.gear.bounty)}</span></button><div class="empty">${esc(B.bonus)}</div></section>`;
   }
   /** The Home tile's thumbnail: the castle screen's own drawing, cropped. */
   function drawMini() {
@@ -4069,7 +4275,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
 
   // ══════════════════════ events and the loop ══════════════════════
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],[data-host],[data-mute],[data-hard],#reset,#replayOnboarding,#skipFight,#fwClose');
+    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],[data-gear],[data-host],[data-mute],[data-hard],#reset,#replayOnboarding,#skipFight,#fwClose');
     if (!t) return;
     if (t.id === 'fwClose') { saveNow(); music(''); hostGo('close'); return; }
     if (t.dataset.host) { hostGo(t.dataset.host); return; }   // where the evidence is made: the host's own screen
@@ -4080,6 +4286,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); return; }
     if (t.dataset.stage) { const n = Number(t.dataset.stage); if (OUT && n !== 0) return; if (n > 1 && !S.play.best[`w${n - 1}`]) return;   // a week opens when the one before it is cleared
       S.stage = n; newStage(S.stage); S.screen = 'stage'; render(); ticker(ST.wilds ? BANK.stage.wilds_enter : fill(BANK.stage.enter, { n: ST.week }), ''); return; }
+    if (t.dataset.gear) { const [slot, v] = t.dataset.gear.split(':'); if (!RULES.gear.order.includes(slot)) return;   // equipping chooses a view of the archive: it consumes nothing
+      if (v === 'auto') delete S.play.gear[slot]; else if (v === 'off') S.play.gear[slot] = 'off'; else if (/^\d+$/.test(v)) S.play.gear[slot] = Number(v); else return;
+      saveNow(); render(); return; }
     if (t.dataset.paint) { S.play.paint = t.dataset.paint; paintKeeper(); saveNow(); render(); return; }
     if (t.dataset.order) { S.order = t.dataset.order; S.picked = null; S.proof = ''; renderOverlay(); return; }
     if (t.dataset.close) { if (e.target === t || e.target.closest('[data-close]') === t) { S.order = null; renderOverlay(); } return; }
@@ -4166,6 +4375,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       boss: ST.boss.on ? { type: ST.boss.type, hp: ST.boss.hp, max: ST.boss.max, phase: ST.boss.phase, st: ST.boss.st, dead: ST.boss.dead > 0 } : null } : null),
     play: () => ({ best: { ...S.play.best }, wilds: { ...S.play.wilds }, wall: S.play.wall, total: totalScore(), paint: S.play.paint, mute: S.play.mute, hard: S.play.hard, bosses: S.play.bosses, pool: RS.upgrades.list.filter((u) => S.play.life >= u.at).map((u) => u.slug) }),
     audio: () => ({ started: !!AU.ctx, song: AU.song, wanted: AU.wanted, mute: S.play.mute }),
+    gear: () => { const L = gearNow(); return { items: S.st.items.length, ids: S.st.items.map((i) => i.id).join(), slots: Object.fromEntries(RULES.gear.order.map((s) => [s, { have: L.slots[s].candidates.length, grade: L.slots[s].gear ? L.slots[s].gear.grade : null, auto: L.slots[s].auto, off: L.slots[s].off }])), mods: { ...L.mods }, mod: ST ? { cd: ST.mod.cd, speed: ST.mod.speed, inv: ST.mod.inv, dashCd: ST.mod.dashCd, marks: ST.gearMarks.length } : null }; },
+    bounty: () => todaysBounty(), openIds: () => S.open.filter((o) => o.tier === 'public').map((o) => ({ id: o.id, written: o.written, pn: o.pn || null, options: countOf(o.options), steps: countOf(o.steps) })),
+    itemOf: (id) => { const i = S.st.items.find((x) => x.id === id); return i ? { grade: i.grade, score: i.score, bounty: i.bounty, receipt: i.receipt } : null; },
     embed: () => ({ on: EMBED, state: EMB.state, queued: !!EMB.queued, today: TODAY, out: OUT }),
     place(x) { if (!ST) return; restand(x); ST.k.safe = Math.floor(x / TILE) * TILE; ST.camX = Math.max(0, x - 56); ST.camRow = ST.camTo = (ST.k.y + KH) / TILE; },
     clearFoes() { if (ST) for (const z of ST.foes) z.alive = false; },

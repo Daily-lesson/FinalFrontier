@@ -30,6 +30,7 @@
   function closeOrder(id) {
     if (EMBED) { hostGo('workorders'); return; }   // embedded, an order is finished in the host's own screen: no evidence is made here
     const o = S.open.find((x) => x.id === id); if (!o) return;
+    todaysBounty();   // the day's pick is journalled before the close, so a close of the bounty carries its bonus
     const ev = closeEvent(o); S.closed.push(o.id); teleAdd('closes_seen');
     S.open = S.open.filter((x) => x.id !== id); S.order = null; S.picked = null; S.proof = ''; renderOverlay();
     fire([ev], () => { if (S.screen === 'siege') render(); });

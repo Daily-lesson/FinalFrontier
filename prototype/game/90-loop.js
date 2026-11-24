@@ -1,6 +1,6 @@
   // ══════════════════════ events and the loop ══════════════════════
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],[data-host],[data-mute],[data-hard],#reset,#replayOnboarding,#skipFight,#fwClose');
+    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],[data-gear],[data-host],[data-mute],[data-hard],#reset,#replayOnboarding,#skipFight,#fwClose');
     if (!t) return;
     if (t.id === 'fwClose') { saveNow(); music(''); hostGo('close'); return; }
     if (t.dataset.host) { hostGo(t.dataset.host); return; }   // where the evidence is made: the host's own screen
@@ -11,6 +11,9 @@
       S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); return; }
     if (t.dataset.stage) { const n = Number(t.dataset.stage); if (OUT && n !== 0) return; if (n > 1 && !S.play.best[`w${n - 1}`]) return;   // a week opens when the one before it is cleared
       S.stage = n; newStage(S.stage); S.screen = 'stage'; render(); ticker(ST.wilds ? BANK.stage.wilds_enter : fill(BANK.stage.enter, { n: ST.week }), ''); return; }
+    if (t.dataset.gear) { const [slot, v] = t.dataset.gear.split(':'); if (!RULES.gear.order.includes(slot)) return;   // equipping chooses a view of the archive: it consumes nothing
+      if (v === 'auto') delete S.play.gear[slot]; else if (v === 'off') S.play.gear[slot] = 'off'; else if (/^\d+$/.test(v)) S.play.gear[slot] = Number(v); else return;
+      saveNow(); render(); return; }
     if (t.dataset.paint) { S.play.paint = t.dataset.paint; paintKeeper(); saveNow(); render(); return; }
     if (t.dataset.order) { S.order = t.dataset.order; S.picked = null; S.proof = ''; renderOverlay(); return; }
     if (t.dataset.close) { if (e.target === t || e.target.closest('[data-close]') === t) { S.order = null; renderOverlay(); } return; }
@@ -97,6 +100,9 @@
       boss: ST.boss.on ? { type: ST.boss.type, hp: ST.boss.hp, max: ST.boss.max, phase: ST.boss.phase, st: ST.boss.st, dead: ST.boss.dead > 0 } : null } : null),
     play: () => ({ best: { ...S.play.best }, wilds: { ...S.play.wilds }, wall: S.play.wall, total: totalScore(), paint: S.play.paint, mute: S.play.mute, hard: S.play.hard, bosses: S.play.bosses, pool: RS.upgrades.list.filter((u) => S.play.life >= u.at).map((u) => u.slug) }),
     audio: () => ({ started: !!AU.ctx, song: AU.song, wanted: AU.wanted, mute: S.play.mute }),
+    gear: () => { const L = gearNow(); return { items: S.st.items.length, ids: S.st.items.map((i) => i.id).join(), slots: Object.fromEntries(RULES.gear.order.map((s) => [s, { have: L.slots[s].candidates.length, grade: L.slots[s].gear ? L.slots[s].gear.grade : null, auto: L.slots[s].auto, off: L.slots[s].off }])), mods: { ...L.mods }, mod: ST ? { cd: ST.mod.cd, speed: ST.mod.speed, inv: ST.mod.inv, dashCd: ST.mod.dashCd, marks: ST.gearMarks.length } : null }; },
+    bounty: () => todaysBounty(), openIds: () => S.open.filter((o) => o.tier === 'public').map((o) => ({ id: o.id, written: o.written, pn: o.pn || null, options: countOf(o.options), steps: countOf(o.steps) })),
+    itemOf: (id) => { const i = S.st.items.find((x) => x.id === id); return i ? { grade: i.grade, score: i.score, bounty: i.bounty, receipt: i.receipt } : null; },
     embed: () => ({ on: EMBED, state: EMB.state, queued: !!EMB.queued, today: TODAY, out: OUT }),
     place(x) { if (!ST) return; restand(x); ST.k.safe = Math.floor(x / TILE) * TILE; ST.camX = Math.max(0, x - 56); ST.camRow = ST.camTo = (ST.k.y + KH) / TILE; },
     clearFoes() { if (ST) for (const z of ST.foes) z.alive = false; },

@@ -62,8 +62,9 @@
     const diff = r.difficulty[f.difficulty] ?? r.difficulty.none;
     const age = Math.min(r.age_cap, (f.ageDays ?? 0) / r.age_divisor);
     const dec = ev.kind === 'decision' || f.options ? r.decision_bonus : 0;
+    const bounty = f.bounty === true ? ((rules.bounty || {}).score_bonus || 0) : 0;   // FW2: added on the day, never taken away
     const v = (hash(ev.id) % (2 * r.variance + 1)) - r.variance;
-    return Math.round(r.weight_factor * weight + pn + diff + age + dec + v);
+    return Math.round(r.weight_factor * weight + pn + diff + age + dec + bounty + v);
   }
   function gradeOf(score, rules) {
     const t = rules.rarity.thresholds; const g = rules.rarity.grades;
@@ -86,8 +87,8 @@
     const names = (((rules.bank || {}).item || {})[kind] || {})[grade] || [];
     const name = names.length ? names[hash(ev.id + '/name') % names.length] : null;
     const f = ev.facts || {};
-    const receipt = sealed ? null : [ev.id, f.pn, f.ageDays != null ? `${f.ageDays} d` : null, f.band ? `${f.band} lane` : null, ev.at].filter(Boolean).join(' · ');
-    return { id: ev.id, event: ev.id, kind, grade, score, name, receipt, zone: sealed ? null : ev.zone || null, sealed, provisional: !(f.verified === true), at: ev.at };
+    const receipt = sealed ? null : [ev.id, f.pn, f.ageDays != null ? `${f.ageDays} d` : null, f.band ? `${f.band} lane` : null, f.bounty === true ? 'bounty' : null, ev.at].filter(Boolean).join(' · ');
+    return { id: ev.id, event: ev.id, kind, grade, score, name, receipt, evKind: ev.kind, bounty: !sealed && f.bounty === true, zone: sealed ? null : ev.zone || null, sealed, provisional: !(f.verified === true), at: ev.at };
   }
 
   // ── xp and levels (§6.2) ────────────────────────────────────────────────
@@ -152,11 +153,14 @@
    * week is a live lesson event (the lesson id is the event id after `lesson/`);
    * with quests, a task event completes its quest the same way (`task/<quest>/<id>`).
    * Without ctx the adapter's facts.weekComplete / facts.questComplete stand.
+   * ctx.bounties (optional, FW2): [{day, id}] — the day's bounty. A close of that order on that day
+   * carries facts.bounty and its drop scores rules.bounty.score_bonus higher. Nothing else changes, ever.
    */
   function evaluate(events, rules, today, ctx) {
     const { ok, refused } = validateEvents(events);
     const plan = ctx && ctx.plan ? ctx.plan : null;
     const quests = ctx && ctx.quests ? ctx.quests : null;
+    const bounties = new Set(((ctx && ctx.bounties) || []).filter((b) => b && isDate(b.day) && typeof b.id === 'string').map((b) => `${b.day}|${b.id}`));
     const lessonId = (id) => String(id).replace(/^lesson\//, '');
     const taskOf = (id) => { const m = /^task\/([^/]+)\/(.+)$/.exec(String(id)); return m ? { quest: m[1], task: m[2] } : null; };
     const sorted = ok.slice().sort((a, b) => utc(a.at) - utc(b.at) || a.id.localeCompare(b.id));
@@ -182,6 +186,7 @@
         const have = new Set(st.live.filter((e) => e.kind === 'task').map((e) => (taskOf(e.id) || {}).task));
         ev = { ...ev, facts: { ...(ev.facts || {}), questComplete: !!all && all.every((x) => have.has(x)) } };
       }
+      if ((ev.kind === 'close' || ev.kind === 'decision') && ev.tier === 'public' && bounties.has(`${ev.at}|${ev.id}`)) ev = { ...ev, facts: { ...(ev.facts || {}), bounty: true } };
       let item = drop(ev, rules);
       if (item && verified.has(ev.id)) item = { ...item, provisional: false };
       // the Return floor (§3): the first drop after a quiet week is at least the return grade
@@ -260,6 +265,51 @@
     return { daily: pickChallenge(rules.challenges.daily, avail, `daily/${date}`), weekly: pickChallenge(rules.challenges.weekly, avail, `weekly/${mondayOf(date)}`) };
   }
 
+
+  // ── gear and the bounty (FW2; docs/FIELDWORKS.md §17, D52 and D61) ───────
+  /**
+   * The gear an item is: its slot from its kind, its power from its grade. Pure; the item is untouched.
+   * A sealed item is gear with no name (counts through the walls); its grade already reads Pn alone.
+   */
+  function gearOf(item, rules) {
+    const G = rules.gear; const slot = G.slots[item.evKind]; if (!slot) return null;
+    const power = G.power[item.grade] ?? 1;
+    return { item: item.id, slot, grade: item.grade, power, stat: G.stats[slot].stat, name: item.sealed ? null : item.name, sealed: !!item.sealed, at: item.at, key: hash(item.id) };
+  }
+  /**
+   * What the Keeper carries. chosen: {slot: key | 'off'} (a key is hash(item.id); absent = the best of that slot).
+   * An unknown key falls back to the best; 'off' carries nothing in that slot. Equipping is a view over the
+   * archive: no item is ever consumed, moved or removed (pillar 2), and no play ever adds one (pillar 1).
+   */
+  function loadout(items, chosen, rules) {
+    const G = rules.gear; const all = (items || []).map((i) => gearOf(i, rules)).filter(Boolean);
+    const out = {}; const mods = {};
+    for (const slot of G.order) {
+      const cands = all.filter((g) => g.slot === slot).sort((a, b) => (b.power - a.power) || (utc(b.at) - utc(a.at)) || a.item.localeCompare(b.item));
+      const pick = chosen && chosen[slot];
+      let gear = null; let auto = true;
+      if (pick === 'off') { auto = false; }
+      else { const hit = pick != null ? cands.find((c) => c.key === pick) : null; gear = hit || cands[0] || null; auto = !hit; }
+      out[slot] = { gear, auto, off: pick === 'off', candidates: cands };
+      if (gear) mods[G.stats[slot].stat] = gear.power * G.stats[slot].per_power;
+    }
+    return { slots: out, mods };
+  }
+  /** The pick for a day: public open orders only; oldest first, then the highest Pn, then the quickest, then the id. */
+  function bounty(openOrders, rules, today) {
+    const B = rules.bounty; if (!isDate(today)) return null;
+    const rank = (pn) => { const i = B.pn_order.indexOf(pn); return i < 0 ? B.pn_order.length : i; };
+    const cands = [];
+    for (const o of openOrders || []) {
+      if (!o || o.tier !== 'public' || typeof o.id !== 'string' || !isDate(o.written)) continue;
+      const age = daysBetween(o.written, today); if (age < B.min_age_days) continue;
+      const decision = Number.isInteger(o.options) && o.options > 0;   // anything else counts as one
+      cands.push({ id: o.id, day: today, ageDays: age, pn: o.pn || null, decision, steps: decision || !(Number.isInteger(o.steps) && o.steps > 0) ? 1 : o.steps });
+    }
+    cands.sort((a, b) => (b.ageDays - a.ageDays) || (rank(a.pn) - rank(b.pn)) || (a.steps - b.steps) || a.id.localeCompare(b.id));
+    return cands[0] || null;
+  }
+
   // ── the keeper and the works ────────────────────────────────────────────
   function tierOf(value, tiers) { let t = 0; tiers.forEach((th, i) => { if (value >= th) t = i + 1; }); return t; }
   function keeper(state, figures, rules) {
@@ -268,6 +318,6 @@
   }
   function works(playerLevel, rules) { return rules.works.map((w) => ({ ...w, unlocked: playerLevel >= w.level })); }
 
-  const api = { KINDS, EVIDENCE, hash, validateEvent, validateEvents, rarityScore, gradeOf, drop, xp, level, progress, evaluate, medalsFor, siege, expedition, challenges, keeper, works, mondayOf, daysBetween };
+  const api = { KINDS, EVIDENCE, hash, validateEvent, validateEvents, rarityScore, gradeOf, drop, xp, level, progress, evaluate, medalsFor, siege, expedition, challenges, keeper, works, mondayOf, daysBetween, gearOf, loadout, bounty };
   if (typeof globalThis !== 'undefined') globalThis.FieldworksEngine = api;
 })();
