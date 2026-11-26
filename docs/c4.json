@@ -1,0 +1,127 @@
+{
+  "c4": 1,
+  "people": [
+    { "id": "player", "label": "Player", "desc": "Plays the public site signed out, or the embedded build inside a host app" }
+  ],
+  "containers": [
+    {
+      "id": "game",
+      "label": "Game page",
+      "lane": "front",
+      "type": "page",
+      "on": "github",
+      "tech": "One HTML page · classic scripts · GitHub Pages",
+      "desc": "The castle and the stages in one page; the public site starts signed out and offers the Wilds alone",
+      "reads": { "workflow": "pages.yml" },
+      "components": [
+        { "label": "Page shell", "tech": "prototype/prototype.src.html" },
+        { "label": "Game script", "tech": "prototype/game", "desc": "The fragments joined in name order inside one IIFE" },
+        { "label": "Built page", "tech": "prototype/index.html", "desc": "Built and committed, never edited" },
+        { "label": "Art sheet", "tech": "prototype/art-sheet.html" },
+        { "label": "Fonts", "tech": "prototype/fonts", "desc": "Two faces, self-hosted, OFL" }
+      ]
+    },
+    {
+      "id": "embed",
+      "label": "Embedded build",
+      "lane": "front",
+      "type": "screen",
+      "tech": "Same-origin frame · no inline script",
+      "desc": "The game for a host app's frame; the host posts the world in, and its save keeps play only",
+      "components": [
+        { "label": "Frame page", "tech": "embed/play.html" },
+        { "label": "Script", "tech": "embed/play.js" },
+        { "label": "Styles", "tech": "embed/play.css" }
+      ]
+    },
+    {
+      "id": "engine",
+      "label": "Engine",
+      "lane": "back",
+      "type": "function",
+      "tech": "Plain JS · pure, window-free",
+      "desc": "The fold over evidence events and the castle module; every number comes from the rules",
+      "reads": { "fresh": "src", "days": 90 },
+      "components": [
+        { "label": "The fold", "tech": "src/engine.js" },
+        { "label": "The castle", "tech": "src/castle.js", "desc": "Pieces, the horde's clock, the fight as one stepping function" }
+      ]
+    },
+    {
+      "id": "builder",
+      "label": "Builder",
+      "lane": "back",
+      "type": "pipeline",
+      "tech": "Node scripts · no package.json",
+      "desc": "Inlines the engine, the castle and the rules into the pages and the embed, and assembles the public site",
+      "components": [
+        { "label": "Page build", "tech": "prototype/build.mjs" },
+        { "label": "Site assembly", "tech": "prototype/site.mjs" }
+      ]
+    },
+    {
+      "id": "sim",
+      "label": "Economy sim",
+      "lane": "back",
+      "type": "pipeline",
+      "tech": "Node script · run by hand",
+      "desc": "Replays sixty days through the engine to check the rules' numbers before they ship",
+      "components": [
+        { "label": "Sim", "tech": "sim/economy.mjs" },
+        { "label": "Report", "tech": "sim/REPORT.md" }
+      ]
+    },
+    {
+      "id": "ci",
+      "label": "CI",
+      "lane": "back",
+      "type": "workflow",
+      "on": "github",
+      "tech": "GitHub Actions · Node 22 · node --test",
+      "desc": "Workflow lint, syntax and JSON checks, then the engine, rules, page and wall tests",
+      "reads": "ci",
+      "components": [
+        { "label": "Checks", "tech": "tests/check.mjs" },
+        { "label": "Model check", "tech": "tests/c4.test.mjs" }
+      ]
+    },
+    {
+      "id": "rules",
+      "label": "Rules",
+      "lane": "data",
+      "type": "store",
+      "tech": "JSON · every number and sentence",
+      "desc": "The one file the game reads its numbers and words from; the engine is never tuned",
+      "reads": { "fresh": "rules", "days": 90 },
+      "components": [
+        { "label": "Rules", "tech": "rules/fieldworks.json" }
+      ]
+    },
+    {
+      "id": "save",
+      "label": "Browser save",
+      "lane": "data",
+      "type": "store",
+      "on": "browser",
+      "tech": "localStorage · versioned",
+      "desc": "The save in the player's own browser; nothing is sent anywhere",
+      "components": [
+        { "label": "Save keys", "tech": "prototype/game/10-core.js" }
+      ]
+    }
+  ],
+  "rels": [
+    { "from": "builder", "to": "engine", "label": "inlines byte for byte" },
+    { "from": "builder", "to": "rules", "label": "inlines" },
+    { "from": "builder", "to": "game", "label": "builds" },
+    { "from": "builder", "to": "embed", "label": "builds" },
+    { "from": "game", "to": "engine", "label": "runs" },
+    { "from": "embed", "to": "engine", "label": "runs" },
+    { "from": "engine", "to": "rules", "label": "reads every number from" },
+    { "from": "game", "to": "save", "label": "keeps its save in" },
+    { "from": "embed", "to": "save", "label": "keeps play only in" },
+    { "from": "sim", "to": "engine", "label": "replays days through" },
+    { "from": "ci", "to": "engine", "label": "tests" },
+    { "from": "ci", "to": "builder", "label": "checks the built files equal a rebuild" }
+  ]
+}

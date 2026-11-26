@@ -116,12 +116,13 @@ DEMO world is never used; the device keeps play only (`fieldworks-embed-play`,
 | File | What |
 |---|---|
 | `check.mjs` | The engine against the rules and the design's numbers, the castle module (pieces, the clock, the fight, the forecast, the rally), the rule blocks (version 3's too: moves, machines, bosses, upgrades, the unlock track, worlds, audio), the page's pillars read from its joined source (`PLAY_FNS`: nothing a run does touches the evidence; play score opens only things for play; no allocation per frame), the built files equal to a rebuild (the two pages and `embed/`), the embed (no inline script, its policy, no other host, no URL read, the message guards, the world's intake run against the real engine), the Pages site's assembly and its build stamp (`version.json`, the badge, a commit that is not a commit refused), and the tree-wide wall sweep. |
+| `c4.test.mjs` | Holds `docs/c4.json` (the C4 model the owner's status map draws this program from) to the repo: its limits, no URL or host, every path it names, its readings, the stack (no package.json, Node 22, Pages from `main`), the engine inlined, the save on the device with no network call in the game, the rules, the font licences, the relationships. |
 
 ## CI workflows
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `ci.yml` | push to `main`, every PR | workflow lint, `node --check`, JSON validity, the two test files |
+| `ci.yml` | push to `main`, every PR | workflow lint, `node --check`, JSON validity, `tests/check.mjs` + `tests/c4.test.mjs`, the sim test |
 | `pages.yml` | push to `main` touching `prototype/`, `src/`, `rules/` or the workflow; `workflow_dispatch` (deploys from `main` only) | rebuilds the pages and fails on a diff, assembles `_site/` with `site.mjs` (which stamps the run's commit into `version.json` and the badge), runs the two test files (the wall sweep then reads `_site/`), uploads and deploys it to GitHub Pages; no schedule, no secret, no alys checkout |
 | `actions-budget.yml` | PRs touching `.github/workflows/**` | prices `schedule:` triggers against the 100 min/month cap |
 | `code-review-graph.yml` | PRs | posts a knowledge-graph impact review |

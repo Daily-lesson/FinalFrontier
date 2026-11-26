@@ -63,7 +63,7 @@ jobs:
           done
 
       - name: Engine, rules and the wall sweep
-        run: node --test tests/check.mjs
+        run: node --test tests/check.mjs tests/c4.test.mjs
 
       # The sim imports the alys board's parser from an alys checkout beside this
       # one; CI has none (alys is private and no token is granted), so the sim's

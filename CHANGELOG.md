@@ -84,6 +84,12 @@ Pillars held: gear exists only because evidence dropped an item; play score
 adds none and equipping never changes, moves or removes one; gear's effects
 are for play; a sealed piece shows no name.
 
+## Unreleased — a C4 model for the status map
+
+`docs/c4.json` describes FinalFrontier as a C4 model: the player, the game page and the embedded build, the engine, the
+builder, the sim and CI, the rules and the on-device save, and how work moves between them. `tests/c4.test.mjs` holds
+every fact it states to the repo, and `ci.yml` runs it beside `tests/check.mjs`.
+
 ## Unreleased — the embed, after review
 
 - `prototype/game/25-embed.js`: a lane read for the first time is taken as the
