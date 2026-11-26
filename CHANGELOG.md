@@ -28,6 +28,13 @@ The site-version/1 standard (the design repo's `docs/SITE_VERSION.md`).
   holds the file's bytes, the version to the rules, the badge's two forms and
   its markup, and that a value which is not a commit (markup, quotes, upper
   case, 39 characters) reaches neither the file nor the page.
+- The shown version is the commit's date (the standard's D6): `version.json`
+  gains `date`, the committer date of `commit` in UTC as `YYYY.MM.DD`, read
+  from git (never the clock) and checked, else `null`; `version` is unchanged.
+  The badge reads `v<date> · <commit7>`, the commit alone with no date, `dev`
+  with neither. The game page also sets `window.SITE_VERSION` once, frozen,
+  with `text` exactly the badge's words. Tests cover a valid date, malformed
+  dates, the three badge forms and the global.
 - `.github/workflows/pages.yml`: unchanged. `GITHUB_SHA` is in every step's
   environment by default.
 

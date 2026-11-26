@@ -526,6 +526,7 @@ test('the Pages site: the two pages, the faces and the build stamp only, noindex
     assert.deepEqual(published, ['index.html', 'art-sheet.html', 'version.json', ...site.FONT_FILES.map((f) => `fonts/${f}`)], 'the game, the art sheet, the build stamp and the faces; nothing else');
     assert.deepEqual(readdirSync(out).sort(), ['art-sheet.html', 'fonts', 'index.html', 'version.json']);
     const stampHtml = site.badge(site.versionInfo(site.siteVersion(RULES), COMMIT));
+    const stampScript = site.versionScript(site.versionInfo(site.siteVersion(RULES), COMMIT));
     for (const page of site.PAGES) {
       const built = read(`prototype/${page}`), html = readFileSync(join(out, page), 'utf8');
       assert.equal(html.split(site.NOINDEX).length, 2, `${page}: one robots noindex`);
@@ -535,8 +536,9 @@ test('the Pages site: the two pages, the faces and the build stamp only, noindex
       assert.equal(html.split(site.SIGNED_OUT).length, page === 'index.html' ? 2 : 1, `${page}: the signed-out flag on the game page only`);
       if (page === 'index.html') assert.ok(html.indexOf(site.SIGNED_OUT) < html.indexOf('<script id="rules"'), 'the flag is set before the page reads it');
       assert.equal(html.split(stampHtml).length, page === 'index.html' ? 2 : 1, `${page}: the version badge on the game page only`);
+      assert.equal(html.split(stampScript).length, page === 'index.html' ? 2 : 1, `${page}: window.SITE_VERSION on the game page only`);
       assert.equal(html.split('site-version').length, page === 'index.html' ? 4 : 1, `${page}: one badge and its two style rules, or none of it`);
-      const undone = html.slice(site.HEAD.length).replace(site.SIGNED_OUT, '').replace(stampHtml, '').replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
+      const undone = html.slice(site.HEAD.length).replace(site.SIGNED_OUT, '').replace(stampScript, '').replace(stampHtml, '').replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
       assert.equal(undone, built, `${page}: the site copy is the built page plus its edits`);
     }
     const css = readFileSync(join(out, 'fonts', 'fonts.css'), 'utf8');
@@ -566,31 +568,53 @@ test('the Pages site: version.json (site-version/1) and the badge say which buil
   const site = await import('../prototype/site.mjs');
   const COMMIT = 'c0ffee1234567890abcdef1234567890abcdef12';
   const version = String(RULES.game.version);
-  const assembled = (commit) => {
+  const DATE = '2026.11.26';
+  const assembled = (commit, date = null) => {
     const out = mkdtempSync(join(tmpdir(), 'fieldworks-stamp-'));
-    try { site.assemble(out, undefined, { commit }); return { raw: readFileSync(join(out, 'version.json'), 'utf8'), html: readFileSync(join(out, 'index.html'), 'utf8') }; }
+    try { site.assemble(out, undefined, { commit, date }); return { raw: readFileSync(join(out, 'version.json'), 'utf8'), html: readFileSync(join(out, 'index.html'), 'utf8') }; }
     finally { rmSync(out, { recursive: true, force: true }); }
   };
   const badgeOf = (html) => { const m = html.match(/<div class="site-version" aria-hidden="true">([^<]*)<\/div>/g); assert.equal(m && m.length, 1, 'one badge'); return m[0].replace(/<[^>]*>/g, ''); };
 
-  // the file: four keys, one line, the rules' own version, the commit whole
-  const a = assembled(COMMIT);
-  assert.equal(a.raw, `{"schema":"site-version/1","app":"final-frontier","version":"${version}","commit":"${COMMIT}"}\n`, 'the file, byte for byte');
+  // the file: five keys, one line, the rules' own version, the commit whole, its date
+  const a = assembled(COMMIT, DATE);
+  assert.equal(a.raw, `{"schema":"site-version/1","app":"final-frontier","version":"${version}","commit":"${COMMIT}","date":"${DATE}"}\n`, 'the file, byte for byte');
   const info = JSON.parse(a.raw);
-  assert.deepEqual(Object.keys(info), ['schema', 'app', 'version', 'commit'], 'no build time (one commit assembles one site), and nothing about the repo, the host or the run');
+  assert.deepEqual(Object.keys(info), ['schema', 'app', 'version', 'commit', 'date'], 'no build time (one commit assembles one site), and nothing about the repo, the host or the run');
   assert.equal(info.version, version, 'the version is the rules\' game version'); assert.equal(site.siteVersion(RULES), version);
   assert.match(info.version, /^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$/);
   assert.equal(site.siteVersion({ game: { version: '3.1.0-rc.1+b2' } }), '3.1.0-rc.1+b2', 'read from the rules, not typed into the assembler');
   for (const bad of [undefined, null, NaN, {}, '', '<b>3</b>', '3 "x"', 'v'.repeat(41), '-3']) assert.throws(() => site.siteVersion({ game: { version: bad } }), /not a site version/, `a version of ${JSON.stringify(bad)} is refused`);
-  assert.deepEqual(assembled(COMMIT), a, 'assembled twice from one commit: the same bytes');
+  assert.deepEqual(assembled(COMMIT, DATE), a, 'assembled twice from one commit: the same bytes');
 
-  // the badge: `v<version> · <commit7>`, and the version alone when the build does not know its commit
-  assert.equal(badgeOf(a.html), `v${version} \u00b7 ${COMMIT.slice(0, 7)}`);
-  assert.equal(site.badgeText({ version: '3', commit: COMMIT }), 'v3 \u00b7 c0ffee1');
-  const n = assembled(null);
-  assert.equal(n.raw, `{"schema":"site-version/1","app":"final-frontier","version":"${version}","commit":null}\n`, 'an unknown commit is null, never a placeholder');
-  assert.equal(badgeOf(n.html), `v${version}`, 'and the badge is the version alone');
+  // the badge: `v<date> · <commit7>`; the commit alone with no date; `dev` with neither. The version is not shown.
+  assert.equal(badgeOf(a.html), `v${DATE} \u00b7 ${COMMIT.slice(0, 7)}`);
+  assert.equal(site.badgeText({ version: '3', commit: COMMIT, date: DATE }), 'v2026.11.26 \u00b7 c0ffee1');
+  assert.equal(site.badgeText({ version: '3', commit: COMMIT, date: null }), 'c0ffee1');
+  assert.equal(site.badgeText({ version: '3', commit: null, date: DATE }), 'dev', 'a date without its commit is not shown');
+  const nd = assembled(COMMIT, null);
+  assert.equal(JSON.parse(nd.raw).date, null, 'an unknown date is null'); assert.equal(badgeOf(nd.html), 'c0ffee1');
+  for (const bad of ['2026-11-26', '2026.13.01', '2026.11.32', '1999.11.26', '2026.1.26', '2026.11.26\n', ' 2026.11.26', '<b>', 7, undefined]) {
+    assert.equal(site.cleanDate(bad), null, `${JSON.stringify(bad)} is not a date`);
+    assert.equal(assembled(COMMIT, bad).raw, nd.raw, `${JSON.stringify(bad)} never reaches version.json`);
+  }
+  const n = assembled(null, DATE);
+  assert.equal(n.raw, `{"schema":"site-version/1","app":"final-frontier","version":"${version}","commit":null,"date":null}\n`, 'an unknown commit is null, never a placeholder, and so is its date');
+  assert.equal(badgeOf(n.html), 'dev', 'and the badge says dev');
   assert.ok(!/unknown|undefined|null/.test(site.badge({ version, commit: null })), 'no placeholder word in the badge');
+  // window.SITE_VERSION: set once, frozen, and its text is exactly the badge's
+  for (const [c, d] of [[COMMIT, DATE], [COMMIT, null], [null, null]]) {
+    const html = assembled(c, d).html, m = html.match(/<script>if\(!globalThis\.SITE_VERSION\)globalThis\.SITE_VERSION=Object\.freeze\((\{[^<]*\})\);<\/script>/g);
+    assert.equal(m && m.length, 1, 'one SITE_VERSION line');
+    const g = JSON.parse(m[0].match(/freeze\((\{.*\})\)/)[1]);
+    assert.deepEqual(g, { app: 'final-frontier', version, commit: c, date: c ? d : null, text: badgeOf(html) }, 'the global says what the badge shows');
+    const ctx = {}; new Function('globalThis', m[0].replace(/<\/?script>/g, ''))(ctx);
+    assert.ok(Object.isFrozen(ctx.SITE_VERSION) && ctx.SITE_VERSION.text === badgeOf(html));
+    const keep = { text: 'first' }; const ctx2 = { SITE_VERSION: keep }; new Function('globalThis', m[0].replace(/<\/?script>/g, ''))(ctx2);
+    assert.equal(ctx2.SITE_VERSION, keep, 'never overwritten once set');
+  }
+  // the date is git's, for that commit: an id the checkout lacks has none, and HEAD's (when there is one) is a date
+  assert.equal(site.siteDate(COMMIT, root), null, 'an invented commit has no date'); assert.equal(site.siteDate(null), null);
 
   // the badge is static: no script, no handler, no URL, not read aloud, not in the way of a tap, not printed
   const markup = site.badge({ version, commit: COMMIT });
@@ -603,11 +627,13 @@ test('the Pages site: version.json (site-version/1) and the badge say which buil
   assert.equal(site.siteCommit({ GITHUB_SHA: COMMIT }), COMMIT, 'the deploy\'s own commit');
   let head = null; try { const { execFileSync } = await import('node:child_process'); head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* not a checkout */ }
   if (!/^[0-9a-f]{40}$/.test(String(head))) head = null;
+  if (head) assert.match(String(site.siteDate(head, root)), /^20\d{2}\.(0[1-9]|1[0-2])\.(0[1-9]|[12]\d|3[01])$/, 'HEAD\'s own committer date, from git');
   const HOSTILE = ['"><script>alert(1)</script>', `${COMMIT}"`, `${COMMIT}<b>`, COMMIT.toUpperCase(), COMMIT.slice(0, 39), `${COMMIT}0`, `${COMMIT}\n`, ` ${COMMIT}`, 'unknown', '', '0'.repeat(39) + 'g'];
   for (const h of HOSTILE) {
     assert.equal(site.cleanCommit(h), null, `${JSON.stringify(h)} is not a commit`);
     assert.equal(site.siteCommit({ GITHUB_SHA: h }), head, `${JSON.stringify(h)}: the checkout's own HEAD, or null`);
-    assert.equal(site.versionInfo(version, h).commit, null);
+    assert.equal(site.versionInfo(version, h, DATE).commit, null);
+    assert.equal(site.siteDate(h, root), null);
     const r = assembled(h);
     assert.equal(r.raw, n.raw, `${JSON.stringify(h)} never reaches version.json`);
     assert.equal(r.html, n.html, `${JSON.stringify(h)} never reaches the page`);

@@ -70,11 +70,14 @@ evidence, orders, lessons, lifts or horde, hides the account's chrome
 (prototype controls, Home, Create, the backlog) and offers the Wilds alone;
 its save keeps play only. The DEMO world stays in the committed page and the
 private artifact. The site also publishes `version.json` beside the game
-page and shows the same build on it as a small static badge, `v<version> ·
+page and shows the same build on it as a small static badge, `v<date> ·
 <commit7>` (the site-version/1 standard, the design repo's
-`docs/SITE_VERSION.md`): the version is `rules.game.version`, the commit is
-the deploy's own (`GITHUB_SHA`, else the checkout's HEAD, else `null` and a
-badge of the version alone), stamped at assembly and never committed.
+`docs/SITE_VERSION.md`): `version` is `rules.game.version` (not shown), the
+commit is the deploy's own (`GITHUB_SHA`, else the checkout's HEAD, else
+`null`), `date` is that commit's committer date in UTC from git (`YYYY.MM.DD`,
+else `null`); no date shows the commit alone, neither shows `dev`. The page
+also sets `window.SITE_VERSION` once (`text` is the badge's words). Stamped at
+assembly and never committed.
 `site.mjs` refuses a page that
 carries any URL naming another host. About 2 billed minutes a run,
 nothing against the 100 min/month cap. It is **not** an answer to the
