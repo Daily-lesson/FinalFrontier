@@ -42,7 +42,7 @@ There is **no build step for the engine and no `package.json`**: `src/` and
 | Both | `node --test tests/check.mjs sim/economy.test.mjs` |
 | Economy sim → `sim/REPORT.md` | `node sim/economy.mjs --alys ../alys` (refuses to run without the flag, and on a shallow alys checkout: `git -C ../alys fetch --unshallow origin main` first) |
 | Rebuild the prototype and the embed | `node prototype/build.mjs` (joins `prototype/game/*.js` into the page and inlines `src/engine.js`, `src/castle.js` + `rules/fieldworks.json` → `prototype/index.html`, `art-sheet.html`, and `embed/play.html`, `play.js`, `play.css`) |
-| Assemble the Pages site | `node prototype/site.mjs _site` (the game at the root, the art sheet, `fonts/`; nothing else) |
+| Assemble the Pages site | `node prototype/site.mjs _site` (the game at the root, the art sheet, `version.json`, `fonts/`; nothing else) |
 | The walk: shots, checks, frame time, art sheet, the signed-out site, the embed in a host frame | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`; about five minutes) |
 | Workflow lint | `node .github/scripts/workflow-lint.mjs` |
 | Skeleton guard | `node .github/skeleton/check.mjs` (`--list` prints the inventory) |
@@ -69,7 +69,13 @@ self-host the two faces (`prototype/fonts/`, OFL) and carry
 evidence, orders, lessons, lifts or horde, hides the account's chrome
 (prototype controls, Home, Create, the backlog) and offers the Wilds alone;
 its save keeps play only. The DEMO world stays in the committed page and the
-private artifact. `site.mjs` refuses a page that
+private artifact. The site also publishes `version.json` beside the game
+page and shows the same build on it as a small static badge, `v<version> ·
+<commit7>` (the site-version/1 standard, the design repo's
+`docs/SITE_VERSION.md`): the version is `rules.game.version`, the commit is
+the deploy's own (`GITHUB_SHA`, else the checkout's HEAD, else `null` and a
+badge of the version alone), stamped at assembly and never committed.
+`site.mjs` refuses a page that
 carries any URL naming another host. About 2 billed minutes a run,
 nothing against the 100 min/month cap. It is **not** an answer to the
 design's D32 (how the game feeds SocialOS). Neither workflow runs the walk.

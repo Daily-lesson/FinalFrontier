@@ -515,15 +515,17 @@ test('the bank: every sentence the page reads exists in the rules', () => {
   for (const phrase of ['would see it hold', 'holds as it stands', 'at the walls', 'Nothing was taken', 'Stage clear', 'never power', 'added to the castle']) assert.ok(!SPOKEN.includes(phrase), `"${phrase}" comes from the bank, not the page`);
 });
 
-test('the Pages site: the two pages and the faces only, noindex, nothing loaded from another origin, nothing walled', async () => {
+test('the Pages site: the two pages, the faces and the build stamp only, noindex, nothing loaded from another origin, nothing walled', async () => {
   const { mkdtempSync, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const site = await import('../prototype/site.mjs');
   const out = mkdtempSync(join(tmpdir(), 'fieldworks-site-'));
   try {
-    const published = site.assemble(out);
-    assert.deepEqual(published, ['index.html', 'art-sheet.html', ...site.FONT_FILES.map((f) => `fonts/${f}`)], 'the game, the art sheet and the faces; nothing else');
-    assert.deepEqual(readdirSync(out).sort(), ['art-sheet.html', 'fonts', 'index.html']);
+    const COMMIT = 'c0ffee1234567890abcdef1234567890abcdef12';   // invented: the test never depends on the checkout it runs in
+    const published = site.assemble(out, undefined, { commit: COMMIT });
+    assert.deepEqual(published, ['index.html', 'art-sheet.html', 'version.json', ...site.FONT_FILES.map((f) => `fonts/${f}`)], 'the game, the art sheet, the build stamp and the faces; nothing else');
+    assert.deepEqual(readdirSync(out).sort(), ['art-sheet.html', 'fonts', 'index.html', 'version.json']);
+    const stampHtml = site.badge(site.versionInfo(site.siteVersion(RULES), COMMIT));
     for (const page of site.PAGES) {
       const built = read(`prototype/${page}`), html = readFileSync(join(out, page), 'utf8');
       assert.equal(html.split(site.NOINDEX).length, 2, `${page}: one robots noindex`);
@@ -532,12 +534,14 @@ test('the Pages site: the two pages and the faces only, noindex, nothing loaded 
       assert.ok(html.startsWith(site.HEAD), `${page}: a doctype, lang and a UTF-8 charset first`);
       assert.equal(html.split(site.SIGNED_OUT).length, page === 'index.html' ? 2 : 1, `${page}: the signed-out flag on the game page only`);
       if (page === 'index.html') assert.ok(html.indexOf(site.SIGNED_OUT) < html.indexOf('<script id="rules"'), 'the flag is set before the page reads it');
-      const undone = html.slice(site.HEAD.length).replace(site.SIGNED_OUT, '').replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
+      assert.equal(html.split(stampHtml).length, page === 'index.html' ? 2 : 1, `${page}: the version badge on the game page only`);
+      assert.equal(html.split('site-version').length, page === 'index.html' ? 4 : 1, `${page}: one badge and its two style rules, or none of it`);
+      const undone = html.slice(site.HEAD.length).replace(site.SIGNED_OUT, '').replace(stampHtml, '').replace(`\n${site.NOINDEX}`, '').replace('<link rel="stylesheet" href="fonts/fonts.css">', built.match(/<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/[^"]*">/)[0]);
       assert.equal(undone, built, `${page}: the site copy is the built page plus its edits`);
     }
     const css = readFileSync(join(out, 'fonts', 'fonts.css'), 'utf8');
     assert.deepEqual([...css.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]).sort(), ['albert-sans-latin.woff2', 'silkscreen-400-latin.woff2', 'silkscreen-700-latin.woff2'], 'fonts.css points only at the files beside it');
-    for (const f of published.filter((p) => /\.(html|css|txt)$/.test(p))) assert.deepEqual(sweep(readFileSync(join(out, f), 'utf8')), [], `the wall sweep over the published ${f}`);
+    for (const f of published.filter((p) => /\.(html|css|txt|json)$/.test(p))) assert.deepEqual(sweep(readFileSync(join(out, f), 'utf8')), [], `the wall sweep over the published ${f}`);
     // the guard itself: a page that would reach another origin is refused, and so is a second run into a full directory
     const page = read('prototype/index.html');
     assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<script src="https://example.org/x.js"></script><meta name="viewport"')), /another origin/);
@@ -551,8 +555,67 @@ test('the Pages site: the two pages and the faces only, noindex, nothing loaded 
     assert.throws(() => site.sitePage(page.replace('<meta name="viewport"', '<script>new WebSocket("wss://example.org")</script>' + '<meta name="viewport"')), /another origin/, '<script>new WebSocket("wss://example.org")</script>');
     assert.throws(() => site.sitePage('<!doctype html>\n' + page), /bare page/);
     assert.throws(() => site.sitePage(page.replace('<script id="rules"', '<script id="rulez"'), { signedOut: true }), /rules script/);
+    assert.throws(() => site.sitePage(page.replace('<div class="wrap">', '<div class="wrapper">'), { stamp: { version: '3', commit: null } }), /one wrap/);
     assert.throws(() => site.assemble(out), /not empty/);
   } finally { rmSync(out, { recursive: true, force: true }); }
+});
+
+test('the Pages site: version.json (site-version/1) and the badge say which build is live, and nothing else', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const site = await import('../prototype/site.mjs');
+  const COMMIT = 'c0ffee1234567890abcdef1234567890abcdef12';
+  const version = String(RULES.game.version);
+  const assembled = (commit) => {
+    const out = mkdtempSync(join(tmpdir(), 'fieldworks-stamp-'));
+    try { site.assemble(out, undefined, { commit }); return { raw: readFileSync(join(out, 'version.json'), 'utf8'), html: readFileSync(join(out, 'index.html'), 'utf8') }; }
+    finally { rmSync(out, { recursive: true, force: true }); }
+  };
+  const badgeOf = (html) => { const m = html.match(/<div class="site-version" aria-hidden="true">([^<]*)<\/div>/g); assert.equal(m && m.length, 1, 'one badge'); return m[0].replace(/<[^>]*>/g, ''); };
+
+  // the file: four keys, one line, the rules' own version, the commit whole
+  const a = assembled(COMMIT);
+  assert.equal(a.raw, `{"schema":"site-version/1","app":"final-frontier","version":"${version}","commit":"${COMMIT}"}\n`, 'the file, byte for byte');
+  const info = JSON.parse(a.raw);
+  assert.deepEqual(Object.keys(info), ['schema', 'app', 'version', 'commit'], 'no build time (one commit assembles one site), and nothing about the repo, the host or the run');
+  assert.equal(info.version, version, 'the version is the rules\' game version'); assert.equal(site.siteVersion(RULES), version);
+  assert.match(info.version, /^[0-9A-Za-z][0-9A-Za-z.+-]{0,39}$/);
+  assert.equal(site.siteVersion({ game: { version: '3.1.0-rc.1+b2' } }), '3.1.0-rc.1+b2', 'read from the rules, not typed into the assembler');
+  for (const bad of [undefined, null, NaN, {}, '', '<b>3</b>', '3 "x"', 'v'.repeat(41), '-3']) assert.throws(() => site.siteVersion({ game: { version: bad } }), /not a site version/, `a version of ${JSON.stringify(bad)} is refused`);
+  assert.deepEqual(assembled(COMMIT), a, 'assembled twice from one commit: the same bytes');
+
+  // the badge: `v<version> · <commit7>`, and the version alone when the build does not know its commit
+  assert.equal(badgeOf(a.html), `v${version} \u00b7 ${COMMIT.slice(0, 7)}`);
+  assert.equal(site.badgeText({ version: '3', commit: COMMIT }), 'v3 \u00b7 c0ffee1');
+  const n = assembled(null);
+  assert.equal(n.raw, `{"schema":"site-version/1","app":"final-frontier","version":"${version}","commit":null}\n`, 'an unknown commit is null, never a placeholder');
+  assert.equal(badgeOf(n.html), `v${version}`, 'and the badge is the version alone');
+  assert.ok(!/unknown|undefined|null/.test(site.badge({ version, commit: null })), 'no placeholder word in the badge');
+
+  // the badge is static: no script, no handler, no URL, not read aloud, not in the way of a tap, not printed
+  const markup = site.badge({ version, commit: COMMIT });
+  assert.ok(!/<script|javascript:|\bon[a-z]+\s*=|url\(|import|href|src|fetch|:\/\//i.test(markup), 'no script, handler or address in the badge');
+  assert.deepEqual(markup.match(/<[a-z]+/g), ['<style', '<div'], 'a style rule and one element');
+  assert.match(markup, /aria-hidden="true"/); assert.match(markup, /pointer-events:none/); assert.match(markup, /@media print\{\.site-version\{display:none\}\}/);
+  assert.ok(!/position:fixed/.test(markup), 'it sits in the page\'s bottom padding and scrolls with it: never pinned over the game\'s controls');
+
+  // the commit comes from the deploy and is checked: anything that is not a full lowercase id never reaches the file or the page
+  assert.equal(site.siteCommit({ GITHUB_SHA: COMMIT }), COMMIT, 'the deploy\'s own commit');
+  let head = null; try { const { execFileSync } = await import('node:child_process'); head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* not a checkout */ }
+  if (!/^[0-9a-f]{40}$/.test(String(head))) head = null;
+  const HOSTILE = ['"><script>alert(1)</script>', `${COMMIT}"`, `${COMMIT}<b>`, COMMIT.toUpperCase(), COMMIT.slice(0, 39), `${COMMIT}0`, `${COMMIT}\n`, ` ${COMMIT}`, 'unknown', '', '0'.repeat(39) + 'g'];
+  for (const h of HOSTILE) {
+    assert.equal(site.cleanCommit(h), null, `${JSON.stringify(h)} is not a commit`);
+    assert.equal(site.siteCommit({ GITHUB_SHA: h }), head, `${JSON.stringify(h)}: the checkout's own HEAD, or null`);
+    assert.equal(site.versionInfo(version, h).commit, null);
+    const r = assembled(h);
+    assert.equal(r.raw, n.raw, `${JSON.stringify(h)} never reaches version.json`);
+    assert.equal(r.html, n.html, `${JSON.stringify(h)} never reaches the page`);
+  }
+  for (const c of [undefined, null, 7, {}, [COMMIT]]) assert.equal(site.cleanCommit(c), null);
+  assert.equal(site.siteCommit({}, tmpdir()) === null || /^[0-9a-f]{40}$/.test(site.siteCommit({}, tmpdir())), true, 'outside a checkout: null, and no throw');
+  assert.equal(site.siteCommit({ GITHUB_SHA: 'x' }, join(root, 'no-such-directory')), null, 'a build that cannot ask git still assembles: null, and no throw');
+  assert.throws(() => site.versionInfo('<3>', COMMIT), /not a site version/);
 });
 
 // ── version 3: the feel pass, in the rules ─────────────────────────────────

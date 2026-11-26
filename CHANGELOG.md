@@ -2,7 +2,36 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — gear and the bounty (FW2, the FinalFrontier half)
+merged; `## Unreleased — <title>` while the PR is open (date it at merge).
+Name the files touched and say what a user or operator will notice.
+
+## Unreleased — the Pages site says which build is live
+
+The site-version/1 standard (the design repo's `docs/SITE_VERSION.md`).
+
+- `prototype/site.mjs`: the site now publishes `version.json` beside the game
+  page: `{"schema":"site-version/1","app":"final-frontier","version":…,
+  "commit":…}`. The version is `rules.game.version`, read from the rules and
+  typed nowhere else; the commit is the deploy's own (`GITHUB_SHA`, else `git
+  rev-parse HEAD`), kept only when it is 40 lowercase hex, and `null` when the
+  build cannot know it. No build time, so one commit assembles one site byte
+  for byte. A missing commit never fails the assembly.
+- The site's game page (and only that copy) shows the same answer as a small
+  static badge, `v<version> · <commit7>`, or `v<version>` alone: low contrast,
+  in the page's bottom padding under the game's frame, where it scrolls with
+  the page and so never sits over a control; no script, no request, no
+  pointer events, hidden from assistive technology and from print. The
+  committed pages, the private artifact, the art sheet and `embed/` are
+  unchanged; nothing the build emits carries a commit.
+- `tests/check.mjs`: the published list gains `version.json`; the "undo the
+  edits and the built page comes back" check undoes the badge too; a new test
+  holds the file's bytes, the version to the rules, the badge's two forms and
+  its markup, and that a value which is not a commit (markup, quotes, upper
+  case, 39 characters) reaches neither the file nor the page.
+- `.github/workflows/pages.yml`: unchanged. `GITHUB_SHA` is in every step's
+  environment by default.
+
+## Unreleased — gear and the bounty (FW2, the FinalFrontier half)
 
 Design: alys `docs/FIELDWORKS.md` §17, D52 and D61. The SocialOS half (the
 hero card's bounty line, re-vendoring this build) follows; this repo changes
@@ -56,9 +85,6 @@ are for play; a sealed piece shows no name.
   one is kept.
 - `prototype/game/90-loop.js`: in a host frame, Escape with nothing open and
   no run in progress asks the host to close the game.
-
-## Unreleased — <title>` while the PR is open (date it at merge).
-Name the files touched and say what a user or operator will notice.
 
 ## Unreleased — the feel pass (phase 1 of the redesign) and an embeddable build
 
