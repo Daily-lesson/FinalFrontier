@@ -45,6 +45,28 @@
   }
   new ResizeObserver(() => resize()).observe(document.getElementById('phone'));
   const stageObs = new ResizeObserver(() => resize());
+  /** The partner's four parts by name, for a line. */
+  function partnerName(b) { return RX.partner.slots.map((s) => BX.parts[b[s]].name).join(', '); }
+  /**
+   * The partner bay (FW13): the four slots, each part's perk, strength and weakness, its level and the price of the next,
+   * a random build, and a code to keep or to import (part names, or the generic robot kinds and component classes of a
+   * SOAR shortlist). Every word on it is the bank's: an import is read by FieldworksFrontier.partnerParse and only the
+   * parts it names are kept, so nothing pasted is ever shown back. Scrap is play, banked from the frontier's runs.
+   */
+  function partnerBay() {
+    const P = RX.partner, b = S.play.partner, B = BX, code = XE.partnerCode(b, RULES);
+    let html = head(B.partner_title, esc(B.partner_sub), 'stages');
+    html += `<div class="content"><section class="card" id="partnercard"><h2>${esc(partnerName(b))} <span class="more">${esc(fill(B.bank, { n: S.play.scrap }))}</span></h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-prand="1">${esc(B.random)}</button></div>`
+      + `<div style="margin-top:10px"><label class="empty" for="pcode">${esc(B.code)}</label><input class="input" id="pcode" readonly value="${esc(code)}"></div>`
+      + `<div style="margin-top:8px;display:flex;gap:8px"><input class="input" id="pimport" maxlength="${P.code_max}" autocomplete="off" spellcheck="false" placeholder="${esc(B.import_label)}" aria-label="${esc(B.import_label)}"><button class="btn" data-pimp="1">${esc(B.import)}</button></div><div class="empty" style="margin-top:6px">${esc(B.code_note)}</div></section>`;
+    for (const slot of P.slots) {
+      const cur = b[slot], w = B.parts[cur], n = b.lv[cur] || 0, cost = XE.upgradeCost(b, slot, RULES);
+      html += `<section class="card" data-pslot="${slot}"><h2>${esc(B.slot[slot])} <span class="more">${esc(fill(B.level, { n }))}</span></h2><div class="paints">${Object.keys(P.parts[slot]).map((id) => `<button data-part="${slot}:${id}" aria-pressed="${id === cur}"><i style="background:${P.parts[slot][id].colour}"></i>${esc(B.parts[id].name)}${b.lv[id] ? ` +${b.lv[id]}` : ''}</button>`).join('')}</div>`
+        + `<div class="parts" style="margin-top:8px"><div class="part"><span>${esc(B.perk)}</span><span>${esc(w.perk)}</span></div><div class="part"><span>${esc(B.strength)}</span><span>${esc(w.strength)}</span></div><div class="part"><span>${esc(B.weakness)}</span><span>${esc(w.weakness)}</span></div></div>`
+        + `<div style="margin-top:8px"><button class="btn" data-pup="${slot}" ${cost && S.play.scrap >= cost ? '' : 'disabled'}>${esc(cost ? fill(B.upgrade, { cost }) : B.maxed)}</button></div></section>`;
+    }
+    return html + '</div>';
+  }
   function stageRows() {
     const x = E.expedition(PLAN, S.ticks, RULES), B = BANK.stage; let open = true;
     const rows = PLAN.weeks.map((w, i) => {
@@ -57,7 +79,7 @@
     const switches = `<section class="card" id="switches"><div class="row"><div class="t"><div class="name">${esc(B.hard)}</div><div class="meta">${esc(fill(B.hard_note, { x: RS.hard.score }))}</div></div><button class="switch" data-hard="1" role="switch" aria-checked="${S.play.hard}" aria-label="${esc(B.hard)}"><i></i></button></div><div class="row"><div class="t"><div class="name">${esc(BANK.sound.label)}</div><div class="meta">${esc(BANK.sound.note)}</div></div><button class="switch" data-mute="1" role="switch" aria-checked="${!S.play.mute}" aria-label="${esc(BANK.sound.label)}"><i></i></button></div></section>`;
     const track = `<section class="card" id="metacard"><h2>${esc(M.heading)} <span class="more">${esc(fill(M.total, { score: life }))}</span></h2><div class="empty">${esc(next ? fill(M.next, { at: next.at, what: M.names[next.slug] }) : M.all)}</div><div class="unlocks">${RS.meta.unlocks.map((u) => `<span class="chip ${life >= u.at ? 'g g-fine' : 'dash'}" data-unlock="${u.slug}" data-open="${life >= u.at}">${esc(M.names[u.slug])}${life >= u.at ? '' : ` · ${u.at}`}</span>`).join('')}</div><div class="empty" style="margin-top:6px">${esc(M.note)}</div></section>`;
     const hostCard = EMBED && !OUT ? `<section class="card" id="hostcard"><h2>${esc(BANK.embed.where)}</h2>${['workorders', 'learning', 'health'].map((to) => `<button class="row" data-host="${to}"><div class="t"><div class="name">${esc(BANK.embed.places[to])}</div><div class="meta">${esc(BANK.embed.place_notes[to])}</div></div></button>`).join('')}</section>` : '';
-    const xo = XE.regionsOpen(CAS.pieces, RULES), frontier = `<section class="card" id="frontiercard"><button class="row" data-go="frontier"><span class="chip g g-fine">↑</span><div class="t"><div class="name">${esc(BX.row)}</div><div class="meta">${esc(fill(BX.row_meta, { open: xo, all: RX.regions.length }))}</div></div></button></section>`;
+    const xo = XE.regionsOpen(CAS.pieces, RULES), frontier = `<section class="card" id="frontiercard"><button class="row" data-go="frontier"><span class="chip g g-fine">↑</span><div class="t"><div class="name">${esc(BX.row)}</div><div class="meta">${esc(fill(BX.row_meta, { open: xo, all: RX.regions.length }))}</div></div></button><button class="row" data-go="partner"><span class="chip">⚙</span><div class="t"><div class="name">${esc(BX.partner_row)}</div><div class="meta">${esc(fill(BX.partner_meta, { name: partnerName(S.play.partner) }))}</div></div></button></section>`;
     const wildsCard = frontier + `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)} ${esc(fill(B.wilds_biomes, { n: wildsBiomes().length, of: RS.biomes.list.length }))}</div></div></button></section>`;
     if (OUT) return `${wildsCard}${switches}${track}<div class="empty">${esc(EMBED ? BANK.embed[EMB.state] : BANK.castle.signed_out)}</div><div class="empty">${esc(B.score_note)}</div>`;   // the roadmap's weeks are the account's
     const roadmap = PLAN.weeks.length ? `<section class="card"><h2>${esc(B.roadmap)} <span class="more">${esc(fill(B.roadmap_meta, { n: x.mapped, rank: x.rank.label }))}</span></h2>${rows}</section>` : `<div class="empty" id="noplan">${esc(BANK.embed.no_plan)}</div>`;
@@ -71,7 +93,7 @@
     if ($home) $home.setAttribute('aria-current', S.screen === 'home' ? 'page' : 'false');
     let html = '';
     if (S.screen === 'stage' && !ST) S.screen = 'castle';
-    if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper', 'frontier'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
+    if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper', 'frontier', 'partner'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
     if (S.screen !== 'stage') music(S.screen === 'castle' && (CS.fight || (S.horde.clock.due && S.state !== 'unlit')) ? 'warning' : 'castle');
     if (S.screen === 'frontier') { playing(true); $screen.innerHTML = exploreShell(); mountExplore(); renderOverlay(); return; }   // the frontier (72-frontier.js)
     if (S.screen === 'castle' || S.screen === 'stage') {
@@ -102,6 +124,8 @@
       html += `<section class="card"><h2>Not yet in the muster <span class="more">${open.length} fresh orders</span></h2>${open.map((o) => `<button class="row" data-order="${o.id}"><span class="id">${o.id}</span><div class="t"><div class="name">${esc(o.title)}</div><div class="meta">${E.daysBetween(o.written, TODAY)} d · ${o.pn} · ${o.effortMin} min</div></div></button>`).join('')}</section>`;
       if (LIFT_DAYS.has(TODAY_DOW)) html += `<section class="card"><button class="row" data-lift="1" ${S.liftsLogged.includes(TODAY) ? 'disabled' : ''}><div class="t"><div class="name">Today's lift</div><div class="meta">${S.liftsLogged.includes(TODAY) ? 'logged' : 'a tick, never a number · a gate brace'}</div></div></button></section>`;
       html += `</div>`;
+    } else if (S.screen === 'partner') {
+      html += partnerBay();
     } else if (S.screen === 'keeper') {
       const parts = E.keeper(st, { regions: x.mapped }, RULES), total = totalScore();
       html += head(S.keeperName || 'The Keeper', `L${st.player.level} · ${st.medals.length} plates · ${st.items.length} items`, 'castle');

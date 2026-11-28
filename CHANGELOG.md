@@ -2,7 +2,36 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — the frontier, denser: more parts on everything, and a governor that keeps phones smooth
+merged; `## Unreleased — a robot partner built from parts, with perks, upgrades and a SOAR import
+
+FW13, stacked on the denser frontier. The owner asked for a partner robot built from
+parts drawn loosely from real robot types, where each part has a perk, a strength and a
+weakness you learn by playing, and where parts upgrade. Every part is generic and
+original: no real robot's look, name or brand.
+
+- The build (`rules.frontier.partner`, `src/frontier.js`): four slots, base (walker
+  legs, tracks, wheels, rotors), tool (arm, gripper), head (lidar, camera, thermal) and
+  core (cell, capacitor, swap pack). A part adds its stats to the base, each upgrade
+  level adds its `up` once more, and every stat is clamped by the rules' limits. Legs
+  climb rocks but are slow and drain power; tracks are tough but slow; wheels are quick
+  on the road and poor off it; rotors fly and scout but are fragile and carry little.
+  The arm fights, repairs and builds sturdier turrets; the gripper opens crates and
+  carries more. Lidar shows sleeping machines on the minimap; thermal hunts the weakest.
+- In a run: the partner follows, hunts (Bot toggles), builds a turret on power (Build),
+  goes down and reboots, and regroups behind the Keeper when left far behind. Scrap from
+  crates is banked into play at the end of a run; upgrades cost banked scrap.
+- The partner bay (a second row on the frontier card): pick a part per slot, read its
+  perk, strength and weakness, upgrade, randomize, copy a short share code, or import
+  one. An import reads at most `code_max` characters and accepts only known part ids or
+  whitelisted SOAR robot kinds; it never imports levels. Everything is play: nothing here
+  touches the evidence.
+- The HUD's partner card shows the four parts with their levels, the mode, hull and
+  power, and each part's lines in turn (weaknesses in red). Touch gains Bot and Build
+  buttons; the keyboard uses b or e and v or q.
+- `tests/check.mjs` covers the build, the code and its whitelist, the partner in a run
+  and its faces at both tiers; `prototype/shots.mjs` adds four walk checks.
+
+## Unreleased — the frontier, denser: more parts on everything, and a governor that keeps phones smooth
 
 FW12, stacked on the frontier PR. The owner asked for more characteristics and more
 faces, for a heavier, grimmer feel with robots and partners in it; everything here is

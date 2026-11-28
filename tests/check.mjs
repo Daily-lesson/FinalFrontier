@@ -471,7 +471,105 @@ test('a frontier run: one fixed-step function over pooled arrays; it moves, coll
   // a crate opens for scrap
   const r6 = F.newRun(0, 0, 4, true, RULES), crate = r6.map.props.find((p) => p.kind === 'crate'); for (const q of r6.foes) q.on = false;
   r6.k.x = crate.x + crate.w / 2; r6.k.y = crate.y + crate.d / 2; F.stepRun(r6, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
-  assert.ok(crate.open && r6.scrap === RULES.frontier.props.crate.scrap, 'a crate opens for scrap');
+  assert.ok(crate.open && r6.scrap === RULES.frontier.props.crate.scrap + Math.round(r6.p.s.carry), 'a crate opens for scrap, and a partner that is up hauls its carry on top (FW13)');
+});
+test('the partner (FW13): a build of four known parts, its stats inside their limits, a code that imports only parts, upgrades priced by the rules', () => {
+  const P = RULES.frontier.partner, B = RULES.bank.frontier;
+  // every part has its words, every stat it adds exists on the base and has limits, every SOAR word is a generic lower-case id
+  const seen = new Set();
+  for (const slot of P.slots) {
+    assert.ok(B.slot[slot] && P.parts[slot][P.default[slot]], `slot ${slot}: a name and a default`);
+    for (const [id, part] of Object.entries(P.parts[slot])) {
+      assert.ok(!seen.has(id), `part ids are unique across slots: ${id}`); seen.add(id);
+      for (const w of ['name', 'perk', 'strength', 'weakness']) assert.ok(B.parts[id] && B.parts[id][w], `bank.frontier.parts.${id}.${w}`);
+      for (const k of [...Object.keys(part.stats), ...Object.keys(part.up)]) assert.ok(k in P.base && k in P.limits, `${id}: ${k} is a base stat with limits`);
+      for (const w of part.soar) assert.match(w, /^[a-z][a-z0-9-]*$/, `${id}: ${w} is a generic id, never a brand's robot`);
+      assert.match(part.colour, /^#[0-9a-f]{6}$/i);
+    }
+  }
+  assert.equal(P.upgrade_cost.length, P.max_level, 'one price per level');
+  // a build from anything: known parts only, levels whole and clamped, nothing else kept
+  const d = F.partnerOf(null, RULES); assert.deepEqual({ ...d, lv: { ...d.lv } }, { lv: {}, ...P.default });
+  const odd = F.partnerOf({ base: 'rotors', tool: '__proto__', head: 'toString', core: 'cap', lv: { rotors: 99, cap: 1.5, arm: -2, nope: 3, __proto__: { legs: 2 } }, extra: 'x' }, RULES);
+  assert.equal(odd.base, 'rotors'); assert.equal(odd.tool, P.default.tool); assert.equal(odd.head, P.default.head); assert.equal(odd.core, 'cap');
+  assert.deepEqual({ ...odd.lv }, { rotors: P.max_level }, 'levels: whole, positive, at most the top, only for known parts'); assert.ok(!('extra' in odd));
+  // stats: the parts add, the limits hold, the perks are flags
+  const legs = F.partnerStats(F.partnerOf({ base: 'legs' }, RULES), RULES), tracks = F.partnerStats(F.partnerOf({ base: 'tracks' }, RULES), RULES);
+  const wheels = F.partnerStats(F.partnerOf({ base: 'wheels' }, RULES), RULES), rotors = F.partnerStats(F.partnerOf({ base: 'rotors' }, RULES), RULES);
+  assert.ok(legs.climb && !tracks.climb && rotors.fly && !wheels.fly, 'legs climb, rotors fly');
+  assert.ok(tracks.hp > legs.hp && tracks.hp > rotors.hp && tracks.armour > 0 && tracks.speed < legs.speed, 'tracks: the toughest, the slowest');
+  assert.ok(rotors.speed > wheels.speed && rotors.carry < wheels.carry && rotors.hp < legs.hp && rotors.drain > wheels.drain, 'rotors: fast and far-sighted, fragile, carry little, thirsty');
+  assert.ok(wheels.road > 1 && wheels.road * wheels.speed > legs.speed && wheels.rough < legs.rough, 'wheels: fast on the road, bogged off it');
+  assert.ok(legs.drain > wheels.drain, 'legs drain power');
+  for (const s of [legs, tracks, wheels, rotors]) for (const [k, [lo, hi]] of Object.entries(P.limits)) assert.ok(s[k] >= lo && s[k] <= hi, `${k} inside its limits`);
+  const up = F.partnerStats(F.partnerOf({ base: 'tracks', lv: { tracks: 3 } }, RULES), RULES); assert.ok(up.hp > tracks.hp && up.armour > tracks.armour, 'an upgrade adds its stats per level');
+  // the code: four part names out; in, part names or generic SOAR kinds and classes; anything else ignored; never levels
+  const b = F.partnerOf({ base: 'wheels', tool: 'gripper', head: 'thermal', core: 'swap', lv: { wheels: 2 } }, RULES), code = F.partnerCode(b, RULES);
+  assert.equal(code, `${P.code_prefix} wheels gripper thermal swap`, 'upgrades stay out of a code');
+  const back = F.partnerParse(code, RULES); assert.deepEqual([back.base, back.tool, back.head, back.core], ['wheels', 'gripper', 'thermal', 'swap']); assert.ok(!('lv' in back));
+  const soar = F.partnerParse('https://example.org/#/saved/brand-x-r2,acme-7 quadruped cobot-arm lidar battery', RULES);
+  assert.deepEqual([soar.base, soar.tool, soar.head, soar.core, soar.named], ['legs', 'arm', 'lidar', 'cell', 4], 'kinds and classes map to parts; robot ids do not');
+  const mm = F.partnerParse('mobile-manipulator', RULES); assert.deepEqual([mm.base, mm.tool], ['wheels', 'arm'], 'one kind may fill two slots');
+  for (const junk of ['', 'brand-x-r2 acme-7', '<img src=x onerror=alert(1)>', '__proto__ constructor prototype', null, 42, { base: 'legs' }]) assert.equal(F.partnerParse(junk, RULES), null, `nothing named: ${String(junk).slice(0, 20)}`);
+  assert.equal(F.partnerParse('x '.repeat(P.code_max) + 'rotors', RULES), null, 'a code is read only to code_max characters');
+  // a random build: one part per slot, the same for the same seed
+  const r1 = F.partnerRandom(7, RULES), r2 = F.partnerRandom(7, RULES); assert.deepEqual(r1, r2); for (const slot of P.slots) assert.ok(P.parts[slot][r1[slot]]);
+  // the price of the next level
+  assert.equal(F.upgradeCost(F.partnerOf(null, RULES), 'base', RULES), P.upgrade_cost[0]);
+  assert.equal(F.upgradeCost(F.partnerOf({ lv: { [P.default.base]: P.max_level } }, RULES), 'base', RULES), 0, 'nothing past the top');
+});
+test('the partner in a run: Bot switches follow and hunt, Build places a turret, it fights, repairs, goes down and reboots; each part does what its words say', () => {
+  const P = RULES.frontier.partner, quiet = (r) => { for (const q of r.foes) q.on = false; return r; };
+  const run = quiet(F.newRun(0, 0, 4, true, RULES, null)), turrets = run.turrets;
+  assert.equal(run.turrets.length, P.turret.cap); assert.ok(run.p.up && run.p.mode === 0);
+  F.stepRun(run, { ax: 0, ay: 0 }, { bot: true }, 1 / 60, RULES); assert.equal(run.p.mode, 1); assert.equal(run.said, 2, 'Bot: hunt');
+  F.stepRun(run, { ax: 0, ay: 0 }, { bot: true }, 1 / 60, RULES); assert.equal(run.p.mode, 0, 'and back to follow');
+  F.stepRun(run, { ax: 0, ay: 0 }, { bot: true }, 3 / 60, RULES); assert.equal(run.p.mode, 1, 'a press lands once, however many ticks a frame runs');
+  run.p.power = run.p.pmax; const pw = run.p.power;
+  F.stepRun(run, { ax: 0, ay: 0 }, { build: true }, 1 / 60, RULES);
+  assert.equal(run.turrets.filter((q) => q.on).length, 1); assert.ok(run.p.power < pw - P.turret.power + 1, 'a turret costs power'); assert.equal(run.said, 5);
+  run.p.power = 0; F.stepRun(run, { ax: 0, ay: 0 }, { build: true }, 1 / 60, RULES); assert.equal(run.said, 6, 'not enough power: said, nothing built');
+  for (const q of run.turrets) { q.on = true; q.life = 9; } run.p.power = run.p.pmax; F.stepRun(run, { ax: 0, ay: 0 }, { build: true }, 1 / 60, RULES); assert.equal(run.said, 7, 'every turret out');
+  assert.equal(run.turrets, turrets, 'the turret pool is made once');
+  for (let i = 0; i < 60 * (P.turret.life_s + 1); i++) F.stepRun(run, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.ok(run.turrets.every((q) => !q.on), 'turrets run out of time');
+  // it fights: a crawler next to it, the Keeper not firing, and the partner wins
+  const r2 = quiet(F.newRun(0, 0, 4, true, RULES, { tool: 'arm' })), f = r2.foes[0];
+  f.on = true; f.type = 'crawler'; f.hp = 3; f.max = 3; f.r = 6; f.wake = true; f.x = r2.p.x + 30; f.y = r2.p.y; r2.k.inv = 99;
+  for (let i = 0; i < 240 && f.on; i++) F.stepRun(r2, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.ok(!f.on && r2.p.kills === 1 && r2.kills === 1, 'the partner killed it, and the kill pays as any kill does');
+  // a turret fires at a machine in range
+  const r3 = quiet(F.newRun(0, 0, 4, true, RULES, null)), g = r3.foes[0]; r3.p.power = r3.p.pmax;
+  F.stepRun(r3, { ax: 0, ay: 0 }, { build: true }, 1 / 60, RULES); const q = r3.turrets[0];
+  g.on = true; g.type = 'brute'; g.hp = 9; g.max = 9; g.r = 9; g.wake = false; g.x = q.x + 60; g.y = q.y - 40; r3.p.mode = 0;
+  F.stepRun(r3, { ax: 0, ay: 0 }, null, 1 / 60, RULES); assert.ok(r3.shots.some((s) => s.on && !s.foe), 'a turret shoots');
+  // it goes down and reboots
+  const r4 = quiet(F.newRun(0, 0, 4, true, RULES, { core: 'swap' })), r5 = quiet(F.newRun(0, 0, 4, true, RULES, { core: 'cell' }));
+  for (const r of [r4, r5]) { r.p.inv = 0; r.shots[0].on = true; r.shots[0].foe = true; r.shots[0].x = r.p.x; r.shots[0].y = r.p.y; r.shots[0].vx = 0; r.shots[0].vy = 0; r.shots[0].life = 1; r.shots[0].dmg = 99; r.k.x += 40; F.stepRun(r, { ax: 0, ay: 0 }, null, 1 / 60, RULES); }
+  assert.ok(!r4.p.up && r4.said === 3 && r4.p.down > 0, 'a drone\'s shot finds it; at no hull it goes down');
+  assert.ok(r4.p.down < r5.p.down, 'a swap pack reboots faster');
+  for (let i = 0; i < 60 * 13 && !r4.p.up; i++) F.stepRun(r4, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.ok(r4.p.up && r4.p.hp === r4.p.max * .5, 'and back up with half its hull');
+  // an arm patches the Keeper's hull while it stays close
+  const r6 = quiet(F.newRun(0, 0, 4, true, RULES, { tool: 'arm' })); r6.k.hp = 2;
+  for (let i = 0; i < 60 * (r6.p.s.repair_s + 2); i++) F.stepRun(r6, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.ok(r6.k.hp >= 3, 'the arm repairs'); const r7 = quiet(F.newRun(0, 0, 4, true, RULES, { tool: 'gripper' })); r7.k.hp = 2;
+  for (let i = 0; i < 60 * 14; i++) F.stepRun(r7, { ax: 0, ay: 0 }, null, 1 / 60, RULES); assert.equal(r7.k.hp, 2, 'a gripper does not');
+  // a gripper opens a crate it reaches; walkers can't touch rotors; legs climb over a rock that stops tracks
+  const r8 = quiet(F.newRun(0, 0, 4, true, RULES, { tool: 'gripper' })), crate = r8.map.props.find((p) => p.kind === 'crate');
+  r8.p.x = crate.x + crate.w / 2; r8.p.y = crate.y + crate.d / 2; r8.k.x = r8.p.x; r8.k.y = r8.p.y + 200; F.stepRun(r8, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.ok(crate.open && r8.scrap === RULES.frontier.props.crate.scrap + Math.round(r8.p.s.carry), 'the gripper opened it and hauled its carry');
+  const fly = quiet(F.newRun(0, 0, 4, true, RULES, { base: 'rotors' })), c = fly.foes[0];
+  c.on = true; c.type = 'brute'; c.hp = 9; c.max = 9; c.r = 9; c.wake = true; c.x = fly.p.x; c.y = fly.p.y; fly.p.inv = 0; const hp0 = fly.p.hp;
+  F.stepRun(fly, { ax: 0, ay: 0 }, null, 1 / 60, RULES); assert.equal(fly.p.hp, hp0, 'a walker can\'t reach a flier');
+  const map = F.newRun(0, 0, 4, true, RULES).map, rock = map.props.find((p) => p.kind === 'rock' && !p.open);
+  const o = { x: rock.x + rock.w / 2, y: rock.y + rock.d / 2, r: 5 }, o2 = { ...o };
+  F.collide(map, o, true); F.collide(map, o2, false); assert.ok(o.x === rock.x + rock.w / 2 && o.y === rock.y + rock.d / 2, 'legs go over a rock'); assert.ok(o2.x !== o.x || o2.y !== o.y, 'anything else is pushed out');
+  // wheels: faster on the road than off it
+  const pace = (base, onRoad) => { const r = quiet(F.newRun(0, 0, 4, true, RULES, { base })), M = r.map; for (const p of M.props) p.open = true;   // open ground: only the road or its absence differs
+    r.k.x = onRoad ? (M.roadC0 + M.roadC1 + 1) / 2 * M.tile : M.tile * 3; r.k.y = M.rows * M.tile * .5; r.k.fx = 0; r.k.fy = 0; r.p.x = r.k.x; r.p.y = r.k.y + 80; r.p.power = 1e9; r.p.pmax = 1e9; const y0 = r.p.y; F.stepRun(r, { ax: 0, ay: 0 }, null, 1 / 60, RULES); return y0 - r.p.y; };
+  assert.ok(pace('wheels', true) > pace('wheels', false) && pace('wheels', true) > pace('legs', true), 'wheels on the road outrun them off it, and outrun legs');
+  assert.ok(pace('legs', false) > pace('wheels', false) * .9, 'off the road, legs keep up with wheels');
 });
 test('the frontier governor: steps detail and scale down when a frame runs over budget, back up with room, never for a held-back device', () => {
   const R = RULES.frontier.govern, L = R.levels, run = (G, work, frame, n) => { let moved = 0; for (let i = 0; i < n; i++) if (F.govern(G, work, frame, 1 / 60, RULES)) moved++; return moved; };
@@ -538,7 +636,7 @@ test('pillar 1 in the page: the castle comes from the evidence log in one place,
 // Everything a run does: the stage, the machines, the bosses, the upgrades, what play score opens. None of it may touch the evidence.
 const PLAY_FNS = ['updateStage', 'finishStage', 'updateCastle', 'endFight', 'hurt', 'die', 'grow', 'arena', 'cache', 'newStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'startBoss', 'bossDown', 'bossReset',
   'award', 'kill', 'strike', 'shoot', 'crackHit', 'reachPost', 'relicFound', 'recalc', 'takeUpgrade', 'offerUpgrade', 'wildsBiomes',
-  'mountExplore', 'updateExplore', 'exploreOver', 'endExplore'];
+  'mountExplore', 'updateExplore', 'exploreOver', 'endExplore', 'xbank', 'partnerClick', 'partnerBay'];
 test('pillar 1 in the page: score is play. No line carries it into the evidence, XP or the castle', () => {
   const lines = SRC.split('\n');
   for (const l of lines) if (/score/i.test(l) && !/^\s*(\/\/|\/\*|\*)/.test(l)) assert.ok(!/S\.events|closeEvent|lessonEvent|liftEvent|setState\(|castleOf/.test(l) || /function |\/\/ /.test(l) && !/score[^;]*S\.events\.push/.test(l), `a score line touches the evidence: ${l.trim().slice(0, 90)}`);
@@ -581,6 +679,12 @@ test('the frontier\'s dense tier: characters about three times the faces of the 
   const keeper = [at(1, () => sb.xactor(-1, 1)), at(2, () => sb.xactor(-1, 1))];
   assert.ok(keeper[1] >= keeper[0] * 3, `the Keeper: ${keeper[1]} faces dense, ${keeper[0]} plain`);
   for (const type of ['crawler', 'drone', 'brute']) { sb.XR.foes = [foe(type)]; const n = [at(1, () => sb.xactor(0, 1)), at(2, () => sb.xactor(0, 1))]; assert.ok(n[1] >= n[0] * 3, `a ${type}: ${n[1]} faces dense, ${n[0]} plain`); }
+  // the partner (FW13): every base, tool, head and core drawn at both tiers; the dense one at least twice the faces
+  vm.runInNewContext(['xpartner', 'xpbase', 'xpbody', 'xptool', 'xphead', 'xturret'].map((n) => { const f = fn(n); return f.trim().includes('\n') ? f + '\n  }' : f; }).join('\n'), Object.assign(sb, { RX: RULES.frontier }));
+  for (const b of [['legs', 'arm', 'lidar', 'cell'], ['tracks', 'gripper', 'thermal', 'swap'], ['wheels', 'arm', 'camera', 'cap'], ['rotors', 'gripper', 'lidar', 'cell']]) {
+    const run = F.newRun(0, 0, 4, true, RULES, { base: b[0], tool: b[1], head: b[2], core: b[3] }); run.p.vx = 1; run.p.step = 1; sb.XR = run;
+    const n = [at(1, () => sb.xpartner(1)), at(2, () => sb.xpartner(1))]; assert.ok(n[0] >= 12 && n[1] >= n[0] * 1.75, `a partner on ${b[0]}: ${n[1]} faces dense, ${n[0]} plain`);
+    run.p.up = false; run.p.down = 1; assert.ok(at(2, () => sb.xpartner(1)) > 0, 'down, it still shows'); }
   for (const kind of ['rock', 'ruin', 'pylon', 'crate']) { const p = { kind, x: 0, y: 0, w: 10, d: 10, h: 12, seed: 37, open: false }; const n = [at(1, () => sb.xprop(p, 1)), at(2, () => sb.xprop(p, 1))]; assert.ok(n[1] >= n[0] * 2, `a ${kind}: ${n[1]} faces dense, ${n[0]} plain`); }
   // the tier comes from the governor, measured each frame in the loop; the ground is drawn from its atlas
   assert.match(fn('frame'), /XE\.govern\(XGOV, performance\.now\(\) - w0, gap, dt, RULES\)\) xgovApply\(\)/, 'the frame\'s own work, measured, feeds the governor');
@@ -593,7 +697,8 @@ test('the update and render paths allocate nothing per frame (the HUD, four time
   assert.match(fn('backdrop'), /if \(bg && bgKey\) return bg;/, 'the backdrop is painted once per theme and size');
   for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'renderBoss', 'drawWorld', 'drawAir', 'drawCastle', 'ground', 'tuft', 'text', 'stone', 'crenels', 'frame', 'burst', 'puff', 'pop', 'emit', 'ebullet', 'aim', 'strike', 'kill', 'hurt', 'shoot', 'jolt',
     'updateExplore', 'renderExplore', 'xflat', 'xprop', 'xactor', 'xkeeper', 'xcastle', 'xseal', 'xhud', 'xbox', 'xq', 'xquad', 'xtri', 'xell', 'xfill',
-    'xline', 'xkeeperHi', 'xcrawlerHi', 'xdroneHi', 'xbruteHi', 'xpropHi', 'xtowerHi', 'xgovApply']) {
+    'xline', 'xkeeperHi', 'xcrawlerHi', 'xdroneHi', 'xbruteHi', 'xpropHi', 'xtowerHi', 'xgovApply',
+    'xpartner', 'xpbase', 'xpbody', 'xptool', 'xphead', 'xturret', 'xcard']) {
     const src = fn(f).replace(/\/\/.*$/gm, ''), body = src.slice(src.indexOf('{') + 1);
     const bad = body.match(/\.(map|filter|slice|concat|flatMap|reduce|forEach|split|join|find|some|every|includes)\(|\bnew \w|Array\.from|\[[^\]]*,[^\]]*\]\s*[;)]|=>|`|\bString\(|\.toUpperCase\(|\{ ?\w+: /g) || [];
     // the few allowed, each exactly as often as it stands today: the cached score and horde count, and a ticked-post lookup
@@ -922,7 +1027,7 @@ test('signed out (the public site): the page starts empty and hides what reads a
   { const ls = fn('loadSave'), at = ls.indexOf('if (OUT) {'), branch = ls.slice(at, ls.indexOf("return 'loaded';", at));
     assert.ok(at > 0 && at < ls.indexOf('for (const id of j.closed)') && !/S\.events|S\.horde|S\.ticks|S\.liftsLogged|S\.closed/.test(branch), 'a signed-out save returns before the journal and the horde, touching neither'); }
   assert.match(fn('stageRows'), /if \(OUT\) return `\$\{wildsCard\}/, 'the Wilds only: the roadmap is the account\'s');
-  assert.match(SRC, /if \(\(OUT \|\| EMBED\) && !\['castle', 'stage', 'stages', 'keeper', 'frontier'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
+  assert.match(SRC, /if \(\(OUT \|\| EMBED\) && !\['castle', 'stage', 'stages', 'keeper', 'frontier', 'partner'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive (the partner bay is play, so it stays)');
   assert.match(SRC, /if \(OUT && n !== 0\) return;/, 'no roadmap stage by click either');
   assert.ok(RULES.bank.castle.signed_out && RULES.bank.castle.signed_out_short, 'the sentences are in the bank');
   // what hides the account's chrome, held here because CI never runs the walk

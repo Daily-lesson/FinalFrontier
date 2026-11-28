@@ -12,8 +12,8 @@
   const XE = FieldworksFrontier, RX = RULES.frontier, BX = BANK.frontier;
   let XR = null, XRUN = 0, XRS = 1, XW = 1, XH = 1;
   const XCAM = XE.camOf(RULES), XP = { x: 0, y: 0 }, XQ = { x: 0, y: 0 }, XA = { x: 0, y: 0 }, XB = { x: 0, y: 0 };
-  const XIN = { ax: 0, ay: 0, fire: false, dash: false }, XPR = { dash: false };
-  const XSORT = new Int32Array(RX.foes.cap + 2), XSY = new Float32Array(RX.foes.cap + 2);   // the upright actors, drawn in depth order with the props
+  const XIN = { ax: 0, ay: 0, fire: false, dash: false }, XPR = { dash: false, bot: false, build: false };
+  const XNA = RX.foes.cap + 2 + RX.partner.turret.cap, XSORT = new Int32Array(XNA), XSY = new Float32Array(XNA);   // the upright actors (Keeper -1, partner -2, turrets -3…), drawn in depth order with the props
   const XG = ['#2b2723', '#312c27', '#28241f', '#36302a'], XGL = ['#332e29', '#39332d', '#2f2a25', '#3e3730'];   // ground: ash, grit, scorched plate, gravel
   const XTXT = { scrap: '', score: '', seal: '', sealN: -1, scrapN: -1, scoreN: -1, toast: '', toastT: 0 };
   let XMINI = null, XMKEY = '';
@@ -21,6 +21,8 @@
   let XT = XGOV.tier, XATL = null, XAK = '', XAW = 1, XAH = 1;   // the tier now; the ground atlas, its key and one cell's size in device pixels
   const XEMB = new Float32Array(RX.render.embers * 3);   // the drifting ash: three seeded numbers each, drawn from the clock with no state
   { const r = XE.rngOf(0x5eed); for (let i = 0; i < XEMB.length; i++) XEMB[i] = r(); }
+  const XSAY = ['', BX.bot_follow_say, BX.bot_hunt_say, BX.bot_downed, BX.bot_back, BX.built, BX.build_low, BX.build_full];   // what the run says, by W.said
+  const XPC = { key: '', slot: [], lines: [[], [], [], []], neg: [0, 0, 0, 0], cols: [], mode: ['', '', ''], font: `700 ${RULES.frontier.hud.card_px}px Silkscreen, ui-monospace, monospace` };   // the partner card: the build's words, wrapped to the card, made when the build or the width changes
 
   /** The screen's markup: one canvas that is the scene and the controls, and a way home. */
   function exploreShell() {
@@ -30,7 +32,7 @@
   function mountExplore(index) {
     cv = document.getElementById('game'); if (!cv) return; ctx = cv.getContext('2d'); hudEls = null;
     const open = XE.regionsOpen(CAS.pieces, RULES), i = clamp(index == null ? (XR ? XR.index : 0) : index, 0, open - 1);
-    if (!XR || XR.over || XR.index !== i) XR = XE.newRun(i, XRUN++, hearts(), i + 1 >= open, RULES);
+    if (!XR || XR.over || XR.index !== i) XR = XE.newRun(i, XRUN++, hearts(), i + 1 >= open, RULES, S.play.partner);
     XMKEY = ''; sizeExplore(); stageObs.disconnect(); stageObs.observe(document.getElementById('stage'));
     padMount(cv, RI.pads.frontier, 'overlay');
     XCAM.x = XR.k.x; XCAM.y = XR.k.y; XE.camFollow(XCAM, XR.k.x, XR.k.y, 0, XR.map, RULES);
@@ -47,6 +49,7 @@
     cv.width = XW * XRS; cv.height = XH * XRS; cv.style.width = XW + 'px'; cv.style.height = XH + 'px';
     XE.camFit(XCAM, XW, XH); xatlasBake();
     if (PAD.on && PAD.layout === 'overlay') { padSize(); padLayout(PAD.names, 'overlay'); }
+    XPC.key = '';
   }
   /** The governor moved: a new render scale resizes the canvas (and repaints the atlas); a new tier only changes what is drawn. */
   function xgovApply() { if (XGOV.scale !== XRS) sizeExplore(); XT = XGOV.tier; }
@@ -87,28 +90,34 @@
   /** Leave the frontier. Returns the line that says what the run found, for the castle's ticker (empty when nothing). */
   function endExplore() {
     if (!XR) return '';
-    const r = XR; XR = null; PAD.on = false;
+    const r = XR; XR = null; PAD.on = false; xbank(r);
     return r.score > 0 || r.scrap > 0 ? fill(BX.home, { scrap: r.scrap, score: r.score }) : '';
   }
+  /** A run's scrap into the play record, where the partner bay spends it on upgrades. Play, kept on this device: it opens nothing the evidence opens. */
+  function xbank(r) { if (r.scrap > 0) { S.play.scrap = Math.min(RX.partner.scrap_max, S.play.scrap + r.scrap); r.scrap = 0; saveNow(); } }
   // ── one frame ──
   function updateExplore(dt) {
     const s = PAD.stick, k = XR.k;
     XIN.ax = s.id >= 0 ? s.ax : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     XIN.ay = s.id >= 0 ? s.ay : (keys.down ? 1 : 0) - (keys.jump ? 1 : 0);
     XIN.fire = padHeld('fire') || keys.fire;
-    XPR.dash = padTake('dash') || tap.dash; tap.dash = false; tap.jump = false; tap.fire = false;
+    XPR.dash = padTake('dash') || tap.dash; XPR.bot = padTake('bot') || tap.bot; XPR.build = padTake('build') || tap.build;
+    tap.dash = false; tap.jump = false; tap.fire = false; tap.bot = false; tap.build = false;
     XE.stepRun(XR, XIN, XPR, dt, RULES);
+    if (XR.said) { xsay(XSAY[XR.said]); XR.said = 0; }
     XE.camFollow(XCAM, k.x, k.y, dt, XR.map, RULES);
     if (XTXT.toastT > 0) XTXT.toastT -= dt;
     if (XR.over) exploreOver();
   }
   function exploreOver() {
     const r = XR, open = XE.regionsOpen(CAS.pieces, RULES);
-    if (!r.won) { xsay(BX.down); XR = XE.newRun(0, XRUN++, hearts(), open <= 1, RULES); XCAM.x = XR.k.x; XCAM.y = XR.k.y; XMKEY = ''; return; }
+    if (!r.won) { xbank(r); xsay(BX.down); XR = XE.newRun(0, XRUN++, hearts(), open <= 1, RULES, S.play.partner); XCAM.x = XR.k.x; XCAM.y = XR.k.y; XMKEY = ''; return; }
     if (r.exit < 0 && r.index === 0) { const msg = endExplore(); S.screen = 'castle'; render(); if (msg) ticker(msg, ''); return; }
     const next = clamp(r.index + r.exit, 0, open - 1), keep = r.k.hp;
-    XR = XE.newRun(next, XRUN++, hearts(), next + 1 >= open, RULES); XR.k.hp = Math.max(1, Math.min(keep, XR.k.max)); XR.score = r.score; XR.scrap = r.scrap; XR.kills = r.kills;
+    XR = XE.newRun(next, XRUN++, hearts(), next + 1 >= open, RULES, S.play.partner); XR.k.hp = Math.max(1, Math.min(keep, XR.k.max)); XR.score = r.score; XR.scrap = r.scrap; XR.kills = r.kills;
+    const pp = r.p, np = XR.p; np.up = pp.up; np.down = pp.down; np.hp = pp.hp; np.power = pp.power; np.mode = pp.mode; np.kills = pp.kills;   // the partner walks on with the Keeper, as it was
     if (r.exit < 0) { XR.k.y = XR.map.north + XR.map.tile * 2; }   // walked back south: arrive at the north edge of the region before
+    np.x = XR.k.x + RX.partner.follow_gap; np.y = XR.k.y + RX.partner.follow_gap * .5;
     XCAM.x = XR.k.x; XCAM.y = XR.k.y; XMKEY = '';
     xsay(fill(BX.next, { name: BX.regions[XR.map.slug] }));
   }
@@ -163,6 +172,8 @@
     // upright: props with height and the actors, merged in order of their southern edge
     let na = 0;
     XSORT[na] = -1; XSY[na] = W.k.y; na++;
+    { const p = W.p; let j = na++; while (j > 0 && XSY[j - 1] > p.y) { XSY[j] = XSY[j - 1]; XSORT[j] = XSORT[j - 1]; j--; } XSY[j] = p.y; XSORT[j] = -2; }
+    for (let i = 0; i < W.turrets.length; i++) { const q = W.turrets[i]; if (!q.on) continue; let j = na++; while (j > 0 && XSY[j - 1] > q.y) { XSY[j] = XSY[j - 1]; XSORT[j] = XSORT[j - 1]; j--; } XSY[j] = q.y; XSORT[j] = -3 - i; }
     for (let i = 0; i < W.foes.length; i++) { const f = W.foes[i]; if (!f.on || f.y < yTop || f.y > yBot) continue; let j = na++; while (j > 0 && XSY[j - 1] > f.y) { XSY[j] = XSY[j - 1]; XSORT[j] = XSORT[j - 1]; j--; } XSY[j] = f.y; XSORT[j] = i; }
     { let j = 0; while (j + 1 < na && XSY[j + 1] < XSY[j]) { const ty = XSY[j], ts = XSORT[j]; XSY[j] = XSY[j + 1]; XSORT[j] = XSORT[j + 1]; XSY[j + 1] = ty; XSORT[j + 1] = ts; j++; } }
     let a = 0;
@@ -176,7 +187,7 @@
     if (W.sealed) xseal(M, t);
     // shots and sparks
     for (let i = 0; i < W.shots.length; i++) { const s = W.shots[i]; if (!s.on) continue; xq(s.x, s.y, 7); xfill(s.foe ? '#ff4d5e' : '#9ff0d8'); xell(XP.x, XP.y, 2.2 * Z * .5 + 1, 2.2 * Z * .5 + 1); xfill('#ffffff'); xell(XP.x, XP.y, Z * .5, Z * .5); }
-    for (let i = 0; i < W.fx.length; i++) { const e = W.fx[i]; if (e.t <= 0) continue; xq(e.x, e.y, e.z); xfill(e.kind === 5 ? '#e9b949' : e.kind === 2 ? '#9ff0d8' : e.kind === 1 ? (i & 1 ? '#ff9a3c' : '#ffe08a') : '#ffffff'); const rr = (e.kind === 2 ? 5 : 1.4) * Z * Math.min(1, e.t * 4); ctx.globalAlpha = e.kind === 2 ? .35 : 1; xell(XP.x, XP.y, rr, e.kind === 2 ? rr * .5 : rr); ctx.globalAlpha = 1; }
+    for (let i = 0; i < W.fx.length; i++) { const e = W.fx[i]; if (e.t <= 0) continue; xq(e.x, e.y, e.z); xfill(e.kind === 5 ? '#e9b949' : e.kind === 2 ? '#9ff0d8' : e.kind === 1 ? (i & 1 ? '#ff9a3c' : '#ffe08a') : e.kind === 6 ? '#b9a7ff' : e.kind === 7 ? '#7cf29a' : '#ffffff'); const rr = (e.kind === 2 ? 5 : 1.4) * Z * Math.min(1, e.t * 4); ctx.globalAlpha = e.kind === 2 ? .35 : 1; xell(XP.x, XP.y, rr, e.kind === 2 ? rr * .5 : rr); ctx.globalAlpha = 1; }
     // ash and embers drifting up through the view, fixed in the world as the camera moves (stateless: seeds and the clock)
     if (XT >= 1 && !CALM) {
       const n = RX.render.embers, hw = XW / 2 / Z + 8, span = hw * 2, vh = yBot - yTop;
@@ -243,7 +254,7 @@
   }
   /** An actor: -1 is the Keeper, else a machine by its slot. */
   function xactor(i, t) {
-    if (i < 0) { if (XT >= 2) xkeeperHi(t); else xkeeper(t); return; }
+    if (i < 0) { if (i === -1) { if (XT >= 2) xkeeperHi(t); else xkeeper(t); } else if (i === -2) xpartner(t); else xturret(XR.turrets[-3 - i], t); return; }
     const f = XR.foes[i], Z = XCAM.zoom; xq(f.x, f.y, 0); const x = XP.x, y = XP.y, hit = f.hit > 0 && !CALM;
     xfill('rgba(0,0,0,.38)'); xell(x, y, f.r * Z * 1.1, f.r * Z * .5);
     if (XT >= 2) { if (f.type === 'crawler') xcrawlerHi(f, x, y, Z, hit); else if (f.type === 'drone') xdroneHi(f, x, y, Z, hit, t); else xbruteHi(f, x, y, Z, hit); }
@@ -285,6 +296,148 @@
     const hx = x + face * Z * 4, hy = y - Z * 13, ex = hx + dx * Z * 7, ey = hy + dy * Z * 7 * XCAM.sin;
     ctx.strokeStyle = '#4a5560'; ctx.lineWidth = Z * 2.2; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
     xfill(XR.k.cd > 0 ? '#ffe08a' : '#14161a'); xell(ex, ey, Z * 1.2, Z * 1.2);
+  }
+  // ── the partner and its turrets (FW13) ──
+  /**
+   * The partner, upright, put together from its four parts: the base it stands on (legs in step, tracks rolling, wheels
+   * turning, or rotors holding it up), the chassis with its core glowing through a window and a stripe in the Keeper's
+   * paint, the tool (an arm that reaches for its target, or a gripper's jaws) and the sensor head. Tier 2 draws each
+   * part in its joints, panels and lights; below that, the same silhouette in a few shapes. Down, it slumps and blinks.
+   */
+  function xpartner(t) {
+    const p = XR.p, b = p.b, Z = XCAM.zoom; if (p.up && p.inv > 0 && ((t * 16) | 0) % 2) return;
+    xq(p.x, p.y, 0); const x = XP.x, y = XP.y, f = p.face, hi = XT >= 2, fly = b.base === 'rotors';
+    const hov = fly && p.up ? Z * (13 + Math.sin(p.t * 3) * 1.4) : 0;
+    xfill('rgba(0,0,0,.36)'); xell(x, y, Z * (fly ? 4.5 : 6.5), Z * (fly ? 1.7 : 2.5));
+    if (!p.up) {   // down: the chassis on the ground, dark, an amber light blinking while it reboots
+      xfill('#2f343a'); xquad(x - Z * 5, y, x + Z * 5, y, x + Z * 4.5, y - Z * 3.5, x - Z * 4.5, y - Z * 3.5);
+      xfill('#3c434b'); xquad(x - Z * 4.5, y - Z * 3.5, x + Z * 4.5, y - Z * 3.5, x + Z * 3.6, y - Z * 5.4, x - Z * 3.6, y - Z * 5.4);
+      xfill(((t * 4) | 0) % 2 ? '#ffb347' : '#5a3d1a'); xell(x + f * Z * 2, y - Z * 4.4, Z * .9, Z * .6);
+      xfill('#14161a'); ctx.fillRect(x - Z * 5, y - Z * 9, Z * 10, Z * 1.1); xfill('#ffb347'); ctx.fillRect(x - Z * 5, y - Z * 9, Z * 10 * (1 - p.down / p.s.reboot_s), Z * 1.1);
+      return;
+    }
+    const by = y - hov - (b.base === 'legs' ? Z * 7 : b.base === 'tracks' ? Z * 4.5 : b.base === 'wheels' ? Z * 4 : Z * 2);   // the chassis's lower edge
+    xpbase(b.base, p, x, y, by, Z, f, hi);
+    xpbody(b.core, p, x, by, Z, f, hi, t);
+    xptool(b.tool, p, x, by, Z, f, hi);
+    xphead(b.head, p, x, by, Z, f, hi, t);
+    xfill(p.mode ? '#ff4d5e' : '#9ff0d8'); xtri(x - Z * 1.2, by - Z * 14, x + Z * 1.2, by - Z * 14, x, by - Z * 12.4);   // the order it is on: hunt or follow
+    if (p.hp < p.max) { xfill('#14161a'); ctx.fillRect(x - Z * 4.5, by - Z * 16.4, Z * 9, Z * 1.1); xfill('#7cf29a'); ctx.fillRect(x - Z * 4.5, by - Z * 16.4, Z * 9 * p.hp / p.max, Z * 1.1); }
+  }
+  /** The base: four jointed legs in a walking gait, a pair of tracks, four wheels, or four rotors on arms (with skids). */
+  function xpbase(kind, p, x, y, by, Z, f, hi) {
+    const st = p.step, moving = p.vx !== 0 || p.vy !== 0;
+    if (kind === 'legs') {
+      for (let i = 0; i < 4; i++) {   // the far pair first, darker; each leg a thigh, a shin, a knee and a foot
+        const far = i < 2, side = i & 1 ? 1 : -1, ph = st + (i === 0 || i === 3 ? 0 : Math.PI), lift = moving ? Math.max(0, Math.sin(ph)) * Z * 1.6 : 0, sw = moving ? Math.cos(ph) * Z * 1.6 * f : 0;
+        const hx = x + side * Z * 3.6, hy = by - Z * (far ? 1.6 : .6), fx = hx + side * Z * 1.2 + sw, fy = y - (far ? Z * 1.4 : 0) - lift, kx = hx + side * Z * 2.6 + sw * .5, ky = (hy + fy) * .5 - Z * 1.2;
+        const c = far ? '#30353b' : '#454c55';
+        xline(hx, hy, kx, ky, Z * (hi ? 2 : 1.6), c); xline(kx, ky, fx, fy, Z * (hi ? 1.5 : 1.2), c);
+        if (hi) { xfill(far ? '#3c434b' : '#5f6a74'); xell(hx, hy, Z * 1.3, Z * 1.1); xell(kx, ky, Z * 1, Z * .9); xfill('#c8932a'); xell(kx, ky, Z * .45, Z * .4); xfill('#22262b'); xell(fx, fy, Z * 1.2, Z * .55); }
+      }
+    } else if (kind === 'tracks') {
+      for (let i = 0; i < 2; i++) {   // the far track, then the near one: a belt, its road wheels and the treads moving with the step
+        const ty = y - (i ? 0 : Z * 2), x0 = x - Z * 6.5, x1 = x + Z * 6.5, c = i ? '#2a2e33' : '#22262b';
+        xfill(c); xquad(x0 + Z, ty, x1 - Z, ty, x1, ty - Z * 3.6, x0, ty - Z * 3.6);
+        if (!hi) continue;
+        xfill(i ? '#6f7d5a' : '#525c43'); ctx.fillRect(x0 + Z * .4, ty - Z * 4.2, x1 - x0 - Z * .8, Z * .9);   // the mudguard
+        xfill(i ? '#59616b' : '#3c434b'); for (let w = 0; w < 4; w++) xell(x0 + Z * (1.8 + w * 3.1), ty - Z * 1.7, Z * 1.2, Z * 1.1);
+        xfill('#15171a'); const span = x1 - x0 - Z * 2.4, off = ((st * f * Z * 1.5) % span + span) % span;   // the treads, wrapped along the belt
+        for (let s = 0; s < 6; s++) ctx.fillRect(x0 + Z * .8 + (s * span / 6 + off) % span, ty - Z * .5, Z * .7, Z * .5);
+      }
+    } else if (kind === 'wheels') {
+      xfill('#2f353c'); xquad(x - Z * 6, by + Z * 1.2, x + Z * 6, by + Z * 1.2, x + Z * 5.5, by - Z * .4, x - Z * 5.5, by - Z * .4);   // the low deck
+      for (let i = 0; i < 4; i++) {
+        const far = i < 2, wx = x + (i & 1 ? 1 : -1) * Z * 4.4, wy = y - (far ? Z * 1.8 : 0) - Z * 1.6, r = Z * (far ? 1.6 : 1.9);
+        xfill(far ? '#15171a' : '#1b1e22'); xell(wx, wy, r, r);
+        if (!hi) continue;
+        xfill(far ? '#3c434b' : '#7d8792'); xell(wx, wy, r * .5, r * .5);
+        const a = st * 1.4 * f; xline(wx - Math.cos(a) * r * .8, wy - Math.sin(a) * r * .8, wx + Math.cos(a) * r * .8, wy + Math.sin(a) * r * .8, Z * .4, '#2a2e33');
+      }
+      if (hi) { xfill('#4a90b8'); ctx.fillRect(x - Z * 5, by - Z * .1, Z * 10, Z * .6); xfill('#ffe08a'); xell(x + f * Z * 5.6, by + Z * .4, Z * .6, Z * .45); }   // the stripe and a headlight
+    } else {
+      xline(x - Z * 3, by + Z * 2.2, x + Z * 3, by + Z * 2.2, Z * .6, '#30353b');   // the skids
+      if (hi) { xline(x - Z * 2.4, by, x - Z * 2.8, by + Z * 2.2, Z * .5, '#30353b'); xline(x + Z * 2.4, by, x + Z * 2.8, by + Z * 2.2, Z * .5, '#30353b'); }
+      for (let i = 0; i < 4; i++) {   // the far rotors first; an arm, a motor, a blur of blades, and in the dense tier the blade itself
+        const far = i < 2, rx = x + (i & 1 ? 1 : -1) * Z * 7.5, ry = by - Z * (far ? 5.2 : 2.6);
+        xline(x + (i & 1 ? 1 : -1) * Z * 3, by - Z * 3, rx, ry, Z * (hi ? 1 : .8), far ? '#3c434b' : '#59616b');
+        xfill('#22262b'); xell(rx, ry, Z * .9, Z * .7);
+        ctx.globalAlpha = .32; xfill('#c8d3dc'); xell(rx, ry - Z * .6, Z * 3.4, Z * 1.1); ctx.globalAlpha = 1;
+        if (hi) { const a = p.t * 38 + i * 1.7, cx = Math.cos(a) * Z * 3.2, cy = Math.sin(a) * Z * 1; xline(rx - cx, ry - Z * .6 - cy, rx + cx, ry - Z * .6 + cy, Z * .4, '#e8ecef'); xfill('#8fd3ff'); xell(rx, ry + Z * .3, Z * .35, Z * .3); }
+      }
+    }
+  }
+  /** The chassis: a box with a lit top, a window on the core (its colour, breathing) and a stripe in the Keeper's paint. */
+  function xpbody(core, p, x, by, Z, f, hi, t) {
+    xfill('#3c434b'); xquad(x - Z * 5, by, x + Z * 5, by, x + Z * 5, by - Z * 4, x - Z * 5, by - Z * 4);
+    xfill('#59616b'); xquad(x - Z * 5, by - Z * 4, x + Z * 5, by - Z * 4, x + Z * 4, by - Z * 6.5, x - Z * 4, by - Z * 6.5);
+    xfill('#30353b'); xquad(x - f * Z * 5, by, x - f * Z * 5, by - Z * 4, x - f * Z * 4, by - Z * 6.5, x - f * Z * 4, by - Z * 2.6);   // the side turned from the light
+    xfill(XPAINT.c); ctx.fillRect(x - Z * 5, by - Z * 3.1, Z * 10, Z * .8);
+    const C = RX.partner.parts.core[core], glow = .55 + .45 * Math.sin(t * (core === 'cap' ? 7 : 3));
+    xfill('#14161a'); xell(x + f * Z * 1.4, by - Z * 1.5, Z * 1.6, Z * 1.1);
+    ctx.globalAlpha = glow; xfill(C.colour); xell(x + f * Z * 1.4, by - Z * 1.5, Z * 1.1, Z * .75); ctx.globalAlpha = 1;
+    if (!hi) return;
+    xline(x - Z * 5, by - Z * 4, x + Z * 5, by - Z * 4, Z * .3, '#7d8792');   // the lit edge, seams, vents and rivets
+    xline(x - f * Z * 1.2, by - Z * .2, x - f * Z * 1.2, by - Z * 2.3, Z * .25, '#2a2e33');
+    xfill('#22262b'); for (let i = 0; i < 3; i++) ctx.fillRect(x - f * Z * (4.2 - i * .9), by - Z * 1.9, Z * .45, Z * 1.4);
+    xfill('#8a929c'); ctx.fillRect(x - Z * 4.6, by - Z * 3.8, Z * .5, Z * .5); ctx.fillRect(x + Z * 4.1, by - Z * 3.8, Z * .5, Z * .5); ctx.fillRect(x - Z * 4.6, by - Z * .7, Z * .5, Z * .5); ctx.fillRect(x + Z * 4.1, by - Z * .7, Z * .5, Z * .5);
+    xfill('#4a525b'); xquad(x - Z * 2.5, by - Z * 4.6, x + Z * 2.5, by - Z * 4.6, x + Z * 2, by - Z * 6, x - Z * 2, by - Z * 6);   // a hatch on top
+    if (core === 'swap') { xfill('#ffe08a'); ctx.fillRect(x + f * Z * 3.2, by - Z * 2.4, Z * .9, Z * 1.8); }   // the swap pack's handle
+  }
+  /** The tool: an arm of two links that reaches for its target (and lunges when it strikes), or a gripper's two jaws. */
+  function xptool(kind, p, x, by, Z, f, hi) {
+    let ax = f, ay = 0;
+    if (p.target >= 0) { const q = XR.foes[p.target]; ax = q.x - p.x; ay = (q.y - p.y) * XCAM.sin; const d = Math.hypot(ax, ay) || 1; ax /= d; ay /= d; }
+    const reach = p.swing > 0 ? 1.35 : 1;
+    if (kind === 'arm') {
+      const sx = x + f * Z * 3.4, sy = by - Z * 6.2, ex = sx + ax * Z * 2.6, ey = sy - Z * 4.2, wx = ex + ax * Z * 5 * reach, wy = ey + Z * 2.4 + ay * Z * 3 * reach;
+      xline(sx, sy, ex, ey, Z * (hi ? 1.7 : 1.4), '#e9b949'); xline(ex, ey, wx, wy, Z * (hi ? 1.3 : 1.1), '#c8932a');
+      if (!hi) return;
+      xfill('#3c434b'); xell(sx, sy, Z * 1.3, Z * 1.1); xell(ex, ey, Z * 1.05, Z); xell(wx, wy, Z * .8, Z * .75);
+      xfill('#14161a'); xell(sx, sy, Z * .5, Z * .45); xell(ex, ey, Z * .4, Z * .38);
+      xline(sx - f * Z * .5, sy + Z * .4, ex - ax * Z * .6, ey + Z * .5, Z * .25, '#22262b');   // the cable along the upper link
+      const o = p.swing > 0 ? .4 : 1;   // the fingers: open, or shut on a strike
+      xfill('#7d8792'); xtri(wx, wy, wx + ax * Z * 1.8 - ay * Z * .9 * o, wy + ay * Z * 1.8 - Z * .9 * o, wx + ax * Z * .9, wy + ay * Z * .9);
+      xtri(wx, wy, wx + ax * Z * 1.8 + ay * Z * .9 * o, wy + ay * Z * 1.8 + Z * .9 * o, wx + ax * Z * .9, wy + ay * Z * .9);
+    } else {
+      const mx = x + f * Z * 5.2, my = by - Z * 2.2, o = p.swing > 0 ? .25 : .7 + Math.sin(p.t * 2.5) * .3, L = Z * 2.8 * reach;
+      xfill('#3c434b'); ctx.fillRect(mx - (f > 0 ? 0 : Z * 1.2), my - Z * 1.2, Z * 1.2, Z * 2.4);
+      xfill('#9ff0d8'); xtri(mx, my - Z * .4, mx + f * L, my - Z * .4 - Z * 1.2 * o, mx + f * L * .8, my - Z * .4);
+      xtri(mx, my + Z * .4, mx + f * L, my + Z * .4 + Z * 1.2 * o, mx + f * L * .8, my + Z * .4);
+      if (hi) { xfill('#22262b'); xell(mx, my, Z * .7, Z * .7); xfill('#5fb8a0'); xtri(mx + f * L * .8, my - Z * .4, mx + f * L, my - Z * .4 - Z * 1.2 * o, mx + f * L, my - Z * .2); xtri(mx + f * L * .8, my + Z * .4, mx + f * L, my + Z * .4 + Z * 1.2 * o, mx + f * L, my + Z * .2); }
+    }
+  }
+  /** The sensor head: a laser scanner's spinning puck, a depth camera's lens, or a heat camera's twin lenses on a gimbal. */
+  function xphead(kind, p, x, by, Z, f, hi, t) {
+    const hx = x - f * Z * 1.4, hy = by - Z * 7.6;
+    xline(hx, by - Z * 5.6, hx, hy + Z * .6, Z * (hi ? 1 : .8), '#30353b');   // the neck
+    if (kind === 'lidar') {
+      xfill('#22262b'); ctx.fillRect(hx - Z * 2, hy - Z * 1.4, Z * 4, Z * 1.6); xell(hx, hy + Z * .2, Z * 2, Z * .7);
+      xfill('#3c434b'); xell(hx, hy - Z * 1.4, Z * 2, Z * .7);
+      const a = p.t * 7, dx = Math.cos(a) * Z * 1.9; if (Math.sin(a) > 0 || !hi) { xfill('#7cf29a'); ctx.fillRect(hx + dx - Z * .35, hy - Z, Z * .7, Z * .7); }
+      if (hi) { xfill('#14161a'); ctx.fillRect(hx - Z * 2, hy - Z * .7, Z * 4, Z * .3); const ph = (t * .5) % 1; ctx.globalAlpha = (1 - ph) * .35; ctx.strokeStyle = '#7cf29a'; ctx.lineWidth = Z * .3; ctx.beginPath(); ctx.ellipse(hx, hy - Z * .6, Z * (2 + ph * 9), Z * (.7 + ph * 3), 0, 0, 6.2832); ctx.stroke(); ctx.globalAlpha = 1; }
+    } else if (kind === 'camera') {
+      xfill('#3c434b'); xquad(hx - Z * 2.2, hy + Z * .8, hx + Z * 2.2, hy + Z * .8, hx + Z * 2, hy - Z * 1.8, hx - Z * 2, hy - Z * 1.8);
+      xfill('#14161a'); xell(hx + f * Z * 1, hy - Z * .5, Z * 1.2, Z * 1.1);
+      xfill('#b9a7ff'); xell(hx + f * Z * 1.1, hy - Z * .5, Z * .75, Z * .7);
+      if (hi) { xfill('#2a1f4a'); xell(hx + f * Z * 1.1, hy - Z * .5, Z * .35, Z * .33); xfill('#ffffff'); xell(hx + f * Z * 1.35, hy - Z * .8, Z * .2, Z * .18); xfill('#59616b'); ctx.fillRect(hx - Z * 2, hy - Z * 1.8, Z * 4, Z * .4); xfill('#ff4d5e'); xell(hx - f * Z * 1.3, hy - Z * 1.1, Z * .3, Z * .3); }
+    } else {
+      xline(hx - Z * 2.2, hy + Z * .8, hx - Z * 2.2, hy - Z * 1.2, Z * .5, '#59616b'); xline(hx + Z * 2.2, hy + Z * .8, hx + Z * 2.2, hy - Z * 1.2, Z * .5, '#59616b');   // the gimbal's yoke
+      xfill('#2f353c'); xell(hx, hy - Z * .3, Z * 1.9, Z * 1.6);
+      const glow = .6 + .4 * Math.sin(t * 2.2); ctx.globalAlpha = glow; xfill('#ff9a3c'); xell(hx + f * Z * .4 - Z * .7, hy - Z * .4, Z * .55, Z * .5); xell(hx + f * Z * .4 + Z * .7, hy - Z * .4, Z * .55, Z * .5); ctx.globalAlpha = 1;
+      if (hi) { xfill('#4a525b'); xell(hx, hy - Z * 1.5, Z * 1.3, Z * .4); xfill('#ffe08a'); xell(hx + f * Z * .4 - Z * .7, hy - Z * .55, Z * .2, Z * .18); xell(hx + f * Z * .4 + Z * .7, hy - Z * .55, Z * .2, Z * .18); }
+    }
+  }
+  /** A turret the partner built: a tripod, a box, a barrel on its aim, a light that blinks as its time runs out. */
+  function xturret(q, t) {
+    const Z = XCAM.zoom; xq(q.x, q.y, 0); const x = XP.x, y = XP.y, hi = XT >= 2, ca = Math.cos(q.aim), sa = Math.sin(q.aim) * XCAM.sin;
+    xfill('rgba(0,0,0,.34)'); xell(x, y, Z * 4.5, Z * 1.8);
+    xline(x, y - Z * 4, x - Z * 3.6, y + Z * .2, Z * .6, '#30353b'); xline(x, y - Z * 4, x + Z * 3.6, y + Z * .2, Z * .6, '#30353b'); xline(x, y - Z * 4, x, y + Z * 1, Z * .6, '#22262b');
+    xfill('#4a525b'); xquad(x - Z * 2.4, y - Z * 3.6, x + Z * 2.4, y - Z * 3.6, x + Z * 2.2, y - Z * 7, x - Z * 2.2, y - Z * 7);
+    xline(x, y - Z * 5.6, x + ca * Z * 5, y - Z * 5.6 + sa * Z * 5, Z * 1.1, '#2a2e33');
+    if (hi) { xfill('#6b747e'); xquad(x - Z * 2.2, y - Z * 7, x + Z * 2.2, y - Z * 7, x + Z * 1.6, y - Z * 8.2, x - Z * 1.6, y - Z * 8.2); xfill('#c8932a'); ctx.fillRect(x - Z * 2.4, y - Z * 4.6, Z * 4.8, Z * .5); xfill('#14161a'); xell(x + ca * Z * 5, y - Z * 5.6 + sa * Z * 5, Z * .5, Z * .5); }
+    xfill(q.life < 3 && ((t * 6) | 0) % 2 ? '#14161a' : '#ffe08a'); xell(x, y - Z * 8.4, Z * .6, Z * .5);
+    if (q.hp < q.max) { xfill('#14161a'); ctx.fillRect(x - Z * 3, y - Z * 10.4, Z * 6, Z * .9); xfill('#ffe08a'); ctx.fillRect(x - Z * 3, y - Z * 10.4, Z * 6 * Math.max(0, q.hp) / q.max, Z * .9); }
   }
   /** The castle from above at the first region's south end: a wall across with a gate on the road, towers at its ends. */
   function xcastle(M, t) {
@@ -540,6 +693,37 @@
     const seal = XE.nextSeal(CAS.pieces, RULES), key = seal ? seal.index * 1000 + seal.need : -1;
     if (key !== XTXT.sealN) { XTXT.sealN = key; XTXT.seal = seal ? fill(BX.sealed, { name: BX.regions[RX.regions[seal.index].slug], n: seal.need }) : BX.sealed_all; }
     const mk = `${W.map.seed}/${W.run}`; if (mk !== XMKEY) { XMKEY = mk; XMINI = xminiBake(W.map); }
+    const pk = XE.partnerCode(W.p.b, RULES) + '/' + Object.values(W.p.b.lv).join('.') + '/' + XW; if (pk !== XPC.key) xpartnerLines(W.p.b, pk);
+  }
+  /** The partner card's words: for each slot, the part's name and its perk, strength and weakness, wrapped to the card's width. */
+  function xpartnerLines(b, key) {
+    const P = RX.partner, B = BX.parts, per = Math.max(12, Math.floor((xcardW() - 10) / (RX.hud.card_px * .74)));
+    const wrap = (s, out) => { let line = ''; for (const w of s.split(' ')) { if (line && (line + ' ' + w).length > per) { out.push(line); line = '  ' + w; } else line = line ? line + ' ' + w : w; } if (line) out.push(line); };
+    XPC.slot.length = 0; XPC.cols.length = 0;
+    P.slots.forEach((slot, i) => {
+      const id = b[slot], w = B[id], out = [];
+      out.push(w.name + (b.lv[id] ? ' +' + b.lv[id] : '')); wrap('+ ' + w.perk, out); wrap('+ ' + w.strength, out); XPC.neg[i] = out.length; wrap('- ' + w.weakness, out);
+      XPC.lines[i] = out.slice(0, RX.hud.card_lines); XPC.slot.push(id); XPC.cols.push(P.parts[slot][id].colour);
+    });
+    XPC.mode[0] = BX.bot_follow; XPC.mode[1] = BX.bot_hunt; XPC.mode[2] = BX.bot_down; XPC.key = key;
+  }
+  /** The partner card's width: the room left of the minimap, within the rules' bounds. */
+  function xcardW() { return clamp(XW - (XMINI ? XMINI.width : 90) - 30, RX.hud.card_w[0], RX.hud.card_w[1]); }
+  /** The partner card, under the Keeper's bars: its four parts (colour and level), its order, its hull and power, and one part's perk, strength and weakness at a time. */
+  function xcard(W, x0, y0, t) {
+    const p = W.p, cw = xcardW(), H = RX.hud, slot = ((t / RX.partner.card_line_s) | 0) % 4, L = XPC.lines[slot], lh = H.card_px + 2;
+    xfill('rgba(12,12,14,.7)'); ctx.fillRect(x0 - 4, y0 - 4, cw + 8, 26 + L.length * lh);
+    for (let i = 0; i < 4; i++) {
+      xfill(XPC.cols[i]); ctx.globalAlpha = i === slot ? 1 : .55; ctx.fillRect(x0 + i * 12, y0, 9, 9); ctx.globalAlpha = 1;
+      const n = p.b.lv[XPC.slot[i]] || 0; xfill('#e8ecef'); for (let j = 0; j < n; j++) ctx.fillRect(x0 + i * 12 + j * 3, y0 + 11, 2, 2);
+    }
+    ctx.font = '700 9px Silkscreen, ui-monospace, monospace'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+    xfill(!p.up ? '#ffb347' : p.mode ? '#ff4d5e' : '#9ff0d8'); ctx.fillText(XPC.mode[p.up ? p.mode : 2], x0 + cw, y0);
+    const bw = (cw - 54) / 2, bx = x0 + 52;
+    xfill('#1b2a22'); ctx.fillRect(bx, y0 + 12, bw - 2, 4); xfill('#7cf29a'); ctx.fillRect(bx, y0 + 12, (bw - 2) * p.hp / p.max, 4);
+    xfill('#1b2a33'); ctx.fillRect(bx + bw, y0 + 12, bw - 2, 4); xfill('#8fd3ff'); ctx.fillRect(bx + bw, y0 + 12, (bw - 2) * p.power / p.pmax, 4);
+    ctx.font = XPC.font; ctx.textAlign = 'left';
+    for (let i = 0; i < L.length; i++) { xfill(i === 0 ? '#e8ecef' : i >= XPC.neg[slot] ? '#ff9a8a' : '#c8d3dc'); ctx.fillText(L[i], x0, y0 + 20 + i * lh); }
   }
   /** The minimap's ground, painted once per region: the road, the solid things, the gate. */
   function xminiBake(M) {
@@ -563,10 +747,13 @@
       const s = RX.hud.mini_px_per_tile, mw = XMINI.width, mh = Math.min(XMINI.height, RX.hud.mini_h), M = W.map;
       const top = clamp(k.y / M.tile * s - mh / 2, 0, XMINI.height - mh), mx = XW - mw - pad, my = pad + 34;
       ctx.drawImage(XMINI, 0, top, mw, mh, mx, my, mw, mh);
-      xfill('#ff4d5e'); for (let i = 0; i < W.foes.length; i++) { const f = W.foes[i]; if (!f.on || !f.wake) continue; const fy = f.y / M.tile * s - top; if (fy < 0 || fy > mh) continue; ctx.fillRect(mx + f.x / M.tile * s - 1, my + fy - 1, 2, 2); }
+      const scan = W.p.up && W.p.s.scan;   // a laser scanner shows the machines still asleep, dimmer
+      for (let i = 0; i < W.foes.length; i++) { const f = W.foes[i]; if (!f.on || (!f.wake && !scan)) continue; const fy = f.y / M.tile * s - top; if (fy < 0 || fy > mh) continue; xfill(f.wake ? '#ff4d5e' : '#8a5a3a'); ctx.fillRect(mx + f.x / M.tile * s - 1, my + fy - 1, 2, 2); }
+      xfill('#b9a7ff'); ctx.fillRect(mx + W.p.x / M.tile * s - 1, my + W.p.y / M.tile * s - top - 1, 2, 2);
       xfill('#9ff0d8'); ctx.fillRect(mx + k.x / M.tile * s - 1.5, my + k.y / M.tile * s - top - 1.5, 3, 3);
       ctx.strokeStyle = 'rgba(232,236,239,.35)'; ctx.lineWidth = 1; ctx.strokeRect(mx - .5, my - .5, mw + 1, mh + 1);
     }
+    if (XPC.key) xcard(W, pad, pad + 56, t);
     ctx.textAlign = 'center';
     if (W.sealed && (W.bump > 0 || k.y < W.map.north + W.map.tile * 6)) { xfill('#e8ecef'); ctx.fillText(XTXT.seal, XW / 2, XH * .22); }
     if (XTXT.toastT > 0) { ctx.globalAlpha = Math.min(1, XTXT.toastT); xfill('rgba(12,12,14,.7)'); ctx.fillRect(XW * .1, XH * .3 - 4, XW * .8, 18); xfill('#e8ecef'); ctx.fillText(XTXT.toast, XW / 2, XH * .3); ctx.globalAlpha = 1; }
