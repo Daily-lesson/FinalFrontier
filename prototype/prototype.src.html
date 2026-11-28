@@ -58,11 +58,17 @@ b { font-weight: 500; }
 .ticker b { font: 700 11px/1.3 var(--game); color: var(--blight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ticker .need { font: 300 12px/1.25 var(--font); color: var(--fg); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } .ticker.calm b { color: var(--fg); }
 .stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 6px; }
 canvas.game { display: block; touch-action: none; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 1px var(--line); background: #1b2023; }
-.pad { display: flex; gap: 6px; padding: 6px 8px; flex: none; align-items: stretch; }
-.pad button { font: 700 12px/1 var(--game); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; min-height: 48px; min-width: 52px; flex: 1 1 0; touch-action: none; user-select: none; -webkit-user-select: none; }
-.pad button.on { background: var(--fg); color: var(--bg); }
-.pad .gap { flex: .5 1 0; }
-.pad .act { background: var(--node); color: #fff; border-color: var(--node); } .pad .act.on { filter: brightness(.8); }
+/* FW10 (design D67, D79): the controls are one canvas. A stick floats where the left thumb lands; the right side is drawn
+   buttons with no gap between them. Nothing in it is a DOM button, so nothing can zoom, select or call out under a thumb. */
+.padcv { display: block; width: 100%; height: 120px; flex: none; background: #15181b; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+/* While a game screen is up (the castle, a stage): the page is the screen. No scroll under the game, no double-tap or pinch
+   zoom, no text selection, no long-press callout and no tap highlight anywhere on the play surface (the 2026-11-26
+   diagnosis: a third of the old pad was gaps with touch-action auto, and 93% of the surface was selectable text). The
+   strip's buttons keep their clicks: touch-action none still delivers a tap. */
+html.playing, html.playing body { overflow: hidden; overscroll-behavior: none; }
+html.playing .phone, html.playing .phone * { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+html.playing .phone .strip button, html.playing .phone .scrim *, html.playing .phone .sheet * { touch-action: manipulation; }
+html.playing .phone input { user-select: text; -webkit-user-select: text; touch-action: manipulation; }
 .strip { display: flex; gap: 6px; padding: 0 8px 6px; flex: none; }
 .strip button { flex: 1; min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .strip button.pri { background: var(--fg); color: var(--bg); border-color: transparent; }
@@ -139,10 +145,11 @@ canvas.game { display: block; touch-action: none; image-rendering: pixelated; im
 [hidden] { display: none !important; }
 .live { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 @media (max-width: 420px) { .phone { height: calc(100dvh - 90px); min-height: 560px; border-radius: 16px; } }
+/* on a phone, a game screen fills the screen and is pinned there: the page cannot be taller than the viewport in play */
+@media (max-width: 420px) { html.playing .phone { position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; min-height: 0; border-radius: 0; z-index: 5; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); } }
 /* the feel pass: the sound button, the two switches, the upgrade pick, the unlock track */
 .mutebtn { margin-left: auto; font: 700 10px/1 var(--game); color: var(--fg-2); border: 1px solid var(--line); border-radius: 999px; padding: 5px 9px; min-height: 24px; background: var(--surface); }
 .mutebtn[aria-pressed="true"] { color: var(--fg-3); text-decoration: line-through; }
-.pad .act.alt { background: var(--surface-2); color: var(--fg); border-color: var(--fg-3); }
 .switch { flex: none; width: 46px; height: 28px; border-radius: 999px; background: var(--line); position: relative; transition: background .15s; }
 .switch i { position: absolute; left: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
 .switch[aria-checked="true"] { background: var(--node); } .switch[aria-checked="true"] i { transform: translateX(18px); }

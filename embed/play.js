@@ -970,6 +970,14 @@ globalThis.FIELDWORKS_RULES = {
       "bonus": "Finish it today and its drop is better.",
       "none": "No open order qualifies today.",
       "note": "Oldest first, then highest priority, then quickest."
+    },
+    "input": {
+      "fire": "FIRE",
+      "dash": "DASH",
+      "jump": "JUMP",
+      "bot": "BOT",
+      "build": "BUILD",
+      "label": "Controls: drag on the left to move, press on the right to act."
     }
   },
   "save": {
@@ -2033,6 +2041,83 @@ globalThis.FIELDWORKS_RULES = {
     ],
     "min_age_days": 0,
     "score_bonus": 10
+  },
+  "input": {
+    "$note": "FW10 (design D67, D79): the touch input. One canvas takes every pointer; a stick floats where the left thumb lands; the right side is drawn buttons that tile it with no gap. Sizes in CSS pixels; positions as fractions of the surface.",
+    "stick_side": 0.45,
+    "stick_radius_px": 42,
+    "stick_follow": 1.15,
+    "dead_zone": 0.16,
+    "side_threshold": 0.28,
+    "jump_threshold": 0.62,
+    "stick_rest": {
+      "x": 0.2,
+      "y": 0.55
+    },
+    "button_min_px": 48,
+    "label_px": 10,
+    "layouts": {
+      "pad": {
+        "dash": {
+          "x": 0.54,
+          "y": 0.62,
+          "r": 0.26
+        },
+        "fire": {
+          "x": 0.72,
+          "y": 0.42,
+          "r": 0.3
+        },
+        "jump": {
+          "x": 0.89,
+          "y": 0.62,
+          "r": 0.26
+        }
+      },
+      "overlay": {
+        "fire": {
+          "x": 0.84,
+          "y": 0.86,
+          "r": 0.085
+        },
+        "dash": {
+          "x": 0.66,
+          "y": 0.9,
+          "r": 0.065
+        },
+        "bot": {
+          "x": 0.7,
+          "y": 0.77,
+          "r": 0.06
+        },
+        "build": {
+          "x": 0.88,
+          "y": 0.72,
+          "r": 0.06
+        }
+      }
+    },
+    "colours": {
+      "fire": "#d8462e",
+      "dash": "#4a5560",
+      "jump": "#2f7d8c",
+      "bot": "#7a5cc4",
+      "build": "#c8932a",
+      "on": "#ffe08a"
+    },
+    "pads": {
+      "side": [
+        "dash",
+        "fire",
+        "jump"
+      ],
+      "explore": [
+        "fire",
+        "dash",
+        "bot",
+        "build"
+      ]
+    }
   }
 };
 // FIELDWORKS engine — reference implementation of docs/FIELDWORKS.md §7.3.
@@ -2566,6 +2651,136 @@ globalThis.FIELDWORKS_RULES = {
   const teleSave = () => { if (!globalThis.FIELDWORKS_ART) store.set(KEYS.telemetry, JSON.stringify(TEL)); };
   function teleOpen() { const d = localDay(); TEL.opens[d] = (TEL.opens[d] || 0) + 1; const cut = new Date(Date.now() - RULES.telemetry.keep_days * DAY); for (const k of Object.keys(TEL.opens)) if (new Date(k) < cut) delete TEL.opens[k]; teleSave(); }
   const teleAdd = (k, n = 1) => { TEL[k] = (TEL[k] || 0) + n; };
+
+  // ══════════════════════ touch input: one canvas, a floating stick, drawn buttons (FW10, design D67 and D79) ══════════════════════
+  // While you play, no DOM button takes a touch. One canvas takes every pointer: a stick appears wherever the left thumb lands
+  // and follows it; the right side is drawn buttons whose hit areas tile that side with no gap, so a thumb that misses a
+  // button still presses the nearest one (the old pad was a third gaps, where a quick second tap zoomed the page).
+  // Pointers are tracked by id, so one thumb moves while the other acts. The page around it carries touch-action: none,
+  // no selection, no callout and no tap highlight while a game screen is up (html.playing, in the shell's styles).
+  // Every size is in rules.input; every label is in the bank. Nothing here reads or writes the evidence.
+  const RI = RULES.input, PAD_FONT = `700 ${RI.label_px}px Silkscreen, ui-monospace, monospace`;
+  const PAD = { cv: null, g: null, w: 0, h: 0, dpr: 1, on: false, layout: 'pad', dirty: true,
+    stick: { id: -1, ox: 0, oy: 0, x: 0, y: 0, ax: 0, ay: 0, up: false },
+    zones: [], names: [] };
+  // The right side's buttons for a layout: the side-scroller's three, or the explorer's four (FW11). Positions are fractions
+  // of the surface, then clamped so every button keeps the rules' minimum size.
+  function padLayout(names, layout) {
+    PAD.zones.length = 0; PAD.names = names; PAD.layout = layout;
+    const L = RI.layouts[layout], minR = RI.button_min_px / 2;
+    for (let i = 0; i < names.length; i++) {
+      const at = L[names[i]]; if (!at) continue;
+      const r = Math.max(minR, Math.min(PAD.w, PAD.h) * at.r);
+      PAD.zones.push({ key: names[i], x: PAD.w * at.x, y: PAD.h * at.y, r, id: -1, on: false, t: 0 });
+    }
+    PAD.dirty = true;
+  }
+  // Mount on a canvas: size it to its box at the device's pixel ratio (crisp rings and words), and take its pointers.
+  function padMount(c, names, layout) {
+    if (!c) return;
+    PAD.cv = c; PAD.g = c.getContext('2d'); padRelease();
+    padSize(); padLayout(names, layout);
+    if (c.dataset.pad !== '1') {
+      c.dataset.pad = '1';
+      c.addEventListener('pointerdown', padDown); c.addEventListener('pointermove', padMove);
+      c.addEventListener('pointerup', padUp); c.addEventListener('pointercancel', padUp); c.addEventListener('lostpointercapture', padUp);
+      c.addEventListener('contextmenu', (e) => e.preventDefault());
+      c.addEventListener('dblclick', (e) => e.preventDefault());
+    }
+    PAD.on = true;
+  }
+  function padSize() {
+    const c = PAD.cv; if (!c) return;
+    const w = Math.max(1, Math.round(c.clientWidth)), h = Math.max(1, Math.round(c.clientHeight)), dpr = clamp(Math.round(globalThis.devicePixelRatio || 1), 1, 3);
+    if (PAD.layout === 'pad') { c.width = w * dpr; c.height = h * dpr; }   // its own surface; on the explorer the game sizes the canvas
+    PAD.w = w; PAD.h = h; PAD.dpr = dpr; PAD.dirty = true;
+  }
+  function padUnmount() { padRelease(); PAD.on = false; PAD.cv = null; PAD.g = null; }
+  // Every held thing let go: the stick, the buttons and the keys they hold (a screen change, a blur, a card opening).
+  function padRelease() {
+    const s = PAD.stick; s.id = -1; s.ax = 0; s.ay = 0; s.up = false;
+    for (let i = 0; i < PAD.zones.length; i++) { PAD.zones[i].id = -1; PAD.zones[i].on = false; }
+    padKeys(); PAD.dirty = true;
+  }
+  const padXY = (e) => { const r = PAD.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  // The button for a point on the right side: the one whose ring holds it, else the nearest, so the side has no gap.
+  function padZoneAt(x, y) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < PAD.zones.length; i++) { const z = PAD.zones[i], d = Math.hypot(x - z.x, y - z.y) - z.r; if (d < bd) { bd = d; best = z; } }
+    return best;
+  }
+  const padSideX = () => PAD.w * RI.stick_side;
+  function padDown(e) {   // the canvas's pointerdown: sound may start here, from an input
+    e.preventDefault(); auUnlock(); if (!PAD.cv) return;
+    const [x, y] = padXY(e);
+    try { PAD.cv.setPointerCapture(e.pointerId); } catch {}
+    if (x < padSideX() || !PAD.zones.length) {
+      const s = PAD.stick; if (s.id >= 0) return;   // one stick: a second thumb on the left is ignored
+      s.id = e.pointerId; s.ox = x; s.oy = y; s.x = x; s.y = y; s.ax = 0; s.ay = 0; s.up = false;
+    } else {
+      const z = padZoneAt(x, y); if (!z || z.id >= 0) return;
+      z.id = e.pointerId; z.on = true; z.t = 0;
+    }
+    padKeys(); PAD.dirty = true;
+  }
+  function padMove(e) {
+    const s = PAD.stick; if (s.id !== e.pointerId || !PAD.cv) return;
+    e.preventDefault();
+    const [x, y] = padXY(e), R = RI.stick_radius_px;
+    let dx = x - s.ox, dy = y - s.oy; const d = Math.hypot(dx, dy);
+    // the stick's base trails a thumb that runs past its rim, so it never has to come back to the first point to turn
+    if (d > R * RI.stick_follow) { const k = (d - R * RI.stick_follow) / d; s.ox += dx * k; s.oy += dy * k; dx = x - s.ox; dy = y - s.oy; }
+    s.x = x; s.y = y;
+    const m = Math.min(1, Math.hypot(dx, dy) / R), dz = RI.dead_zone, a = Math.atan2(dy, dx), mm = m < dz ? 0 : (m - dz) / (1 - dz);
+    s.ax = Math.cos(a) * mm; s.ay = Math.sin(a) * mm;
+    padKeys(); PAD.dirty = true;
+  }
+  function padUp(e) {
+    const s = PAD.stick;
+    if (s.id === e.pointerId) { s.id = -1; s.ax = 0; s.ay = 0; s.up = false; }
+    for (let i = 0; i < PAD.zones.length; i++) { const z = PAD.zones[i]; if (z.id === e.pointerId) { z.id = -1; z.on = false; } }
+    padKeys(); PAD.dirty = true;
+  }
+  // What the pad holds, as the keys the game already reads: the stick's sideways push is left or right, a push up past
+  // the rules' line is a jump (once per push, as a key's press is once), and each button holds its own key.
+  function padKeys() {
+    if (typeof keys === 'undefined') return;
+    const s = PAD.stick, side = RI.side_threshold;
+    keys.left = s.ax < -side; keys.right = s.ax > side;
+    const upNow = s.ay < -RI.jump_threshold && PAD.layout === 'pad';
+    let jump = upNow, fire = false, dash = false;
+    for (let i = 0; i < PAD.zones.length; i++) { const z = PAD.zones[i]; if (!z.on) continue; if (z.key === 'jump') jump = true; else if (z.key === 'fire') fire = true; else if (z.key === 'dash') dash = true; }
+    if (jump && !keys.jump) tap.jump = true; if (fire && !keys.fire) tap.fire = true; if (dash && !keys.dash) tap.dash = true;
+    keys.jump = jump; keys.fire = fire; keys.dash = dash; s.up = upNow;
+  }
+  // Drawn only when something changed: a thumb landed, moved or lifted. Rings, never text a finger can select.
+  function padDraw() {
+    if (!PAD.on || !PAD.g || !PAD.dirty || PAD.layout !== 'pad') return;
+    PAD.dirty = false;
+    const g = PAD.g, d = PAD.dpr; g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, PAD.w, PAD.h);
+    padPaint(g, 1);
+  }
+  // The controls themselves, on any 2D context in CSS pixels: the pad's own canvas, or the explorer's scene (FW11).
+  function padPaint(g, alpha) {
+    const s = PAD.stick, R = RI.stick_radius_px;
+    g.lineWidth = 2;
+    // the stick: where the thumb is, or a faint ring at its resting place when nobody touches it
+    const ox = s.id >= 0 ? s.ox : PAD.w * RI.stick_rest.x, oy = s.id >= 0 ? s.oy : PAD.h * RI.stick_rest.y;
+    g.globalAlpha = alpha * (s.id >= 0 ? .55 : .28); g.strokeStyle = '#e8ecef'; g.beginPath(); g.arc(ox, oy, R, 0, Math.PI * 2); g.stroke();
+    g.globalAlpha = alpha * (s.id >= 0 ? .85 : .35); g.fillStyle = '#e8ecef';
+    const kx = s.id >= 0 ? ox + s.ax * R : ox, ky = s.id >= 0 ? oy + s.ay * R : oy;
+    g.beginPath(); g.arc(kx, ky, R * .42, 0, Math.PI * 2); g.fill();
+    // the buttons: a filled ring, brighter while held, and its word in the game's face
+    g.font = PAD_FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (let i = 0; i < PAD.zones.length; i++) {
+      const z = PAD.zones[i];
+      g.globalAlpha = alpha * (z.on ? .9 : .5); g.fillStyle = z.on ? RI.colours.on : RI.colours[z.key] || RI.colours.fire;
+      g.beginPath(); g.arc(z.x, z.y, z.r, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = alpha * .9; g.strokeStyle = '#0d0f12'; g.stroke();
+      g.globalAlpha = alpha; g.fillStyle = z.on ? '#0d0f12' : '#ffffff'; g.fillText(BANK.input[z.key], z.x, z.y + 1);
+    }
+    g.globalAlpha = 1;
+  }
 
   // ── DEMO data (invented chores in the file's grammar; public program ids; the Keep as counts) ──
   const WARDS = [
@@ -3884,6 +4099,9 @@ globalThis.FIELDWORKS_RULES = {
   const $screen = document.getElementById('screen'), $overlay = document.getElementById('overlay'), $live = document.getElementById('live'), $mode = document.getElementById('modepill'), $home = document.getElementById('homebtn');
   function head(title, sub, back) { return `<div class="shead">${back ? `<button class="back" data-go="${back}" aria-label="Back">${icon('back')}</button>` : ''}<span class="mark" aria-hidden="true"></span><div class="grow"><h1>${esc(title)}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div></div>`; }
   let hudEls = null;
+  // A game screen is up: the page is locked to the screen (no scroll, no zoom gesture, no selection, no callout; the styles
+  // under html.playing). Off for the lists, the sheets' own screens and Home, where text is read and may be selected.
+  function playing(on) { document.documentElement.classList.toggle('playing', on); }
   function gameShell(mode) {
     const strip = OUT ? (mode === 'castle' ? `<button class="pri" data-go="stages">${icon('field')} ${esc(BANK.castle.gate)}</button><button data-go="keeper">${icon('medal')} ${esc(BANK.castle.keeper)}</button>` : `<button data-go="castle">${icon('fort')} ${esc(BANK.stage.home)}</button>`)
       : EMBED ? (mode === 'castle' ? `<button class="pri" data-host="workorders">${icon('engine')} ${esc(BANK.castle.orders)}</button><button data-go="stages">${icon('field')} ${esc(BANK.castle.gate)}</button>` : `<button data-go="castle">${icon('fort')} ${esc(BANK.stage.home)}</button><button data-host="workorders">${icon('engine')} ${esc(BANK.castle.orders)}</button>`)   // embedded, evidence is made in the host: the button asks it to open its work orders
@@ -3893,7 +4111,7 @@ globalThis.FIELDWORKS_RULES = {
     return `<div class="hud" id="hud"><div class="title"><b id="hudTitle"></b></div><div class="meter" id="hudCastle"></div><div class="meter"><span>L<b id="lvl"></b></span><div class="bar"><i id="xpBar"></i></div></div><div class="statechip" id="stateChip"></div><button class="mutebtn" id="muteBtn" data-mute="1" aria-pressed="${S.play.mute}">${esc(S.play.mute ? BANK.sound.off : BANK.sound.on)}</button></div>
       <div class="ticker" id="ticker" aria-live="off"><b id="tickA"></b><span class="need" id="tickB"></span></div>
       <div class="stage" id="stage"><canvas class="game" id="game" aria-label="${mode === 'castle' ? 'The castle. It defends itself; move along the wall and fire if you like.' : 'A stage. Run right, jump, dash, fire; hold fire to charge.'}"></canvas>${mode === 'stage' ? '<div class="wpcard" id="wpcard" hidden></div>' : `<button class="skipbtn" id="skipFight" hidden>${esc(BANK.horde.skip)}</button>`}</div>
-      <nav class="pad" aria-label="Controls"><button data-key="left" aria-label="Left">◀</button><button data-key="right" aria-label="Right">▶</button><span class="gap"></span><button class="act alt" data-key="dash">${esc(BANK.stage.pad_dash)}</button><button class="act" data-key="fire">${esc(BANK.stage.pad_fire)}</button><button class="act" data-key="jump">${esc(BANK.stage.pad_jump)}</button></nav><div class="strip">${strip}</div>`;
+      <canvas class="padcv" id="padcv" role="application" aria-label="${esc(BANK.input.label)}"></canvas><div class="strip">${strip}</div>`;
   }
   let tickHold = 0;
   /** The ticker: the horde line by default; a passing sentence (from the bank) holds it for a few seconds. */
@@ -3913,15 +4131,13 @@ globalThis.FIELDWORKS_RULES = {
     cv = document.getElementById('game'); if (!cv) return; ctx = cv.getContext('2d');
     hudEls = { title: document.getElementById('hudTitle'), castle: document.getElementById('hudCastle'), state: document.getElementById('stateChip'), lvl: document.getElementById('lvl'), xp: document.getElementById('xpBar') };
     resize(); stageObs.disconnect(); stageObs.observe(document.getElementById('stage'));
-    document.querySelectorAll('.pad [data-key]').forEach((b) => {
-      const k = b.dataset.key, on = (e) => { auUnlock(); keys[k] = true; if (k in tap) tap[k] = true; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch {} e.preventDefault(); }, off = () => { keys[k] = false; b.classList.remove('on'); };
-      b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off); b.addEventListener('contextmenu', (e) => e.preventDefault());
-    });
+    padMount(document.getElementById('padcv'), RI.pads.side, 'pad');   // the floating stick and the drawn buttons (15-input.js)
   }
   function resize() {
     const st = document.getElementById('stage'); if (!st || !cv) return;
     const w = st.clientWidth - 12, sc = Math.max(1, Math.round(w / RS.view_w)); VW = clamp(Math.floor(w / sc), 150, 220); VH = clamp(Math.floor((st.clientHeight - 4) / sc), 110, 232);
     bgKey = ''; cv.width = VW; cv.height = VH; cv.style.width = VW * sc + 'px'; cv.style.height = VH * sc + 'px'; ctx.imageSmoothingEnabled = false;
+    if (PAD.on && PAD.layout === 'pad') { padSize(); padLayout(PAD.names, 'pad'); }
   }
   new ResizeObserver(() => resize()).observe(document.getElementById('phone'));
   const stageObs = new ResizeObserver(() => resize());
@@ -3953,12 +4169,12 @@ globalThis.FIELDWORKS_RULES = {
     if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
     if (S.screen !== 'stage') music(S.screen === 'castle' && (CS.fight || (S.horde.clock.due && S.state !== 'unlit')) ? 'warning' : 'castle');
     if (S.screen === 'castle' || S.screen === 'stage') {
-      $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
+      playing(true); $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
       if (S.screen === 'castle' && CS.fight) document.getElementById('skipFight').hidden = false;
       if (S.screen === 'castle' && !S.started) { S.started = true; if (store.get(KEYS.onboarded) === '1') showStart(); else showOnboarding(0); }
       renderOverlay(); return;
     }
-    hudEls = null; cv = null;
+    hudEls = null; cv = null; padUnmount(); playing(false);
     if (S.screen === 'stages') {
       html += head(BANK.stage.heading, OUT ? '' : esc(BANK.stage.sub), 'castle') + `<div class="content">${stageRows()}</div>`;
     } else if (S.screen === 'siege') {
@@ -4106,7 +4322,7 @@ globalThis.FIELDWORKS_RULES = {
     if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
     else if (key === 'escape' && EMBED && !blocking() && !(S.screen === 'stage' && ST)) { saveNow(); music(''); hostGo('close'); } });   /* in a host frame, Escape at rest closes the game; a run in progress is never dropped by a key */
   addEventListener('keyup', (e) => { const k = KEYMAP[e.key.toLowerCase()]; if (k) keys[k] = false; });
-  addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; });
+  addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; padRelease(); });
   function pressSeg(id, key, v) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[key] === v))); }
 
   // The loop: paused while a sheet or a card is open, stopped while the page is hidden. Nothing is allocated per frame.
@@ -4119,7 +4335,7 @@ globalThis.FIELDWORKS_RULES = {
       if (!blocking()) { if (S.screen === 'castle') updateCastle(dt); else updateStage(dt); TEL.session_seconds += dt; }
       else tap.jump = tap.fire = tap.dash = false;
       if (cv && S.screen === 'castle') renderCastle(now / 1000); else if (cv && ST) renderStage(now / 1000);
-      tickHold -= dt; hudTick += dt; if (hudTick > .25) { hudTick = 0; updateHud(); }
+      padDraw(); tickHold -= dt; hudTick += dt; if (hudTick > .25) { hudTick = 0; updateHud(); }
       if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
     }
     requestAnimationFrame(frame);

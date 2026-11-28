@@ -706,7 +706,7 @@ test('rules.audio: sound is data for a synth in code; every effect and song the 
   // no audio file, nothing before the first input, and a mute that is remembered
   assert.ok(!/<audio|new Audio|\.mp3\b|\.ogg\b|\.wav\b|decodeAudioData/.test(SRC), 'no audio file anywhere');
   assert.equal((SRC.match(/new AC\(\)/g) || []).length, 1); assert.match(fn('auUnlock'), /AU\.ctx = new AC\(\);/, 'the one AudioContext is made in auUnlock');
-  const calls = SRC.split('\n').filter((l) => /auUnlock\(\)|, auUnlock,/.test(l) && !/function auUnlock/.test(l)); assert.ok(calls.length >= 3 && calls.every((l) => /pointerdown|keydown|closest\(|const k = b\.dataset\.key/.test(l)), 'and auUnlock is called only from an input handler');
+  const calls = SRC.split('\n').filter((l) => /auUnlock\(\)|, auUnlock,/.test(l) && !/function auUnlock/.test(l)); assert.ok(calls.length >= 3 && calls.every((l) => /pointerdown|keydown|closest\(|e\.preventDefault\(\); auUnlock\(\); if \(!PAD\.cv\) return;/.test(l)), 'and auUnlock is called only from an input handler');
   assert.match(fn('setMute'), /S\.play\.mute = !!on; .*saveNow\(\);/, 'mute is part of the play record, and saved');
   assert.match(SRC, /const CALM = matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches;/); assert.match(fn('jolt'), /if \(CALM\) return;/, 'reduced motion: no shake and no hit-stop');
 });

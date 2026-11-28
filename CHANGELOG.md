@@ -2,7 +2,36 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — <title>` while the PR is open (date it at merge).
+merged; `## Unreleased — touch: a floating stick, two thumbs at once, and a page that holds still
+
+FW10, design D67 and D79 (the input rule in the design repo's FIELDWORKS.md).
+
+- `prototype/game/15-input.js` (new): while a game screen is up, one pad canvas
+  takes every pointer. A stick appears wherever the left thumb lands and trails
+  a thumb that runs past its rim; the right side is drawn Dash, Fire and Jump
+  buttons whose hit areas tile that side with no gap, so a thumb that misses a
+  button presses the nearest one. Pointers are tracked by id, so one thumb runs
+  while the other jumps or fires. A push up on the stick also jumps. Lifting,
+  a blur or a screen change lets everything go. Sound still starts only from an
+  input (the pad's pointerdown).
+- `prototype/game/80-screens.js`, `prototype/prototype.src.html`: the five DOM
+  pad buttons are gone; while a game screen is up the page carries
+  `html.playing`: `touch-action: none`, no selection, no callout, no tap
+  highlight and no overscroll on the game, and on a phone-width screen the game
+  fills the screen (safe areas kept), so a quick second tap or a drag no longer
+  zooms, scrolls or selects the page. The order sheet and cards keep ordinary
+  taps.
+- `rules/fieldworks.json`: a new `input` block (stick radius, dead zone, follow,
+  thresholds, the two button layouts, the minimum button size, colours) and
+  `bank.input` (the button words). The explorer's four-button layout (Fire,
+  Dash, Bot, Build) is in the rules already for FW11.
+- `prototype/shots.mjs`: the touch section drives the pad canvas: the stick
+  runs the Keeper, a second thumb jumps while it runs, lifting lets go, a tap
+  between buttons dashes, and a double tap or a drag off the pad moves nothing
+  (96 checks).
+- `tests/check.mjs`: the sound rule allows the pad's pointerdown as an input.
+
+## Unreleased — <title>` while the PR is open (date it at merge).
 Name the files touched and say what a user or operator will notice.
 
 ## Unreleased — the Pages site says which build is live

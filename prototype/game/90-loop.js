@@ -36,7 +36,7 @@
     if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
     else if (key === 'escape' && EMBED && !blocking() && !(S.screen === 'stage' && ST)) { saveNow(); music(''); hostGo('close'); } });   /* in a host frame, Escape at rest closes the game; a run in progress is never dropped by a key */
   addEventListener('keyup', (e) => { const k = KEYMAP[e.key.toLowerCase()]; if (k) keys[k] = false; });
-  addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; });
+  addEventListener('blur', () => { for (const kk in keys) keys[kk] = false; padRelease(); });
   function pressSeg(id, key, v) { document.querySelectorAll(`#${id} button`).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset[key] === v))); }
 
   // The loop: paused while a sheet or a card is open, stopped while the page is hidden. Nothing is allocated per frame.
@@ -49,7 +49,7 @@
       if (!blocking()) { if (S.screen === 'castle') updateCastle(dt); else updateStage(dt); TEL.session_seconds += dt; }
       else tap.jump = tap.fire = tap.dash = false;
       if (cv && S.screen === 'castle') renderCastle(now / 1000); else if (cv && ST) renderStage(now / 1000);
-      tickHold -= dt; hudTick += dt; if (hudTick > .25) { hudTick = 0; updateHud(); }
+      padDraw(); tickHold -= dt; hudTick += dt; if (hudTick > .25) { hudTick = 0; updateHud(); }
       if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
     }
     requestAnimationFrame(frame);

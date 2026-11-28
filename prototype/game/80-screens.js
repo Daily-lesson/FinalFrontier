@@ -2,6 +2,9 @@
   const $screen = document.getElementById('screen'), $overlay = document.getElementById('overlay'), $live = document.getElementById('live'), $mode = document.getElementById('modepill'), $home = document.getElementById('homebtn');
   function head(title, sub, back) { return `<div class="shead">${back ? `<button class="back" data-go="${back}" aria-label="Back">${icon('back')}</button>` : ''}<span class="mark" aria-hidden="true"></span><div class="grow"><h1>${esc(title)}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div></div>`; }
   let hudEls = null;
+  // A game screen is up: the page is locked to the screen (no scroll, no zoom gesture, no selection, no callout; the styles
+  // under html.playing). Off for the lists, the sheets' own screens and Home, where text is read and may be selected.
+  function playing(on) { document.documentElement.classList.toggle('playing', on); }
   function gameShell(mode) {
     const strip = OUT ? (mode === 'castle' ? `<button class="pri" data-go="stages">${icon('field')} ${esc(BANK.castle.gate)}</button><button data-go="keeper">${icon('medal')} ${esc(BANK.castle.keeper)}</button>` : `<button data-go="castle">${icon('fort')} ${esc(BANK.stage.home)}</button>`)
       : EMBED ? (mode === 'castle' ? `<button class="pri" data-host="workorders">${icon('engine')} ${esc(BANK.castle.orders)}</button><button data-go="stages">${icon('field')} ${esc(BANK.castle.gate)}</button>` : `<button data-go="castle">${icon('fort')} ${esc(BANK.stage.home)}</button><button data-host="workorders">${icon('engine')} ${esc(BANK.castle.orders)}</button>`)   // embedded, evidence is made in the host: the button asks it to open its work orders
@@ -11,7 +14,7 @@
     return `<div class="hud" id="hud"><div class="title"><b id="hudTitle"></b></div><div class="meter" id="hudCastle"></div><div class="meter"><span>L<b id="lvl"></b></span><div class="bar"><i id="xpBar"></i></div></div><div class="statechip" id="stateChip"></div><button class="mutebtn" id="muteBtn" data-mute="1" aria-pressed="${S.play.mute}">${esc(S.play.mute ? BANK.sound.off : BANK.sound.on)}</button></div>
       <div class="ticker" id="ticker" aria-live="off"><b id="tickA"></b><span class="need" id="tickB"></span></div>
       <div class="stage" id="stage"><canvas class="game" id="game" aria-label="${mode === 'castle' ? 'The castle. It defends itself; move along the wall and fire if you like.' : 'A stage. Run right, jump, dash, fire; hold fire to charge.'}"></canvas>${mode === 'stage' ? '<div class="wpcard" id="wpcard" hidden></div>' : `<button class="skipbtn" id="skipFight" hidden>${esc(BANK.horde.skip)}</button>`}</div>
-      <nav class="pad" aria-label="Controls"><button data-key="left" aria-label="Left">◀</button><button data-key="right" aria-label="Right">▶</button><span class="gap"></span><button class="act alt" data-key="dash">${esc(BANK.stage.pad_dash)}</button><button class="act" data-key="fire">${esc(BANK.stage.pad_fire)}</button><button class="act" data-key="jump">${esc(BANK.stage.pad_jump)}</button></nav><div class="strip">${strip}</div>`;
+      <canvas class="padcv" id="padcv" role="application" aria-label="${esc(BANK.input.label)}"></canvas><div class="strip">${strip}</div>`;
   }
   let tickHold = 0;
   /** The ticker: the horde line by default; a passing sentence (from the bank) holds it for a few seconds. */
@@ -31,15 +34,13 @@
     cv = document.getElementById('game'); if (!cv) return; ctx = cv.getContext('2d');
     hudEls = { title: document.getElementById('hudTitle'), castle: document.getElementById('hudCastle'), state: document.getElementById('stateChip'), lvl: document.getElementById('lvl'), xp: document.getElementById('xpBar') };
     resize(); stageObs.disconnect(); stageObs.observe(document.getElementById('stage'));
-    document.querySelectorAll('.pad [data-key]').forEach((b) => {
-      const k = b.dataset.key, on = (e) => { auUnlock(); keys[k] = true; if (k in tap) tap[k] = true; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch {} e.preventDefault(); }, off = () => { keys[k] = false; b.classList.remove('on'); };
-      b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off); b.addEventListener('contextmenu', (e) => e.preventDefault());
-    });
+    padMount(document.getElementById('padcv'), RI.pads.side, 'pad');   // the floating stick and the drawn buttons (15-input.js)
   }
   function resize() {
     const st = document.getElementById('stage'); if (!st || !cv) return;
     const w = st.clientWidth - 12, sc = Math.max(1, Math.round(w / RS.view_w)); VW = clamp(Math.floor(w / sc), 150, 220); VH = clamp(Math.floor((st.clientHeight - 4) / sc), 110, 232);
     bgKey = ''; cv.width = VW; cv.height = VH; cv.style.width = VW * sc + 'px'; cv.style.height = VH * sc + 'px'; ctx.imageSmoothingEnabled = false;
+    if (PAD.on && PAD.layout === 'pad') { padSize(); padLayout(PAD.names, 'pad'); }
   }
   new ResizeObserver(() => resize()).observe(document.getElementById('phone'));
   const stageObs = new ResizeObserver(() => resize());
@@ -71,12 +72,12 @@
     if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
     if (S.screen !== 'stage') music(S.screen === 'castle' && (CS.fight || (S.horde.clock.due && S.state !== 'unlit')) ? 'warning' : 'castle');
     if (S.screen === 'castle' || S.screen === 'stage') {
-      $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
+      playing(true); $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
       if (S.screen === 'castle' && CS.fight) document.getElementById('skipFight').hidden = false;
       if (S.screen === 'castle' && !S.started) { S.started = true; if (store.get(KEYS.onboarded) === '1') showStart(); else showOnboarding(0); }
       renderOverlay(); return;
     }
-    hudEls = null; cv = null;
+    hudEls = null; cv = null; padUnmount(); playing(false);
     if (S.screen === 'stages') {
       html += head(BANK.stage.heading, OUT ? '' : esc(BANK.stage.sub), 'castle') + `<div class="content">${stageRows()}</div>`;
     } else if (S.screen === 'siege') {
