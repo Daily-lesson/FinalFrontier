@@ -262,6 +262,44 @@
     return false;
   }
 
-  const api = { TAU, rngOf, hashOf, camOf, camFit, project, camFollow, KINDS, regionOf, regionsOpen, nextSeal, newRun, stepRun, solidAt, collide, aimAt };
+  // ── the frame governor (FW12) ─────────────────────────────────────────────
+  /**
+   * Keeps a frame inside its budget on any phone. It is fed the milliseconds the frame's own work took (update and
+   * drawing) and the time between frames; when the work runs over the budget for a moment it steps down one level
+   * (a level is a detail tier and a render scale, from rules.frontier.govern.levels, best first), and when there has
+   * been plenty of room for a while it steps back up. A step down soon after a step up doubles the wait before the
+   * next step up, so it settles instead of see-sawing. A slow frame with little work of its own is the device holding
+   * the page back (a power saver, a 30 Hz screen), not the scene: that never steps down. Pure: numbers in, numbers out.
+   */
+  function govOf(rules, scaleMax) {
+    const L = rules.frontier.govern.levels, G = { level: 0, tier: 0, scale: 1, max: Math.max(1, scaleMax | 0), ms: 0, frame: 0, n: 0, over: 0, under: 0, wait: rules.frontier.govern.raise_after_s, since: 1e9, pin: -1, levels: L.length };
+    return govSet(G, 0, rules);
+  }
+  /** Put the governor on a level (clamped), its tier and render scale from the rules; scale never above the device's. */
+  function govSet(G, level, rules) {
+    const L = rules.frontier.govern.levels, i = Math.max(0, Math.min(L.length - 1, level | 0));
+    G.level = i; G.tier = L[i][0]; G.scale = Math.min(G.max, L[i][1]); return G;
+  }
+  /** One frame's measure. Returns true when the level changed (the screen then resizes or redraws what it caches). */
+  function govern(G, workMs, frameMs, dt, rules) {
+    const R = rules.frontier.govern, was = G.level, wasScale = G.scale, wasTier = G.tier;
+    if (G.pin >= 0) { govSet(G, G.pin, rules); return G.tier !== wasTier || G.scale !== wasScale; }
+    G.ms += (workMs - G.ms) * R.ema; G.frame += (frameMs - G.frame) * R.ema; G.n++; G.since += dt;
+    if (G.n < R.warm_frames) return false;
+    const heavy = G.ms > R.budget_ms || (G.frame > R.frame_ms_max && G.ms > R.budget_ms * R.own_share);
+    const light = G.ms < R.budget_ms * R.raise_below && G.frame <= R.frame_ms_max;
+    if (heavy) { G.over += dt; G.under = 0; } else if (light) { G.under += dt; G.over = 0; } else { G.over = 0; G.under = 0; }
+    let step = 0;
+    if (G.over >= R.drop_after_s) step = 1; else if (G.under >= G.wait) step = -1;
+    // skip levels that change nothing on this device (a render scale it cannot have)
+    let lv = G.level;
+    if (step) { lv += step; while (lv >= 0 && lv < G.levels && R.levels[lv][0] === G.tier && Math.min(G.max, R.levels[lv][1]) === G.scale) lv += step; }
+    if (!step || lv < 0 || lv >= G.levels) { if (step) { G.over = 0; G.under = 0; } return false; }
+    if (step > 0 && G.since < G.wait * 2) G.wait = Math.min(R.backoff_max_s, G.wait * 2);   // it went up and could not hold it
+    govSet(G, lv, rules); G.over = 0; G.under = 0; G.ms = Math.min(G.ms, R.budget_ms); G.since = step < 0 ? 0 : G.since;
+    return G.level !== was && (G.tier !== wasTier || G.scale !== wasScale);
+  }
+
+  const api = { TAU, rngOf, hashOf, camOf, camFit, project, camFollow, KINDS, regionOf, regionsOpen, nextSeal, newRun, stepRun, solidAt, collide, aimAt, govOf, govSet, govern };
   if (typeof globalThis !== 'undefined') globalThis.FieldworksFrontier = api;
 })();

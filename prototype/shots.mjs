@@ -362,6 +362,12 @@ async function behaviours() {
     check('a tap on Dash dashes and spends power', (await D(p, 'frontier')).power < k1.power, `power ${Math.round(k1.power)} → ${Math.round((await D(p, 'frontier')).power)}`); }
   await p.keyboard.down('w'); for (let i = 0; i < 20; i++) { await p.keyboard.press('j'); await wait(p, 150); } await p.keyboard.up('w');
   const fr2 = await D(p, 'frontier'); await phoneShot(p, 'frontier-north');
+  // FW12: the frame governor picks the detail tier and render scale; pinned, the walk shows each tier for the eye
+  check('the frame governor reports its level, tier and scale, measured from the frame\'s own work', fr2.lod && Number.isInteger(fr2.lod.level) && fr2.lod.tier >= 0 && fr2.lod.scale >= 1 && fr2.lod.ms >= 0, JSON.stringify(fr2.lod));
+  await p.evaluate(() => FieldworksDebug.frontierLevel(0)); await wait(p, 120); await phoneShot(p, 'frontier-dense');
+  const pinned = (await D(p, 'frontier')).lod; await p.evaluate(() => FieldworksDebug.frontierLevel(2)); await wait(p, 120); await phoneShot(p, 'frontier-plain');
+  const plain = (await D(p, 'frontier')).lod; await p.evaluate(() => FieldworksDebug.frontierLevel(-1));
+  check('a pinned level holds: the dense tier at the top, the plain tier below it', pinned.tier === 2 && plain.tier === 1 && plain.scale === 1, `${JSON.stringify(pinned)} · ${JSON.stringify(plain)}`);
   check('the keyboard walks the frontier too, and nothing the run does touches the evidence', fr2.y < fr0.y - 150 && (await D(p, 'events')) === ev0 && (await D(p, 'xp')) === lv0, `y ${Math.round(fr2.y)}; scrap ${fr2.scrap}; score ${fr2.score}`);
   await p.click('.xback'); await wait(p, 200);
   check('the way home: back to the castle', (await p.evaluate(() => FieldworksDebug.screen())) === 'castle');
@@ -607,7 +613,11 @@ async function perf() {
   const stage = await perfScene('a stage, running and firing', async (p) => { await go(p, 'stages'); await p.click('[data-stage="0"]'); await wait(p, 300); await p.keyboard.down('d'); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); p.keyboard.press(' ').catch(() => {}); if (Math.random() < .3) p.evaluate(() => { const u = document.querySelector('[data-up]'); if (u) u.click(); }).catch(() => {}); }, 200); });
   const boss = await perfScene('a boss fight, dashing and firing', async (p) => { await go(p, 'stages'); await p.click('[data-stage="1"]'); await wait(p, 300); await toBoss(p); await p.evaluate(() => { for (const s of ['spread', 'spread', 'rapid', 'buddy', 'buddy']) FieldworksDebug.give(s); }); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); p.keyboard.press('k').catch(() => {}); }, 180); });
   const frontier = await perfScene('the frontier, walking north and firing', async (p) => { await go(p, 'stages'); await p.click('[data-go="frontier"]'); await wait(p, 300); await p.keyboard.down('w'); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); }, 200); });
-  writeFileSync(join(OUT, 'perf.json'), JSON.stringify({ horde, stage, boss, frontier }, null, 2) + '\n');
+  // FW12: the same walk with the governor pinned to the dense tier at full scale, and to the plain tier at scale 1
+  const walkFrontier = (level) => async (p) => { await go(p, 'stages'); await p.click('[data-go="frontier"]'); await wait(p, 300); await p.evaluate((n) => FieldworksDebug.frontierLevel(n), level); await p.keyboard.down('w'); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); }, 200); };
+  const frontier_dense = await perfScene('the frontier at the dense tier, pinned', walkFrontier(0));
+  const frontier_plain = await perfScene('the frontier at the plain tier, scale 1, pinned', walkFrontier(2));
+  writeFileSync(join(OUT, 'perf.json'), JSON.stringify({ horde, stage, boss, frontier, frontier_dense, frontier_plain }, null, 2) + '\n');
 }
 
 async function artSheet() {

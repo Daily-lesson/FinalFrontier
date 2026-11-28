@@ -45,10 +45,12 @@
   const blocking = () => $overlay.childElementCount > 0 && !!$overlay.querySelector('.scrim, .dropwrap');
   function frame(now) {
     if (document.hidden) { running = false; return; }
-    const dt = Math.min(.034, (now - last) / 1000); last = now;
+    const gap = now - last, dt = Math.min(.034, gap / 1000); last = now;
     if (cv && S.screen === 'frontier' && XR) {   // the frontier: its own update and drawing, the controls drawn over the scene
+      const w0 = performance.now();
       if (!blocking()) { updateExplore(dt); TEL.session_seconds += dt; }
       if (XR) renderExplore(now / 1000);
+      if (XR && XE.govern(XGOV, performance.now() - w0, gap, dt, RULES)) xgovApply();   // the frame's own work, measured: the governor keeps it in budget
       hudTick += dt; if (hudTick > .25) { hudTick = 0; if (XR) xhudText(); }
       if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
     } else if (cv && (S.screen === 'castle' || (S.screen === 'stage' && ST))) {
@@ -121,7 +123,9 @@
     hurt() { if (ST) { ST.k.inv = 0; hurt(); } },
     keys: () => ({ ...keys }),
     // the frontier (FW11): where the Keeper is, what the run holds, what the camera sees; play only
-    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS] } : null)
+    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS], lod: { level: XGOV.level, tier: XT, scale: XRS, ms: Math.round(XGOV.ms * 100) / 100, frame: Math.round(XGOV.frame * 100) / 100, pin: XGOV.pin } } : null),
+    // pin the frontier's detail level (0 is the densest; -1 hands it back to the governor), for the walk and its frame times
+    frontierLevel: (n) => { XGOV.pin = Number.isInteger(n) && n >= 0 && n < XGOV.levels ? n : -1; if (XGOV.pin >= 0 && XE.govern(XGOV, 0, 0, 0, RULES) && XR) xgovApply(); return XGOV.pin; }
   };
   function boot() {
     if (globalThis.FIELDWORKS_ART) { reset(); paintKeeper(); renderArtSheet(); return; }

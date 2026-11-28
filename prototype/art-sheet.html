@@ -2587,7 +2587,23 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       }
     },
     "render": {
-      "scale_max": 2
+      "$note": "FW12. The canvas is drawn at its CSS size times a whole-number render scale, never above the device's pixel ratio or scale_max. Ground tiles are painted once into an atlas at the current zoom and scale and drawn from it (one painting, hundreds of tiles). embers: the ash that drifts up through the view at the dense tier.",
+      "scale_max": 2,
+      "atlas_variants": 4,
+      "embers": 36
+    },
+    "govern": {
+      "$note": "FW12, the frame governor (FieldworksFrontier.govern). budget_ms: the frame's own work (update and drawing, measured) it aims under, leaving the rest of a 60 Hz frame (16.7 ms) to the browser. levels, best first: [detail tier, render scale]; tier 2 is the dense art, 1 the plain, 0 the plain without the drifting ash and vent sparks. It steps down after drop_after_s over budget (or frames slower than frame_ms_max while its own work is over own_share of the budget), and up after raise_after_s under raise_below of it; a step down soon after a step up doubles that wait, to backoff_max_s.",
+      "budget_ms": 10,
+      "frame_ms_max": 20,
+      "own_share": 0.5,
+      "ema": 0.08,
+      "warm_frames": 30,
+      "drop_after_s": 1,
+      "raise_after_s": 4,
+      "raise_below": 0.55,
+      "backoff_max_s": 30,
+      "levels": [[2, 2], [2, 1], [1, 1], [0, 1]]
     },
     "hud": {
       "mini_px_per_tile": 3,
@@ -3351,7 +3367,45 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     return false;
   }
 
-  const api = { TAU, rngOf, hashOf, camOf, camFit, project, camFollow, KINDS, regionOf, regionsOpen, nextSeal, newRun, stepRun, solidAt, collide, aimAt };
+  // ── the frame governor (FW12) ─────────────────────────────────────────────
+  /**
+   * Keeps a frame inside its budget on any phone. It is fed the milliseconds the frame's own work took (update and
+   * drawing) and the time between frames; when the work runs over the budget for a moment it steps down one level
+   * (a level is a detail tier and a render scale, from rules.frontier.govern.levels, best first), and when there has
+   * been plenty of room for a while it steps back up. A step down soon after a step up doubles the wait before the
+   * next step up, so it settles instead of see-sawing. A slow frame with little work of its own is the device holding
+   * the page back (a power saver, a 30 Hz screen), not the scene: that never steps down. Pure: numbers in, numbers out.
+   */
+  function govOf(rules, scaleMax) {
+    const L = rules.frontier.govern.levels, G = { level: 0, tier: 0, scale: 1, max: Math.max(1, scaleMax | 0), ms: 0, frame: 0, n: 0, over: 0, under: 0, wait: rules.frontier.govern.raise_after_s, since: 1e9, pin: -1, levels: L.length };
+    return govSet(G, 0, rules);
+  }
+  /** Put the governor on a level (clamped), its tier and render scale from the rules; scale never above the device's. */
+  function govSet(G, level, rules) {
+    const L = rules.frontier.govern.levels, i = Math.max(0, Math.min(L.length - 1, level | 0));
+    G.level = i; G.tier = L[i][0]; G.scale = Math.min(G.max, L[i][1]); return G;
+  }
+  /** One frame's measure. Returns true when the level changed (the screen then resizes or redraws what it caches). */
+  function govern(G, workMs, frameMs, dt, rules) {
+    const R = rules.frontier.govern, was = G.level, wasScale = G.scale, wasTier = G.tier;
+    if (G.pin >= 0) { govSet(G, G.pin, rules); return G.tier !== wasTier || G.scale !== wasScale; }
+    G.ms += (workMs - G.ms) * R.ema; G.frame += (frameMs - G.frame) * R.ema; G.n++; G.since += dt;
+    if (G.n < R.warm_frames) return false;
+    const heavy = G.ms > R.budget_ms || (G.frame > R.frame_ms_max && G.ms > R.budget_ms * R.own_share);
+    const light = G.ms < R.budget_ms * R.raise_below && G.frame <= R.frame_ms_max;
+    if (heavy) { G.over += dt; G.under = 0; } else if (light) { G.under += dt; G.over = 0; } else { G.over = 0; G.under = 0; }
+    let step = 0;
+    if (G.over >= R.drop_after_s) step = 1; else if (G.under >= G.wait) step = -1;
+    // skip levels that change nothing on this device (a render scale it cannot have)
+    let lv = G.level;
+    if (step) { lv += step; while (lv >= 0 && lv < G.levels && R.levels[lv][0] === G.tier && Math.min(G.max, R.levels[lv][1]) === G.scale) lv += step; }
+    if (!step || lv < 0 || lv >= G.levels) { if (step) { G.over = 0; G.under = 0; } return false; }
+    if (step > 0 && G.since < G.wait * 2) G.wait = Math.min(R.backoff_max_s, G.wait * 2);   // it went up and could not hold it
+    govSet(G, lv, rules); G.over = 0; G.under = 0; G.ms = Math.min(G.ms, R.budget_ms); G.since = step < 0 ? 0 : G.since;
+    return G.level !== was && (G.tier !== wasTier || G.scale !== wasScale);
+  }
+
+  const api = { TAU, rngOf, hashOf, camOf, camFit, project, camFollow, KINDS, regionOf, regionsOpen, nextSeal, newRun, stepRun, solidAt, collide, aimAt, govOf, govSet, govern };
   if (typeof globalThis !== 'undefined') globalThis.FieldworksFrontier = api;
 })();
 </script>
@@ -4852,6 +4906,10 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   // the Keeper and the machines stand upright. The rules of a run live in src/frontier.js (FieldworksFrontier), the
   // numbers in rules.frontier and every word in bank.explore. This file is the screen: mounting, input, drawing.
   // The canvas is drawn at its CSS size times a whole-number render scale (1 or 2), with no image asset.
+  // Detail comes in tiers (FW12): tier 2 is the dense art (characters about three times the faces of the plain tier,
+  // props and ground about twice), 1 the plain, 0 the plain without the drifting ash. A frame governor
+  // (FieldworksFrontier.govern) picks the tier and the render scale from what each frame's own work measures.
+  // Ground tiles are painted once into an atlas at the current zoom and scale and drawn from it: one painting, every tile.
   // Nothing here reads or writes the evidence; the castle is read to draw it and to know which regions are open.
   const XE = FieldworksFrontier, RX = RULES.frontier, BX = BANK.frontier;
   let XR = null, XRUN = 0, XRS = 1, XW = 1, XH = 1;
@@ -4861,6 +4919,10 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   const XG = ['#2b2723', '#312c27', '#28241f', '#36302a'], XGL = ['#332e29', '#39332d', '#2f2a25', '#3e3730'];   // ground: ash, grit, scorched plate, gravel
   const XTXT = { scrap: '', score: '', seal: '', sealN: -1, scrapN: -1, scoreN: -1, toast: '', toastT: 0 };
   let XMINI = null, XMKEY = '';
+  const XGOV = XE.govOf(RULES, 1);   // the frame governor: detail tier and render scale, stepped by measured work
+  let XT = XGOV.tier, XATL = null, XAK = '', XAW = 1, XAH = 1;   // the tier now; the ground atlas, its key and one cell's size in device pixels
+  const XEMB = new Float32Array(RX.render.embers * 3);   // the drifting ash: three seeded numbers each, drawn from the clock with no state
+  { const r = XE.rngOf(0x5eed); for (let i = 0; i < XEMB.length; i++) XEMB[i] = r(); }
 
   /** The screen's markup: one canvas that is the scene and the controls, and a way home. */
   function exploreShell() {
@@ -4882,10 +4944,47 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function sizeExplore() {
     const st = document.getElementById('stage'); if (!st || !cv) return;
     XW = Math.max(1, Math.round(st.clientWidth)); XH = Math.max(1, Math.round(st.clientHeight));
-    XRS = clamp(Math.round(globalThis.devicePixelRatio || 1), 1, RX.render.scale_max);
+    XGOV.max = clamp(Math.round(globalThis.devicePixelRatio || 1), 1, RX.render.scale_max); XE.govSet(XGOV, XGOV.level, RULES);
+    XRS = XGOV.scale; XT = XGOV.tier;
     cv.width = XW * XRS; cv.height = XH * XRS; cv.style.width = XW + 'px'; cv.style.height = XH + 'px';
-    XE.camFit(XCAM, XW, XH);
+    XE.camFit(XCAM, XW, XH); xatlasBake();
     if (PAD.on && PAD.layout === 'overlay') { padSize(); padLayout(PAD.names, 'overlay'); }
+  }
+  /** The governor moved: a new render scale resizes the canvas (and repaints the atlas); a new tier only changes what is drawn. */
+  function xgovApply() { if (XGOV.scale !== XRS) sizeExplore(); XT = XGOV.tier; }
+  /**
+   * The ground atlas: each kind of ground in a few variants, and the road's edge, middle and striped middle, painted
+   * once at one tile's size on the surface (flat ground projects to the same rectangle everywhere) and drawn from
+   * here for every tile in view. Repainted only when the zoom or the render scale changes.
+   */
+  function xatlasBake() {
+    const T = RX.tile, cw = Math.max(2, Math.ceil(T * XCAM.zoom * XRS)), ch = Math.max(2, Math.ceil(T * XCAM.zoom * XCAM.sin * XRS)), key = cw + 'x' + ch;
+    if (key === XAK && XATL) return;
+    const V = RX.render.atlas_variants, c = XATL || document.createElement('canvas'); c.width = cw * V; c.height = ch * 5;
+    const g = c.getContext('2d'), r = XE.rngOf(0xa71a5);
+    const tri = (ax, ay, bx, by, cx, cy, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.lineTo(cx, cy); g.closePath(); g.fill(); };
+    const blot = (x, y, rx, ry, col) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.2832); g.fill(); };
+    for (let row = 0; row < 5; row++) for (let v = 0; v < V; v++) {
+      g.setTransform(cw, 0, 0, ch, v * cw, row * ch);   // paint each cell in a unit square
+      if (row < 4) {
+        g.fillStyle = XG[row]; g.fillRect(0, 0, 1, 1);
+        tri(0, 1, 1, 1, r() < .5 ? 0 : 1, 0, XGL[row]); g.globalAlpha = .55; tri(0, 0, 1, 0, .5, .5 + r() * .4, XG[row]); g.globalAlpha = 1;   // two facets catch the light differently
+        if (row === 0) blot(.3 + r() * .4, .3 + r() * .4, .22, .16, 'rgba(0,0,0,.18)');   // ash: a soft dark drift
+        if (row === 2) { g.fillStyle = '#211d19'; g.fillRect(0, .48, 1, .04); g.fillRect(.48, 0, .04, 1); g.fillStyle = '#4a4239'; for (let i = 0; i < 4; i++) g.fillRect((i & 1 ? .4 : .56) - .02, (i & 2 ? .4 : .56) - .025, .04, .05); }   // scorched plate: seams and rivets
+        const n = row === 3 ? 6 : 3;
+        for (let i = 0; i < n; i++) { const x = .1 + r() * .8, y = .1 + r() * .8, s = .05 + r() * .07; tri(x - s, y + s * .5, x, y - s * .7, x + s, y + s * .5, i & 1 ? XGL[row] : '#1f1c19'); }   // grit and pebbles
+        if (r() < .5) { g.strokeStyle = '#1c1916'; g.lineWidth = .025; g.beginPath(); g.moveTo(r(), 0); g.lineTo(.3 + r() * .4, .5); g.lineTo(r(), 1); g.stroke(); }   // a hairline crack
+      } else {
+        g.fillStyle = v === 0 || v === 3 ? '#3d3a35' : '#46423c'; g.fillRect(0, 0, 1, 1);
+        for (let i = 0; i < 7; i++) { g.fillStyle = i & 1 ? '#524d46' : '#38342f'; g.fillRect(r(), r(), .04, .03); }   // the aggregate
+        g.fillStyle = '#2f2c28'; g.fillRect(0, 0, 1, .05);   // the joint between slabs
+        if (v === 0) { g.fillStyle = '#58534b'; g.fillRect(0, 0, .12, 1); }   // the kerb, west
+        if (v === 3) { g.fillStyle = '#58534b'; g.fillRect(.88, 0, .12, 1); }   // the kerb, east
+        if (v === 2) { g.fillStyle = '#8a6a2c'; g.fillRect(.46, .1, .08, .55); g.fillStyle = '#a8843a'; g.fillRect(.47, .12, .03, .5); }   // the stripe, worn
+      }
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    XATL = c; XAK = key; XAW = cw; XAH = ch;
   }
   /** Leave the frontier. Returns the line that says what the run found, for the castle's ticker (empty when nothing). */
   function endExplore() {
@@ -4922,6 +5021,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function xquad(ax, ay, bx, by, cx, cy, dx, dy) { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.lineTo(dx, dy); ctx.closePath(); ctx.fill(); }
   function xtri(ax, ay, bx, by, cx, cy) { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill(); }
   function xell(x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, 6.2832); ctx.fill(); }
+  function xline(ax, ay, bx, by, w, c) { ctx.strokeStyle = c; ctx.lineWidth = Math.max(.6, w); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); }
   /**
    * A box on the ground at (x, y), w across, d deep (north to south), h tall: its roof, its south wall and the side
    * that faces the middle of the screen (the lean shows it). Colours: roof, front, side.
@@ -4952,11 +5052,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       xq(0, r * T, 0); const y0 = XP.y; xq(0, (r + 1) * T, 0); const y1 = XP.y;
       for (let c = c0; c <= c1; c++) {
         xq(c * T, r * T, 0); const x0 = XP.x; xq((c + 1) * T, r * T, 0);
-        const g = M.ground[r * M.cols + c], road = c >= M.roadC0 && c <= M.roadC1;
-        xfill(road ? (c === M.roadC0 || c === M.roadC1 ? '#3d3a35' : '#46423c') : XG[g]); ctx.fillRect(x0, y0, XP.x - x0 + .6, y1 - y0 + .6);
-        if (!road && ((r * 7 + c * 13) & 3) === 0) { xfill(XGL[g]); ctx.fillRect(x0 + (XP.x - x0) * .2, y0 + (y1 - y0) * .3, (XP.x - x0) * .35, (y1 - y0) * .25); }
-        if (road && c === M.roadC0 + 1 && (r & 1) === 0) { xfill('#8a6a2c'); ctx.fillRect(x0 + (XP.x - x0) * .46, y0 + (y1 - y0) * .1, (XP.x - x0) * .08, (y1 - y0) * .55); }
-        if (road) { xfill('#2f2c28'); ctx.fillRect(x0, y0, XP.x - x0, Math.max(.6, (y1 - y0) * .05)); }
+        const g = M.ground[r * M.cols + c], road = c >= M.roadC0 && c <= M.roadC1, v = (r * 7 + c * 13 + (r >> 2)) & 3;
+        const col = road ? (c === M.roadC0 ? 0 : c === M.roadC1 ? 3 : c === M.roadC0 + 1 && (r & 1) === 0 ? 2 : 1) : v;
+        ctx.drawImage(XATL, col * XAW, (road ? 4 : g) * XAH, XAW, XAH, x0, y0, XP.x - x0 + .6, y1 - y0 + .6);
       }
     }
     // flat things: cracks that glow, vents that breathe embers, debris and rubble lying on the ground
@@ -4981,6 +5079,17 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     // shots and sparks
     for (let i = 0; i < W.shots.length; i++) { const s = W.shots[i]; if (!s.on) continue; xq(s.x, s.y, 7); xfill(s.foe ? '#ff4d5e' : '#9ff0d8'); xell(XP.x, XP.y, 2.2 * Z * .5 + 1, 2.2 * Z * .5 + 1); xfill('#ffffff'); xell(XP.x, XP.y, Z * .5, Z * .5); }
     for (let i = 0; i < W.fx.length; i++) { const e = W.fx[i]; if (e.t <= 0) continue; xq(e.x, e.y, e.z); xfill(e.kind === 5 ? '#e9b949' : e.kind === 2 ? '#9ff0d8' : e.kind === 1 ? (i & 1 ? '#ff9a3c' : '#ffe08a') : '#ffffff'); const rr = (e.kind === 2 ? 5 : 1.4) * Z * Math.min(1, e.t * 4); ctx.globalAlpha = e.kind === 2 ? .35 : 1; xell(XP.x, XP.y, rr, e.kind === 2 ? rr * .5 : rr); ctx.globalAlpha = 1; }
+    // ash and embers drifting up through the view, fixed in the world as the camera moves (stateless: seeds and the clock)
+    if (XT >= 1 && !CALM) {
+      const n = RX.render.embers, hw = XW / 2 / Z + 8, span = hw * 2, vh = yBot - yTop;
+      for (let i = 0; i < n; i++) {
+        const a = XEMB[i * 3], b = XEMB[i * 3 + 1], c = XEMB[i * 3 + 2], ph = (t * (.06 + c * .1) + a) % 1;
+        const wx = XCAM.x - hw + (((b * 997 + Math.sin(t * .7 + i) * 3 - (XCAM.x - hw)) % span) + span) % span;
+        const wy = yTop + (((a * 1999 - yTop) % vh) + vh) % vh;
+        xq(wx, wy, ph * 46); ctx.globalAlpha = (1 - ph) * (i % 3 ? .55 : .9); xfill(i % 3 ? '#8a817a' : i & 1 ? '#ff9a3c' : '#ffd27a'); ctx.fillRect(XP.x, XP.y, Z * (i % 3 ? .45 : .6), Z * (i % 3 ? .45 : .6));
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.setTransform(XRS, 0, 0, XRS, 0, 0);
     xhud(t);
     padPaint(ctx, .72);
@@ -4998,19 +5107,20 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       xfill('#1a1716'); ctx.fillRect(ax, ay, XP.x - ax, XP.y - ay);
       xfill('#3c3530'); for (let k = 1; k < 4; k++) ctx.fillRect(ax + (XP.x - ax) * k / 4 - Z * .25, ay, Z * .5, XP.y - ay);
       const glow = .35 + .3 * Math.sin(t * 3 + (p.seed & 15)); ctx.globalAlpha = glow; xfill('#ff7a2e'); ctx.fillRect(ax + Z * .5, ay + Z * .5, XP.x - ax - Z, XP.y - ay - Z); ctx.globalAlpha = 1;
-      for (let k = 0; k < 3; k++) { const ph = (t * .7 + k / 3 + (p.seed & 7) / 7) % 1; xq(p.x + p.w * (.3 + .2 * k), p.y + p.d / 2, ph * 26); ctx.globalAlpha = 1 - ph; xfill(k & 1 ? '#ffd27a' : '#ff9a3c'); ctx.fillRect(XP.x, XP.y, Z * .6, Z * .6); }
+      if (XT >= 1) for (let k = 0; k < 3; k++) { const ph = (t * .7 + k / 3 + (p.seed & 7) / 7) % 1; xq(p.x + p.w * (.3 + .2 * k), p.y + p.d / 2, ph * 26); ctx.globalAlpha = 1 - ph; xfill(k & 1 ? '#ffd27a' : '#ff9a3c'); ctx.fillRect(XP.x, XP.y, Z * .6, Z * .6); }
       ctx.globalAlpha = 1;
     } else if (p.kind === 'debris') {
       xq(p.x, p.y, 0); const ax = XP.x, ay = XP.y; xq(p.x + p.w, p.y + p.d, 0);
       xfill(p.seed & 1 ? '#4a5560' : '#5b4a3a'); xtri(ax, XP.y, (ax + XP.x) / 2, ay, XP.x, XP.y - (XP.y - ay) * .3);
       xfill('#2a2420'); ctx.fillRect(ax + (XP.x - ax) * .3, XP.y - Z * .4, (XP.x - ax) * .5, Z * .4);
     } else if (p.kind === 'rubble') {
-      const n = 2 + (p.seed & 3);
+      const n = 2 + (p.seed & 3) + (XT >= 2 ? 3 : 0);
       for (let k = 0; k < n; k++) { const ox = ((p.seed >> (k * 3)) & 7) / 7 * p.w, oy = ((p.seed >> (k * 3 + 9)) & 7) / 7 * p.w * .6, s = p.w * (.2 + ((p.seed >> k) & 3) * .08);
         xq(p.x + ox, p.y + oy, 0); xfill('#4d463e'); xtri(XP.x - s * Z, XP.y, XP.x, XP.y - s * Z * .9, XP.x + s * Z * .8, XP.y); xfill('#615950'); xtri(XP.x - s * Z * .3, XP.y - s * Z * .2, XP.x, XP.y - s * Z * .9, XP.x + s * Z * .5, XP.y - s * Z * .15); }
     }
   }
   function xprop(p, t) {
+    if (XT >= 2 && xpropHi(p, t)) return;
     if (p.kind === 'rock') {
       const Z = XCAM.zoom, r = p.w / 2; xq(p.x + r, p.y + r, 0); const bx = XP.x, by = XP.y;
       xfill('rgba(0,0,0,.35)'); xell(bx, by + Z, r * Z * 1.05, r * Z * .55);
@@ -5035,10 +5145,11 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   }
   /** An actor: -1 is the Keeper, else a machine by its slot. */
   function xactor(i, t) {
-    if (i < 0) { xkeeper(t); return; }
+    if (i < 0) { if (XT >= 2) xkeeperHi(t); else xkeeper(t); return; }
     const f = XR.foes[i], Z = XCAM.zoom; xq(f.x, f.y, 0); const x = XP.x, y = XP.y, hit = f.hit > 0 && !CALM;
     xfill('rgba(0,0,0,.38)'); xell(x, y, f.r * Z * 1.1, f.r * Z * .5);
-    if (f.type === 'crawler') {
+    if (XT >= 2) { if (f.type === 'crawler') xcrawlerHi(f, x, y, Z, hit); else if (f.type === 'drone') xdroneHi(f, x, y, Z, hit, t); else xbruteHi(f, x, y, Z, hit); }
+    else if (f.type === 'crawler') {
       const leg = Math.sin(f.t * 14) * Z * 1.2; xfill('#2a2e33');
       for (let k = -1; k <= 1; k += 2) { xtri(x + k * f.r * Z * .4, y - Z * 3, x + k * f.r * Z * 1.25, y - Z + leg * k, x + k * f.r * Z * .9, y + Z * .3); xtri(x + k * f.r * Z * .3, y - Z * 2, x + k * f.r * Z * 1.1, y + Z + leg * -k, x + k * f.r * Z * .6, y + Z * 1.2); }
       xfill(hit ? '#ffffff' : '#6b6f74'); xell(x, y - Z * 4, f.r * Z * .85, f.r * Z * .55);
@@ -5083,15 +5194,243 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     const n = CAS.count, wallH = 10 + Math.min(18, n.course * .6 + n.wall * .5), dim = S.horde.dim;
     const roof = dim ? '#4a4640' : '#8a8378', front = dim ? '#3a3631' : '#6e675d', side = dim ? '#2e2b27' : '#5a544c';
     xbox(0, y, gx0, T * 1.2, wallH, roof, front, side); xbox(gx1, y, w - gx1, T * 1.2, wallH, roof, front, side);
+    if (XT >= 2) {   // the dense tier: courses of stone along the wall's face, and scorch where the horde has hit it
+      const Z = XCAM.zoom; xfill(dim ? '#2e2b27' : '#5a544c');
+      for (let h = 3; h < wallH; h += 3.2) { xq(0, y + T * 1.2, h); const ax = XP.x, ay = XP.y; xq(gx0, y + T * 1.2, h); ctx.fillRect(ax, ay, XP.x - ax, Z * .3); xq(gx1, y + T * 1.2, h); const bx = XP.x; xq(w, y + T * 1.2, h); ctx.fillRect(bx, XP.y, XP.x - bx, Z * .3); }
+      xfill(dim ? '#3a3631' : '#625b52'); for (let x = 6, i = 0; x < w; x += 7, i++) { if (x > gx0 - 4 && x < gx1) continue; xq(x + (i & 1) * 3, y + T * 1.2, 1.6 + (i % 3) * 3.2); ctx.fillRect(XP.x, XP.y - Z * 1.4, Z * .3, Z * 1.4); }   // the joints, staggered
+      ctx.globalAlpha = .35; xfill('#14110e'); for (let x = 20; x < w; x += 53) { if (x > gx0 - 10 && x < gx1 + 4) continue; xq(x, y + T * 1.2, wallH * .4); xell(XP.x, XP.y, Z * 6, Z * 3.4); } ctx.globalAlpha = 1;
+    }
     for (let x = 4; x < w; x += 12) { if (x > gx0 - 6 && x < gx1 + 2) continue; xbox(x, y, 5, T * .5, wallH + 4, roof, front, side); }   // the crenels
     const towers = CAS.towers;
-    for (let i = 0; i < towers.length; i++) { const tx = i === 0 ? T * .4 : i === 1 ? w - T * 2.4 : i === 2 ? gx0 - T * 2.2 : gx1 + T * .2, th = wallH + 10 + towers[i] * 5; xbox(tx, y - T * .4, T * 2, T * 2, th, roof, front, side); if (n.lamp > i) { xq(tx + T, y + T * .6, th + 3); xfill(dim ? '#5a4a2a' : '#ffd27a'); xell(XP.x, XP.y, XCAM.zoom * 2, XCAM.zoom * 2); } }
+    for (let i = 0; i < towers.length; i++) { const tx = i === 0 ? T * .4 : i === 1 ? w - T * 2.4 : i === 2 ? gx0 - T * 2.2 : gx1 + T * .2, th = wallH + 10 + towers[i] * 5; xbox(tx, y - T * .4, T * 2, T * 2, th, roof, front, side); if (XT >= 2) xtowerHi(tx, y - T * .4, T * 2, th, i, dim); if (n.lamp > i) { xq(tx + T, y + T * .6, th + 3); xfill(dim ? '#5a4a2a' : '#ffd27a'); xell(XP.x, XP.y, XCAM.zoom * 2, XCAM.zoom * 2); } }
     xq(gx0, y + T * 1.2, 0); const gax = XP.x, gay = XP.y; xq(gx1, y + T * 1.2, wallH); xfill('rgba(20,18,16,.6)'); ctx.fillRect(gax, XP.y, XP.x - gax, gay - XP.y);
   }
   /** The north edge while the next region is sealed: a line of light across the road, and a word when the Keeper bumps it. */
   function xseal(M, t) {
     xq(0, M.north, 0); const y = XP.y, x0 = XP.x; xq(M.cols * M.tile, M.north, 0);
     ctx.globalAlpha = .45 + .25 * Math.sin(t * 4) + (XR.bump > 0 ? .3 : 0); xfill('#9b7bff'); ctx.fillRect(x0, y - XCAM.zoom * 14, XP.x - x0, XCAM.zoom * 14); ctx.globalAlpha = 1;
+  }
+
+  // ── the dense tier (FW12): more parts, more faces. Every colour is a solid fill; nothing is an image ──
+  /** The Keeper at the dense tier: a reactor pack, jointed legs with guards and toe caps, a belt with pouches, a plated
+   *  chest in its paint with a lit core and rivets, cabled shoulders, a crested helmet with a visor that glows and an
+   *  antenna, and a two-part arm to a blaster with a coil. About three times the faces of the plain Keeper. */
+  function xkeeperHi(t) {
+    const k = XR.k, Z = XCAM.zoom; if (k.inv > 0 && k.dash <= 0 && ((t * 16) | 0) % 2) return;
+    xq(k.x, k.y, 0); const x = XP.x, y = XP.y, f = k.fx >= 0 ? 1 : -1, sw = Math.sin(k.step) * Z * 1.6, paint = XPAINT.c, lit = .6 + .4 * Math.sin(t * 5);
+    xfill('rgba(0,0,0,.42)'); xell(x, y, Z * 6.5, Z * 2.8);
+    if (k.dash > 0) { ctx.globalAlpha = .3; xfill('#9ff0d8'); xell(x - k.fx * Z * 8, y - Z * 9 - k.fy * Z * 4, Z * 4.5, Z * 8); xell(x - k.fx * Z * 14, y - Z * 9 - k.fy * Z * 7, Z * 3, Z * 6); ctx.globalAlpha = 1; }
+    // the reactor pack, behind: its two ports breathe
+    xfill('#262b31'); xquad(x - Z * 3.8, y - Z * 17.5, x + Z * 3.8, y - Z * 17.5, x + Z * 3.4, y - Z * 10.5, x - Z * 3.4, y - Z * 10.5);
+    ctx.globalAlpha = lit; xfill('#ff9a3c'); xell(x - Z * 2.4, y - Z * 18, Z * .9, Z * .6); xell(x + Z * 2.4, y - Z * 18, Z * .9, Z * .6); ctx.globalAlpha = 1;
+    // legs: thigh, shin, knee guard, boot, toe cap, in step
+    for (let side = -1; side <= 1; side += 2) {
+      const lx = x + side * Z * 1.9, lift = side * sw * .3, kn = y - Z * 4.4 + lift * .5;
+      xfill('#1d2126'); xquad(lx - Z * 1.4, y - Z * 8.5, lx + Z * 1.4, y - Z * 8.5, lx + Z * 1.2, kn, lx - Z * 1.2, kn);
+      xfill('#2a3038'); xquad(lx - Z * 1.2, kn, lx + Z * 1.2, kn, lx + Z * 1.1, y - Z * 1.4 + lift, lx - Z * 1.1, y - Z * 1.4 + lift);
+      xfill('#4a525c'); xtri(lx - Z * 1.3, kn - Z * .8, lx + Z * 1.3, kn - Z * .8, lx, kn + Z * 1.3);
+      xfill('#16191d'); xquad(lx - Z * 1.5, y - Z * 1.6 + lift, lx + Z * 1.5, y - Z * 1.6 + lift, lx + Z * 1.7 + f * Z * .6, y + lift * .2, lx - Z * 1.5, y + lift * .2);
+      xfill('#59616b'); xtri(lx + f * Z * .4, y - Z * 1.2 + lift, lx + f * Z * 2.2, y + lift * .2, lx + f * Z * .2, y + lift * .2);
+    }
+    // belt, buckle, two pouches
+    xfill('#2b3036'); ctx.fillRect(x - Z * 4.4, y - Z * 9.6, Z * 8.8, Z * 1.8);
+    xfill('#c8932a'); ctx.fillRect(x - Z * .8, y - Z * 9.5, Z * 1.6, Z * 1.5);
+    xfill('#3a4048'); ctx.fillRect(x - Z * 4.2, y - Z * 9.2, Z * 1.8, Z * 2.4); ctx.fillRect(x + Z * 2.4, y - Z * 9.2, Z * 1.8, Z * 2.4);
+    // the torso: shell, the painted plate and its shaded half, a seam, vents, the core, rivets, cables to the pack
+    xfill('#323840'); xquad(x - Z * 4.6, y - Z * 9.6, x + Z * 4.6, y - Z * 9.6, x + Z * 5.2, y - Z * 16.8, x - Z * 5.2, y - Z * 16.8);
+    xfill(paint); xquad(x - Z * 3.6, y - Z * 11.2, x + Z * 3.6, y - Z * 11.2, x + Z * 4.2, y - Z * 16.2, x - Z * 4.2, y - Z * 16.2);
+    xfill('rgba(0,0,0,.28)'); xquad(x - f * Z * .2, y - Z * 11.2, x - f * Z * 3.6, y - Z * 11.2, x - f * Z * 4.2, y - Z * 16.2, x - f * Z * .2, y - Z * 16.2);
+    xfill('#1d2126'); ctx.fillRect(x - Z * .3, y - Z * 16.2, Z * .6, Z * 5);
+    xfill('#4a525c'); ctx.fillRect(x - Z * 3.4, y - Z * 10.9, Z * 2.2, Z * .5); ctx.fillRect(x + Z * 1.2, y - Z * 10.9, Z * 2.2, Z * .5);
+    ctx.globalAlpha = lit; xfill('#9ff0d8'); xell(x, y - Z * 13.6, Z * 1.1, Z * 1.1); ctx.globalAlpha = 1; xfill('#e9fff9'); xell(x, y - Z * 13.6, Z * .45, Z * .45);
+    xfill('#c8d3dc'); xell(x - Z * 3.2, y - Z * 15.6, Z * .3, Z * .3); xell(x + Z * 3.2, y - Z * 15.6, Z * .3, Z * .3); xell(x - Z * 2.8, y - Z * 11.8, Z * .3, Z * .3); xell(x + Z * 2.8, y - Z * 11.8, Z * .3, Z * .3);
+    ctx.strokeStyle = '#14161a'; ctx.lineWidth = Math.max(.6, Z * .6); ctx.beginPath(); ctx.moveTo(x - Z * 4.6, y - Z * 16); ctx.quadraticCurveTo(x - Z * 6, y - Z * 13, x - Z * 4.4, y - Z * 10.4); ctx.moveTo(x + Z * 4.6, y - Z * 16); ctx.quadraticCurveTo(x + Z * 6, y - Z * 13, x + Z * 4.4, y - Z * 10.4); ctx.stroke();
+    // shoulders: a guard, its plate, a rim below, a rivet
+    for (let side = -1; side <= 1; side += 2) {
+      const sx = x + side * Z * 5.3;
+      xfill('#4a525c'); xell(sx, y - Z * 15.8, Z * 2.6, Z * 1.9);
+      xfill('#6b737c'); xell(sx, y - Z * 16.4, Z * 2, Z * 1.1);
+      xfill('#2b3036'); xtri(sx - Z * 2.4, y - Z * 15, sx + Z * 2.4, y - Z * 15, sx + side * Z * .6, y - Z * 13.4);
+      xfill('#c8d3dc'); xell(sx + side * Z * 1.1, y - Z * 16.2, Z * .35, Z * .35);
+    }
+    // the helmet: jaw guard, dome and its highlight, a crest in the paint, the visor slot, the visor and its glow, an antenna
+    xfill('#22272d'); xquad(x - Z * 2.4, y - Z * 16.6, x + Z * 2.4, y - Z * 16.6, x + Z * 3.1, y - Z * 19, x - Z * 3.1, y - Z * 19);
+    xfill('#2f353c'); xell(x, y - Z * 20.2, Z * 3.7, Z * 3.5);
+    xfill('#454c55'); xell(x - f * Z * .9, y - Z * 21.4, Z * 2, Z * 1.4);
+    xfill(paint); xtri(x - Z * .7, y - Z * 23.6, x + Z * .7, y - Z * 23.6, x, y - Z * 19.4);
+    xfill('#0d0f12'); ctx.fillRect(x - Z * 3 + f * Z * .6, y - Z * 21, Z * 4.8, Z * 1.8);
+    xfill('#9ff0d8'); ctx.fillRect(x - Z * 2.6 + f * Z * .8, y - Z * 20.6, Z * 4.2, Z * 1.1);
+    ctx.globalAlpha = .3; xell(x + f * Z * .8, y - Z * 20, Z * 3.4, Z * 1.2); ctx.globalAlpha = 1;
+    xline(x - f * Z * 2.6, y - Z * 21.6, x - f * Z * 3.4, y - Z * 25.6, Z * .35, '#59616b');
+    xfill(((t * 2) | 0) % 2 ? '#ff4d5e' : '#5a2228'); xell(x - f * Z * 3.4, y - Z * 25.8, Z * .5, Z * .5);
+    // the arm on the aim: upper arm, elbow, forearm into the blaster, its coil, the barrel, the muzzle
+    let dx = k.fx, dy = k.fy; if (k.aim >= 0) { const e = XR.foes[k.aim]; dx = e.x - k.x; dy = e.y - k.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d; }
+    const hx = x + f * Z * 4.6, hy = y - Z * 14.4, ex = hx + dx * Z * 3.6, ey = hy + dy * Z * 3.6 * XCAM.sin + Z * 1.6, mx = ex + dx * Z * 4.4, my = ey + dy * Z * 4.4 * XCAM.sin;
+    xline(hx, hy, ex, ey, Z * 2.2, '#3a4048');
+    xline(ex, ey, mx, my, Z * 2.6, '#4a5560');
+    xfill('#59616b'); xell(ex, ey, Z * 1.4, Z * 1.4);
+    xline(mx, my, mx + dx * Z * 2.4, my + dy * Z * 2.4 * XCAM.sin, Z * 1.2, '#14161a');
+    xfill(paint); xell(mx, my, Z * .9, Z * .9);
+    xfill(k.cd > 0 ? '#ffe08a' : '#14161a'); xell(mx + dx * Z * 2.6, my + dy * Z * 2.6 * XCAM.sin, Z * 1.1, Z * 1.1);
+  }
+  /** A crawler at the dense tier: six legs of two joints each stepping in turn, a plated carapace with a ridge of spines,
+   *  mandibles and a cluster of eyes, a vent on its back that breathes. */
+  function xcrawlerHi(f, x, y, Z, hit) {
+    const R = f.r * Z, fc = f.face;
+    for (let i = 0; i < 6; i++) {
+      const side = i < 3 ? -1 : 1, j = i % 3, ph = Math.sin(f.t * 14 + j * 2.1 + (side > 0 ? 3.1 : 0)) * Z * 1.2;
+      const bx = x + side * R * .35, by = y - Z * (2.6 + j * .7), kx = x + side * R * (1.05 + j * .12), ky = by - Z * 1.8 + ph * .4, ex = x + side * R * (1.3 + j * .15), ey = y - Z * .2 + (j - 1) * Z * 1.4 + ph;
+      xfill('#2a2e33'); xtri(bx, by - Z * .6, kx, ky, bx, by + Z * .6);
+      xfill('#3a3f45'); xtri(kx - Z * .4, ky, kx + Z * .4, ky, ex, ey);
+      xfill('#14161a'); xell(ex, ey, Z * .45, Z * .3);
+    }
+    xfill(hit ? '#ffffff' : '#3e4247'); xell(x, y - Z * 3.4, R * .9, R * .5);
+    xfill(hit ? '#ffffff' : '#6b6f74'); xell(x, y - Z * 4.2, R * .85, R * .55);
+    xfill(hit ? '#ffffff' : '#8a8f94'); xquad(x - R * .6, y - Z * 4.6, x + R * .6, y - Z * 4.6, x + R * .35, y - Z * 5.6, x - R * .35, y - Z * 5.6);
+    xfill(hit ? '#ffffff' : '#555a60'); xquad(x - R * .7, y - Z * 3.9, x + R * .7, y - Z * 3.9, x + R * .6, y - Z * 3.3, x - R * .6, y - Z * 3.3);
+    xfill('#2a2e33'); for (let i = -1; i <= 1; i++) xtri(x + i * R * .3 - Z * .5, y - Z * 5.5, x + i * R * .3 + Z * .5, y - Z * 5.5, x + i * R * .3, y - Z * 7.2);
+    const hx = x + fc * R * .62;
+    xfill('#1d2126'); xtri(hx, y - Z * 3.8, hx + fc * Z * 2.2, y - Z * 3, hx + fc * Z * .6, y - Z * 2.6); xtri(hx, y - Z * 4.6, hx + fc * Z * 2.2, y - Z * 5.2, hx + fc * Z * .6, y - Z * 4.2);
+    xfill('#ff4d5e'); xell(hx, y - Z * 4.1, Z * .9, Z * .7); xell(hx - fc * Z * .9, y - Z * 4.8, Z * .5, Z * .4); xell(hx - fc * Z * .9, y - Z * 3.5, Z * .5, Z * .4);
+    xfill('#ffd27a'); xell(hx + fc * Z * .2, y - Z * 4.2, Z * .3, Z * .3);
+    ctx.globalAlpha = .5 + .5 * Math.sin(f.t * 6); xfill('#ff7a2e'); ctx.fillRect(x - Z * 1.2, y - Z * 5.1, Z * 2.4, Z * .5); ctx.globalAlpha = 1;
+  }
+  /** A drone at the dense tier: four rotors on crossed arms with motors and lights, a banded hull under a dome, fins,
+   *  a housed eye that flashes before it fires, an antenna, and a faint beam to the ground under it. */
+  function xdroneHi(f, x, y, Z, hit, t) {
+    const hy = y - Z * 11 + Math.sin(f.t * 5) * Z * 1.2, R = f.r * Z, sp = f.t * 40;
+    ctx.globalAlpha = .12; xfill('#ff4d5e'); xquad(x - Z, hy + Z * 1.6, x + Z, hy + Z * 1.6, x + R * .8, y, x - R * .8, y); ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#2a2e33'; ctx.lineWidth = Math.max(.6, Z * .7); ctx.beginPath(); ctx.moveTo(x - R * 1.25, hy - Z * 2.6); ctx.lineTo(x + R * 1.25, hy + Z * .6); ctx.moveTo(x + R * 1.25, hy - Z * 2.6); ctx.lineTo(x - R * 1.25, hy + Z * .6); ctx.stroke();
+    for (let i = 0; i < 4; i++) {
+      const rx = x + (i & 1 ? 1 : -1) * R * 1.25, ry = hy + (i < 2 ? -Z * 2.6 : Z * .6);
+      xfill('#1d2126'); xell(rx, ry + Z * .4, Z, Z * .6);
+      ctx.globalAlpha = .45; xfill('#c8d3dc'); xell(rx, ry, R * .55 * Math.abs(Math.cos(sp + i)) + Z * .4, Z * .45); ctx.globalAlpha = 1;
+      xfill(i < 2 ? '#ff4d5e' : '#9ff0d8'); ctx.fillRect(rx - Z * .25, ry - Z * .25, Z * .5, Z * .5);
+    }
+    xfill(hit ? '#ffffff' : '#2e3a44'); xell(x, hy + Z * .6, R * .95, R * .45);
+    xfill(hit ? '#ffffff' : '#3c4a56'); xquad(x - R * 1.05, hy, x + R * 1.05, hy, x + R * .75, hy - Z * 2, x - R * .75, hy - Z * 2);
+    xfill(hit ? '#ffffff' : '#56687a'); xell(x, hy - Z * 2.2, R * .7, R * .35);
+    xfill('#7a8c9c'); xell(x - Z * .8, hy - Z * 2.6, R * .3, R * .12);
+    xfill('#2a2e33'); xtri(x - R * .9, hy - Z * .6, x - R * 1.4, hy + Z * 1.6, x - R * .6, hy + Z * .4); xtri(x + R * .9, hy - Z * .6, x + R * 1.4, hy + Z * 1.6, x + R * .6, hy + Z * .4);
+    xfill('#14161a'); xell(x, hy + Z, Z * 1.7, Z * 1.2);
+    xfill(f.cd < .35 && ((t * 16) | 0) % 2 ? '#ffe08a' : '#ff4d5e'); xell(x, hy + Z, Z * 1.1, Z * .8);
+    xfill('#ffffff'); xell(x - Z * .3, hy + Z * .8, Z * .3, Z * .25);
+    xline(x + Z, hy - Z * 2.4, x + Z * 1.6, hy - Z * 4.6, Z * .3, '#59616b'); xfill('#9ff0d8'); xell(x + Z * 1.6, hy - Z * 4.7, Z * .4, Z * .4);
+  }
+  /** A brute at the dense tier: jointed legs with bolted knees, a hip plate, a torso with chest plates over a furnace
+   *  behind a grille, spiked shoulders, arms to heavy fists, a slit visor, horns, and two stacks that smoke. */
+  function xbruteHi(f, x, y, Z, hit) {
+    const sway = Math.sin(f.t * 5) * Z, R = f.r * Z, c1 = hit ? '#ffffff' : '#7a4a36', c2 = hit ? '#ffffff' : '#9a5e42', heat = .6 + .4 * Math.sin(f.t * 8), fc = f.face;
+    for (let side = -1; side <= 1; side += 2) {
+      const lx = x + side * R * .55, s = side * sway;
+      xfill('#2a2e33'); xquad(lx - Z * 1.8, y - Z * 8 + s, lx + Z * 1.8, y - Z * 8 + s, lx + Z * 1.6, y - Z * 4 + s * .5, lx - Z * 1.6, y - Z * 4 + s * .5);
+      xfill('#3a3f45'); xquad(lx - Z * 1.6, y - Z * 4 + s * .5, lx + Z * 1.6, y - Z * 4 + s * .5, lx + Z * 1.9, y - Z, lx - Z * 1.9, y - Z);
+      xfill('#1d2126'); xquad(lx - Z * 2.4, y - Z * 1.2, lx + Z * 2.4, y - Z * 1.2, lx + Z * 2.8, y + Z * .4, lx - Z * 2.8, y + Z * .4);
+      xfill('#8a8f94'); xell(lx, y - Z * 4 + s * .5, Z * .8, Z * .8);
+    }
+    xfill(hit ? '#ffffff' : '#4a2c22'); xquad(x - R * .95, y - Z * 8.5, x + R * .95, y - Z * 8.5, x + R * .9, y - Z * 6.8, x - R * .9, y - Z * 6.8);
+    xfill(c1); xquad(x - R, y - Z * 7, x + R, y - Z * 7, x + R * .8, y - Z * 17, x - R * .8, y - Z * 17);
+    xfill(c2); xquad(x - R * .8, y - Z * 17, x + R * .8, y - Z * 17, x + R * .5, y - Z * 20, x - R * .5, y - Z * 20);
+    xfill(hit ? '#ffffff' : '#5e3829'); xquad(x - R * .85, y - Z * 16.6, x - Z * .4, y - Z * 16.6, x - Z * .4, y - Z * 12, x - R * .9, y - Z * 12); xquad(x + Z * .4, y - Z * 16.6, x + R * .85, y - Z * 16.6, x + R * .9, y - Z * 12, x + Z * .4, y - Z * 12);
+    xfill('#1a1311'); ctx.fillRect(x - Z * 3, y - Z * 11.4, Z * 6, Z * 3.6);
+    ctx.globalAlpha = heat; xfill('#ff6a2a'); ctx.fillRect(x - Z * 2.6, y - Z * 11, Z * 5.2, Z * 2.8); ctx.globalAlpha = 1;
+    xfill('#2a2e33'); for (let i = -1; i <= 1; i++) ctx.fillRect(x + i * Z * 1.5 - Z * .3, y - Z * 11.4, Z * .6, Z * 3.6);
+    for (let side = -1; side <= 1; side += 2) {
+      const sx = x + side * R * 1.05, arm = side * sway * .6;
+      xfill(hit ? '#ffffff' : '#4a525c'); xquad(sx - Z * 1.4, y - Z * 15, sx + Z * 1.4, y - Z * 15, sx + Z * 1.6 + arm, y - Z * 8, sx - Z * 1.6 + arm, y - Z * 8);
+      xfill('#2a2e33'); xell(sx + arm, y - Z * 7.4, Z * 2.2, Z * 1.9);
+      xfill(c2); xell(sx, y - Z * 16, Z * 2.8, Z * 2);
+      xfill('#c8d3dc'); xtri(sx - Z * .8, y - Z * 17.4, sx + Z * .8, y - Z * 17.4, sx + side * Z * 1.2, y - Z * 20.4);
+    }
+    xfill('#14161a'); ctx.fillRect(x - Z * 3 + fc * Z * 1.6, y - Z * 16.2, Z * 6, Z * 1.8);
+    xfill('#ffe08a'); ctx.fillRect(x - Z * 2.5 + fc * Z * 2, y - Z * 15.8, Z * 5, Z * 1.1);
+    xfill('#d8c8a8'); xtri(x - R * .5, y - Z * 19.4, x - R * .25, y - Z * 19.6, x - R * .75, y - Z * 22.6); xtri(x + R * .5, y - Z * 19.4, x + R * .25, y - Z * 19.6, x + R * .75, y - Z * 22.6);
+    xfill('#2a2e33'); ctx.fillRect(x - fc * R * .6 - Z * .8, y - Z * 21.6, Z * 1.6, Z * 3); ctx.fillRect(x - fc * R * .2 - Z * .8, y - Z * 21, Z * 1.6, Z * 2.4);
+    const pf = (f.t * .8) % 1, pg = (pf + .5) % 1;
+    ctx.globalAlpha = .35 * (1 - pf); xfill('#8a8f94'); xell(x - fc * R * .6, y - Z * (22.4 + pf * 5), Z * (1 + pf * 1.5), Z * (1 + pf * 1.5));
+    ctx.globalAlpha = .35 * (1 - pg); xell(x - fc * R * .2, y - Z * (21.8 + pg * 5), Z * (1 + pg * 1.2), Z * (1 + pg * 1.2)); ctx.globalAlpha = 1;
+  }
+  /** A prop at the dense tier, about twice the faces of the plain one. Returns false for a kind it leaves to the plain. */
+  function xpropHi(p, t) {
+    const Z = XCAM.zoom, v = p.seed;
+    if (p.kind === 'rock') {
+      const r = p.w / 2; xq(p.x + r, p.y + r, 0); const bx = XP.x, by = XP.y;
+      xfill('rgba(0,0,0,.35)'); xell(bx, by + Z, r * Z * 1.1, r * Z * .58);
+      xq(p.x + r, p.y + r, p.h); const tx = XP.x, ty = XP.y;
+      xfill('#2f2b26'); xquad(bx - r * Z * 1.02, by + Z * .2, bx - r * Z * .7, by - r * Z * .2, bx, by - r * Z * .1, bx - r * Z * .2, by + r * Z * .5);
+      xfill('#3a352f'); xquad(bx - r * Z, by, tx - r * Z * .55, ty + r * Z * .3, tx, ty - r * Z * .1, bx, by + r * Z * .45);
+      xfill('#4a443c'); xquad(bx, by + r * Z * .45, tx, ty - r * Z * .1, tx + r * Z * .6, ty + r * Z * .25, bx + r * Z, by);
+      xfill('#433d36'); xtri(bx + r * Z * .35, by + r * Z * .3, tx + r * Z * .6, ty + r * Z * .25, bx + r * Z * 1.02, by + Z * .2);
+      xfill('#625a50'); xtri(tx - r * Z * .55, ty + r * Z * .3, tx, ty - r * Z * .45, tx + r * Z * .6, ty + r * Z * .25);
+      xfill('#776e62'); xtri(tx - r * Z * .2, ty - r * Z * .1, tx, ty - r * Z * .45, tx + r * Z * .25, ty);
+      xline(tx - r * Z * .1, ty + r * Z * .1, bx + r * Z * .15, by + r * Z * .25, Z * .3, '#1f1c19');
+      xfill(v & 4 ? '#5b4a2c' : '#4a4a3a'); xell(bx - r * Z * .4, by - r * Z * .05, r * Z * .18, r * Z * .1);
+      xfill('#4d463e'); xtri(bx + r * Z * 1.05, by + Z * .6, bx + r * Z * 1.35, by - Z * .4, bx + r * Z * 1.55, by + Z * .6);
+      return true;
+    }
+    if (p.kind === 'ruin') {
+      xbox(p.x, p.y, p.w, p.d, p.h, '#6f6a62', '#57524b', '#48443e');
+      for (let i = 0; i < 3; i++) {   // the broken top: teeth of wall still standing
+        const u = p.x + p.w * (.08 + i * .32), hh = p.h + 2 + ((v >> (i * 2)) & 3) * 2.5;
+        xq(u, p.y + p.d, p.h); const ax = XP.x, ay = XP.y; xq(u + p.w * .22, p.y + p.d, p.h); const bx = XP.x, by = XP.y; xq(u + p.w * (.06 + (i & 1) * .1), p.y + p.d, hh);
+        xfill(i & 1 ? '#625d55' : '#57524b'); xtri(ax, ay, bx, by, XP.x, XP.y);
+      }
+      xfill('#4a463f'); for (let h = .3; h < .95; h += .3) { xq(p.x, p.y + p.d, p.h * h); ctx.fillRect(XP.x, XP.y, p.w * Z * (1 + p.h * h * XCAM.lean), Z * .35); }   // courses of block
+      for (let i = 0; i < 2; i++) {   // two windows, one with a fire still burning inside
+        xq(p.x + p.w * (.18 + i * .44), p.y + p.d, p.h * .62); const wx = XP.x, wy = XP.y, ww = p.w * .2 * Z, wh = p.h * .24 * Z * XCAM.cos;
+        xfill('#1d1a17'); ctx.fillRect(wx, wy, ww, wh);
+        if ((v >> 5 & 1) === i) { ctx.globalAlpha = .55 + .35 * Math.sin(t * 7 + i); xfill('#ff7a2e'); ctx.fillRect(wx + ww * .15, wy + wh * .45, ww * .7, wh * .5); ctx.globalAlpha = 1; }
+        xfill('#7a756c'); ctx.fillRect(wx - Z * .4, wy + wh, ww + Z * .8, Z * .5);
+      }
+      xq(p.x + p.w * .7, p.y + p.d * .4, p.h); const rx = XP.x, ry = XP.y; xq(p.x + p.w * .76, p.y + p.d * .4, p.h + 9); xline(rx, ry, XP.x, XP.y, Z * .5, '#7a4a2c');
+      xq(p.x + p.w * .3, p.y + p.d * .3, p.h); const sx = XP.x, sy = XP.y; xq(p.x + p.w * .22, p.y + p.d * .3, p.h + 6); xline(sx, sy, XP.x, XP.y, Z * .4, '#6a3e24');
+      xq(p.x + p.w * .1, p.y + p.d, 0); const gx = XP.x, gy = XP.y;
+      xfill('#4d463e'); xtri(gx - Z * 2, gy + Z * .4, gx, gy - Z * 1.6, gx + Z * 2.2, gy + Z * .4);
+      xq(p.x + p.w * .85, p.y + p.d, 0); xfill('#5b544a'); xtri(XP.x - Z * 1.6, XP.y + Z * .4, XP.x, XP.y - Z * 1.2, XP.x + Z * 1.8, XP.y + Z * .4);
+      ctx.globalAlpha = .3; xfill('#14110e'); xq(p.x + p.w * .5, p.y + p.d, p.h * .3); xell(XP.x, XP.y, p.w * Z * .22, p.h * Z * .16); ctx.globalAlpha = 1;
+      return true;
+    }
+    if (p.kind === 'pylon') {
+      xbox(p.x - 1, p.y - 1, p.w + 2, p.d + 2, 3, '#4a5560', '#3a434c', '#2e353c');
+      xbox(p.x + p.w * .2, p.y + p.d * .2, p.w * .6, p.d * .6, p.h, '#5d6a75', '#4a5560', '#3a434c');
+      xq(p.x - 1, p.y + p.d + 1, 3); const ax = XP.x, ay = XP.y; xq(p.x + p.w + 1, p.y + p.d + 1, 3); const bx = XP.x, by = XP.y; xq(p.x + p.w * .5, p.y + p.d, p.h * .55);
+      ctx.strokeStyle = '#2e353c'; ctx.lineWidth = Math.max(.6, Z * .45); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(XP.x, XP.y); ctx.lineTo(bx, by); ctx.stroke();
+      xq(p.x + p.w * .5, p.y + p.d * .5, p.h - 2); const cx = XP.x, cy = XP.y;
+      xfill('#2e353c'); ctx.fillRect(cx - p.w * Z * .9, cy - Z * .5, p.w * Z * 1.8, Z);
+      xfill('#b8c4cc'); xell(cx - p.w * Z * .85, cy - Z * .9, Z * .7, Z * .9); xell(cx + p.w * Z * .85, cy - Z * .9, Z * .7, Z * .9);
+      xq(p.x + p.w * .2, p.y + p.d * .8, p.h * .3); xfill('#c8932a'); ctx.fillRect(XP.x, XP.y, p.w * .6 * Z, Z * .7); xq(p.x + p.w * .2, p.y + p.d * .8, p.h * .4); xfill('#14161a'); ctx.fillRect(XP.x, XP.y, p.w * .6 * Z, Z * .7);
+      xline(cx + p.w * Z * .85, cy - Z * .4, cx + p.w * Z * 3, cy + Z * 6, Z * .3, '#1d2126');
+      const on = ((t * 1.5 + (v & 3)) | 0) % 2; xq(p.x + p.w / 2, p.y + p.d / 2, p.h + 2);
+      if (on) { ctx.globalAlpha = .3; xfill('#ff4d5e'); xell(XP.x, XP.y, Z * 3, Z * 3); ctx.globalAlpha = 1; }
+      xfill(on ? '#ff4d5e' : '#5a2228'); xell(XP.x, XP.y, Z * 1.4, Z * 1.4);
+      return true;
+    }
+    if (p.kind === 'crate') {
+      if (p.open) {
+        xbox(p.x, p.y, p.w, p.d, 2, '#3a2c1a', '#2e2315', '#261d12');
+        xq(p.x - 2, p.y + p.d, 0); xfill('#7a5e32'); xtri(XP.x, XP.y, XP.x + p.w * Z * .5, XP.y - Z * .8, XP.x + p.w * Z * .2, XP.y + Z * .8);
+        xq(p.x + p.w + 1, p.y + p.d * .3, 0); xfill('#654d29'); xtri(XP.x, XP.y, XP.x + p.w * Z * .4, XP.y + Z, XP.x - Z, XP.y + Z * .6);
+        ctx.globalAlpha = .4 + .4 * Math.sin(t * 5); xfill('#e9b949'); xq(p.x + p.w / 2, p.y + p.d / 2, 2); xell(XP.x, XP.y, Z, Z * .6); ctx.globalAlpha = 1;
+        return true;
+      }
+      xbox(p.x, p.y, p.w, p.d, p.h, '#9a7a44', '#7a5e32', '#654d29');
+      xq(p.x, p.y + p.d, p.h); const fx = XP.x, fy = XP.y, fw = p.w * Z * (1 + p.h * XCAM.lean), fh = p.h * Z * XCAM.cos;
+      xfill('#5e4626'); ctx.fillRect(fx, fy + fh * .33, fw, Z * .3); ctx.fillRect(fx, fy + fh * .66, fw, Z * .3);   // the planks
+      xfill('#c8932a'); ctx.fillRect(fx + fw * .18, fy, fw * .1, fh); ctx.fillRect(fx + fw * .72, fy, fw * .1, fh);   // the straps
+      xfill('#3a3f45'); ctx.fillRect(fx, fy, Z * .9, Z * .9); ctx.fillRect(fx + fw - Z * .9, fy, Z * .9, Z * .9); ctx.fillRect(fx, fy + fh - Z * .9, Z * .9, Z * .9); ctx.fillRect(fx + fw - Z * .9, fy + fh - Z * .9, Z * .9, Z * .9);   // the corner irons
+      xq(p.x, p.y, p.h + .8); const lx = XP.x, ly = XP.y; xq(p.x + p.w, p.y + p.d * .25, p.h + .8); xfill('#ab8a52'); ctx.fillRect(lx, ly, XP.x - lx, XP.y - ly);   // the lid's lip
+      xfill('#1d1a17'); xtri(fx + fw * .42, fy + fh * .62, fx + fw * .5, fy + fh * .4, fx + fw * .58, fy + fh * .62); ctx.fillRect(fx + fw * .47, fy + fh * .66, fw * .06, fh * .1);   // a stencilled warning
+      return true;
+    }
+    return false;
+  }
+  /** A tower's dense detail: arrow slits, a banner in the Keeper's paint, a band of stone under the roof. */
+  function xtowerHi(x, y, w, h, i, dim) {
+    const Z = XCAM.zoom;
+    xfill(dim ? '#2e2b27' : '#4a453e'); xq(x, y + w, h - 2); ctx.fillRect(XP.x, XP.y, w * Z * (1 + h * XCAM.lean), Z * .6);
+    xfill('#14110e'); for (let k = 0; k < 2; k++) { xq(x + w * (.3 + k * .3), y + w, h * .55); ctx.fillRect(XP.x, XP.y, Z * .8, Z * 3); }
+    xq(x + w * .5, y + w * .5, h + 2); const px = XP.x, py = XP.y; xline(px, py, px, py - Z * 9, Z * .4, '#2b2825');
+    xfill(dim ? '#3a4a46' : XPAINT.c); const wave = Math.sin(XR.k.step * .3 + i) * Z * .6; xquad(px, py - Z * 9, px + Z * 4.5, py - Z * 8 + wave, px + Z * 4.5, py - Z * 5.5 + wave, px, py - Z * 6.5);
   }
   const XPAINT = { c: '#3DBFA6', slug: '' };
   /** The HUD's words and the minimap: rebuilt only when what they show changes (never each frame). */
@@ -5374,10 +5713,12 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   const blocking = () => $overlay.childElementCount > 0 && !!$overlay.querySelector('.scrim, .dropwrap');
   function frame(now) {
     if (document.hidden) { running = false; return; }
-    const dt = Math.min(.034, (now - last) / 1000); last = now;
+    const gap = now - last, dt = Math.min(.034, gap / 1000); last = now;
     if (cv && S.screen === 'frontier' && XR) {   // the frontier: its own update and drawing, the controls drawn over the scene
+      const w0 = performance.now();
       if (!blocking()) { updateExplore(dt); TEL.session_seconds += dt; }
       if (XR) renderExplore(now / 1000);
+      if (XR && XE.govern(XGOV, performance.now() - w0, gap, dt, RULES)) xgovApply();   // the frame's own work, measured: the governor keeps it in budget
       hudTick += dt; if (hudTick > .25) { hudTick = 0; if (XR) xhudText(); }
       if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
     } else if (cv && (S.screen === 'castle' || (S.screen === 'stage' && ST))) {
@@ -5450,7 +5791,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     hurt() { if (ST) { ST.k.inv = 0; hurt(); } },
     keys: () => ({ ...keys }),
     // the frontier (FW11): where the Keeper is, what the run holds, what the camera sees; play only
-    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS] } : null)
+    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS], lod: { level: XGOV.level, tier: XT, scale: XRS, ms: Math.round(XGOV.ms * 100) / 100, frame: Math.round(XGOV.frame * 100) / 100, pin: XGOV.pin } } : null),
+    // pin the frontier's detail level (0 is the densest; -1 hands it back to the governor), for the walk and its frame times
+    frontierLevel: (n) => { XGOV.pin = Number.isInteger(n) && n >= 0 && n < XGOV.levels ? n : -1; if (XGOV.pin >= 0 && XE.govern(XGOV, 0, 0, 0, RULES) && XR) xgovApply(); return XGOV.pin; }
   };
   function boot() {
     if (globalThis.FIELDWORKS_ART) { reset(); paintKeeper(); renderArtSheet(); return; }

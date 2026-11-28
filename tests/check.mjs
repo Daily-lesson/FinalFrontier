@@ -473,6 +473,21 @@ test('a frontier run: one fixed-step function over pooled arrays; it moves, coll
   r6.k.x = crate.x + crate.w / 2; r6.k.y = crate.y + crate.d / 2; F.stepRun(r6, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
   assert.ok(crate.open && r6.scrap === RULES.frontier.props.crate.scrap, 'a crate opens for scrap');
 });
+test('the frontier governor: steps detail and scale down when a frame runs over budget, back up with room, never for a held-back device', () => {
+  const R = RULES.frontier.govern, L = R.levels, run = (G, work, frame, n) => { let moved = 0; for (let i = 0; i < n; i++) if (F.govern(G, work, frame, 1 / 60, RULES)) moved++; return moved; };
+  assert.ok(L.length >= 3 && L[0][0] === 2 && L[L.length - 1][1] === 1, 'best first: the dense tier at the top, scale 1 at the bottom');
+  let G = F.govOf(RULES, 2); assert.deepEqual([G.level, G.tier, G.scale], [0, 2, 2], 'starts at the best');
+  run(G, R.budget_ms * 1.5, 17, 30 + 60 * 2.2); assert.ok(G.level >= 2, 'over budget: down a level each drop_after_s');
+  run(G, R.budget_ms * 1.5, 17, 60 * 6); assert.equal(G.level, L.length - 1, 'and down to the floor, not past it');
+  run(G, R.budget_ms * .2, 16.7, 60 * (R.raise_after_s * L.length + 2)); assert.equal(G.level, 0, 'with room for raise_after_s, back up to the best');
+  const g1 = F.govOf(RULES, 1); assert.equal(g1.scale, 1, 'never a render scale above the device');
+  run(g1, R.budget_ms * 1.5, 17, 30 + 60 * 1.2); assert.equal(g1.tier, 1, 'on a scale-1 device the first step down is a tier: no step that changes nothing');
+  const g2 = F.govOf(RULES, 2); run(g2, R.budget_ms * .3, 33.4, 60 * 20); assert.equal(g2.level, 0, 'a slow frame with little work of its own is the device (a power saver, 30 Hz): no step down');
+  const g3 = F.govOf(RULES, 2); run(g3, R.budget_ms * 1.5, 17, 30 + 70); const w0 = g3.wait; run(g3, R.budget_ms * .2, 16.7, 60 * (w0 + .5)); run(g3, R.budget_ms * 1.5, 17, 130);
+  assert.ok(g3.wait > w0, 'a step down soon after a step up waits longer before the next step up');
+  const g4 = F.govOf(RULES, 2); g4.pin = 3; F.govern(g4, 0, 0, 0, RULES); assert.equal(g4.level, 3, 'a pinned level holds (the walk measures each level)'); run(g4, 0, 16, 600); assert.equal(g4.level, 3);
+});
+
 test('the frontier module is pure: no window, no clock, no storage, no randomness of its own, no evidence', () => {
   const src = read('src/frontier.js').replace(/\/\/.*$/gm, '');
   assert.ok(!/window|document|localStorage|Date\.now|performance|Math\.random|fetch\(|XMLHttpRequest/.test(src), 'nothing from the page or the clock');
@@ -554,10 +569,31 @@ test('the save holds no map and nothing the evidence can rebuild', () => {
   assert.match(fn('loadSave'), /const old = s && s\.version === 1;/, 'a version-1 save keeps its journal');
 });
 
+test('the frontier\'s dense tier: characters about three times the faces of the plain tier, props about twice; tiers picked per frame', () => {
+  // the drawing functions, run against a context that only counts what it fills or strokes
+  let faces = 0; const count = () => { faces++; }, nop = () => {};
+  const ctx2 = { fill: count, fillRect: count, stroke: count, beginPath: nop, moveTo: nop, lineTo: nop, closePath: nop, ellipse: nop, quadraticCurveTo: nop };
+  const cam = F.camFit(F.camOf(RULES), 360, 640), sb = { ctx: ctx2, XE: F, XCAM: cam, XP: { x: 0, y: 0 }, CALM: false, XT: 1, XPAINT: { c: '#3DBFA6' }, Math, XR: null };
+  vm.runInNewContext(['xq', 'xfill', 'xquad', 'xtri', 'xell', 'xline', 'xbox', 'xkeeper', 'xkeeperHi', 'xactor', 'xcrawlerHi', 'xdroneHi', 'xbruteHi', 'xprop', 'xpropHi'].map((n) => { const f = fn(n); return f.trim().includes('\n') ? f + '\n  }' : f; }).join('\n'), sb);
+  const K = RULES.frontier.foes.kinds, foe = (type) => ({ on: true, type, x: 0, y: 0, r: K[type].r, t: .3, face: 1, hit: 0, hp: 1, max: 1, cd: 1 });
+  const at = (tier, draw) => { sb.XT = tier; faces = 0; draw(); return faces; };
+  sb.XR = { k: { x: 0, y: 0, fx: 1, fy: 0, step: .4, inv: 0, dash: 0, aim: -1, cd: 0 }, foes: [] };
+  const keeper = [at(1, () => sb.xactor(-1, 1)), at(2, () => sb.xactor(-1, 1))];
+  assert.ok(keeper[1] >= keeper[0] * 3, `the Keeper: ${keeper[1]} faces dense, ${keeper[0]} plain`);
+  for (const type of ['crawler', 'drone', 'brute']) { sb.XR.foes = [foe(type)]; const n = [at(1, () => sb.xactor(0, 1)), at(2, () => sb.xactor(0, 1))]; assert.ok(n[1] >= n[0] * 3, `a ${type}: ${n[1]} faces dense, ${n[0]} plain`); }
+  for (const kind of ['rock', 'ruin', 'pylon', 'crate']) { const p = { kind, x: 0, y: 0, w: 10, d: 10, h: 12, seed: 37, open: false }; const n = [at(1, () => sb.xprop(p, 1)), at(2, () => sb.xprop(p, 1))]; assert.ok(n[1] >= n[0] * 2, `a ${kind}: ${n[1]} faces dense, ${n[0]} plain`); }
+  // the tier comes from the governor, measured each frame in the loop; the ground is drawn from its atlas
+  assert.match(fn('frame'), /XE\.govern\(XGOV, performance\.now\(\) - w0, gap, dt, RULES\)\) xgovApply\(\)/, 'the frame\'s own work, measured, feeds the governor');
+  assert.match(fn('renderExplore'), /ctx\.drawImage\(XATL, /, 'ground tiles are drawn from the atlas, painted once');
+  assert.match(fn('xatlasBake'), /if \(key === XAK && XATL\) return;/, 'and repainted only when the zoom or the scale changes');
+  assert.match(fn('sizeExplore'), /XRS = XGOV\.scale; XT = XGOV\.tier;/, 'the render scale and tier are the governor\'s');
+});
+
 test('the update and render paths allocate nothing per frame (the HUD, four times a second, builds its strings)', () => {
   assert.match(fn('backdrop'), /if \(bg && bgKey\) return bg;/, 'the backdrop is painted once per theme and size');
   for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'renderBoss', 'drawWorld', 'drawAir', 'drawCastle', 'ground', 'tuft', 'text', 'stone', 'crenels', 'frame', 'burst', 'puff', 'pop', 'emit', 'ebullet', 'aim', 'strike', 'kill', 'hurt', 'shoot', 'jolt',
-    'updateExplore', 'renderExplore', 'xflat', 'xprop', 'xactor', 'xkeeper', 'xcastle', 'xseal', 'xhud', 'xbox', 'xq', 'xquad', 'xtri', 'xell', 'xfill']) {
+    'updateExplore', 'renderExplore', 'xflat', 'xprop', 'xactor', 'xkeeper', 'xcastle', 'xseal', 'xhud', 'xbox', 'xq', 'xquad', 'xtri', 'xell', 'xfill',
+    'xline', 'xkeeperHi', 'xcrawlerHi', 'xdroneHi', 'xbruteHi', 'xpropHi', 'xtowerHi', 'xgovApply']) {
     const src = fn(f).replace(/\/\/.*$/gm, ''), body = src.slice(src.indexOf('{') + 1);
     const bad = body.match(/\.(map|filter|slice|concat|flatMap|reduce|forEach|split|join|find|some|every|includes)\(|\bnew \w|Array\.from|\[[^\]]*,[^\]]*\]\s*[;)]|=>|`|\bString\(|\.toUpperCase\(|\{ ?\w+: /g) || [];
     // the few allowed, each exactly as often as it stands today: the cached score and horde count, and a ticked-post lookup
