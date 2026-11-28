@@ -343,6 +343,30 @@ async function behaviours() {
   await phoneShot(p, 'touch-pad');
   await ctx.close();
 
+  // 10b. the frontier (FW11): the mid-angle explorer out the gate, its camera, its controls drawn over the scene
+  ctx = await chromium.newContext({ viewport: VIEW, hasTouch: true, isMobile: true, deviceScaleFactor: 2, timezoneId: 'UTC' });
+  p = await open(ctx); await clearCards(p);
+  const ev0 = await D(p, 'events'), lv0 = await D(p, 'xp');
+  await go(p, 'stages'); await p.click('[data-go="frontier"]'); await wait(p, 400);
+  const fr0 = await D(p, 'frontier');
+  check('the frontier opens from the stage list: a region, the Keeper north of the castle\'s gate, the camera at the owner\'s mid-angle', fr0 && fr0.region === 0 && fr0.props > 300 && fr0.cam.tilt >= 60 && fr0.cam.tilt <= 65 && fr0.view[2] >= 1, JSON.stringify(fr0));
+  await phoneShot(p, 'frontier-gate');
+  { const box = await p.locator('#game').boundingBox(), cdpF = await ctx.newCDPSession(p), at = (fx, fy) => ({ x: Math.round(box.x + box.width * fx), y: Math.round(box.y + box.height * fy), id: 0 });
+    await cdpF.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at(.2, .6)] });
+    await cdpF.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...at(.2, .6), y: at(.2, .6).y - 60 }] }); await wait(p, 1200);
+    const fr1 = await D(p, 'frontier');
+    await cdpF.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await wait(p, 100);
+    check('touch on the frontier: a thumb anywhere on the left floats the stick and walks the Keeper north up the road', fr1.y < fr0.y - 40, `y ${Math.round(fr0.y)} → ${Math.round(fr1.y)}`);
+    const k1 = await D(p, 'frontier');
+    await cdpF.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at(.66, .9)] }); await wait(p, 40); await cdpF.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await wait(p, 100);
+    check('a tap on Dash dashes and spends power', (await D(p, 'frontier')).power < k1.power, `power ${Math.round(k1.power)} → ${Math.round((await D(p, 'frontier')).power)}`); }
+  await p.keyboard.down('w'); for (let i = 0; i < 20; i++) { await p.keyboard.press('j'); await wait(p, 150); } await p.keyboard.up('w');
+  const fr2 = await D(p, 'frontier'); await phoneShot(p, 'frontier-north');
+  check('the keyboard walks the frontier too, and nothing the run does touches the evidence', fr2.y < fr0.y - 150 && (await D(p, 'events')) === ev0 && (await D(p, 'xp')) === lv0, `y ${Math.round(fr2.y)}; scrap ${fr2.scrap}; score ${fr2.score}`);
+  await p.click('.xback'); await wait(p, 200);
+  check('the way home: back to the castle', (await p.evaluate(() => FieldworksDebug.screen())) === 'castle');
+  await ctx.close();
+
   // 11. reduced motion: no shake, no flash, no hit-stop
   ctx = await chromium.newContext({ viewport: VIEW, reducedMotion: 'reduce', timezoneId: 'UTC' });
   p = await open(ctx); await clearCards(p); await go(p, 'stages'); await p.click('[data-stage="1"]'); await wait(p, 300);
@@ -573,7 +597,7 @@ async function perfScene(name, setup) {
   const frames = await p.evaluate(() => window.__frames);
   const task = (m1.TaskDuration - m0.TaskDuration) * 1000, script = (m1.ScriptDuration - m0.ScriptDuration) * 1000;
   const res = { scene: name, viewport: '375 × 667 @2×', seconds: Math.round(secs * 10) / 10, frames, fps: Math.round(frames / secs), main_thread_ms_per_frame: Math.round((task / frames) * 100) / 100, script_ms_per_frame: Math.round((script / frames) * 100) / 100, heap_mb: Math.round(m1.JSHeapUsedSize / 1048576 * 10) / 10, heap_growth_kb: Math.round((m1.JSHeapUsedSize - m0.JSHeapUsedSize) / 1024) };
-  clearInterval(p.__tap); await p.keyboard.up('d'); await p.keyboard.up('j'); await ctx.close();
+  clearInterval(p.__tap); await p.keyboard.up('d'); await p.keyboard.up('j'); await p.keyboard.up('w'); await ctx.close();
   console.log(`perf: ${JSON.stringify(res)}`);
   check(`a frame stays inside the 16.7 ms budget on the main thread (${name})`, res.main_thread_ms_per_frame < 16.7, `${res.main_thread_ms_per_frame} ms · ${res.fps} fps`);
   return res;
@@ -582,7 +606,8 @@ async function perf() {
   const horde = await perfScene('a horde at the walls, the towers firing', async (p) => { await p.click('[data-days="now"]'); await wait(p, 2500); });
   const stage = await perfScene('a stage, running and firing', async (p) => { await go(p, 'stages'); await p.click('[data-stage="0"]'); await wait(p, 300); await p.keyboard.down('d'); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); p.keyboard.press(' ').catch(() => {}); if (Math.random() < .3) p.evaluate(() => { const u = document.querySelector('[data-up]'); if (u) u.click(); }).catch(() => {}); }, 200); });
   const boss = await perfScene('a boss fight, dashing and firing', async (p) => { await go(p, 'stages'); await p.click('[data-stage="1"]'); await wait(p, 300); await toBoss(p); await p.evaluate(() => { for (const s of ['spread', 'spread', 'rapid', 'buddy', 'buddy']) FieldworksDebug.give(s); }); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); p.keyboard.press('k').catch(() => {}); }, 180); });
-  writeFileSync(join(OUT, 'perf.json'), JSON.stringify({ horde, stage, boss }, null, 2) + '\n');
+  const frontier = await perfScene('the frontier, walking north and firing', async (p) => { await go(p, 'stages'); await p.click('[data-go="frontier"]'); await wait(p, 300); await p.keyboard.down('w'); p.__tap = setInterval(() => { p.keyboard.press('j').catch(() => {}); }, 200); });
+  writeFileSync(join(OUT, 'perf.json'), JSON.stringify({ horde, stage, boss, frontier }, null, 2) + '\n');
 }
 
 async function artSheet() {

@@ -2,7 +2,41 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — touch: a floating stick, two thumbs at once, and a page that holds still
+merged; `## Unreleased — the frontier: a mid-angle explorer out the gate
+
+FW11, design D66 (rework 2) and D85+ (the merged design in the design repo's
+FIELDWORKS.md §19). Stacked on the touch PR.
+
+- `src/frontier.js` (new, `FieldworksFrontier`): the explorer's rules, pure and
+  tested in Node. The camera sits about 62° down: the ground is an
+  axis-aligned grid running straight up the screen (no isometric diamonds), a
+  road reads as ground, tall things rise up the screen and lean a little away
+  from the middle so a building shows its roof, its front wall and the side
+  facing the middle; characters stand upright. A region grows from a seed:
+  the road up the middle, rocks, rubble, ruins, pylons, glowing cracks, ember
+  vents, debris and crates (about 600 to 950 props a region, denser the
+  deeper). Regions open by the castle's pieces alone (the first is always
+  open). A run is one fixed-step function over pools made once.
+- `prototype/game/72-frontier.js` (new): the screen. One canvas at its CSS
+  size times a whole-number render scale is the scene and the controls: the
+  floating stick on the left, Fire, Dash, Bot and Build drawn on the right (Bot
+  and Build arrive with the partner robot), hull and power bars, scrap and
+  score, a minimap, and the castle from above at the first region's south end.
+  Fire aims itself at the nearest machine in front. The way home is the gate,
+  or the castle button.
+- `prototype/game/80-screens.js`, `90-loop.js`: the stage list opens with a
+  Frontier row; the loop runs the frontier; leaving says what the run found.
+  The keyboard walks it too (arrows or WASD, J to fire, K to dash).
+- `rules/fieldworks.json`: `frontier` (every number) and `bank.frontier`
+  (every word); `input.pads.frontier`, `input.overlay_reach`.
+- `prototype/build.mjs`: inlines `src/frontier.js` (marker `/*__FRONTIER__*/`)
+  in the page, the art sheet and the embed.
+- `tests/check.mjs`: the camera's grid, tilt and lean; a region; the gates; a
+  run; the module's purity; the frontier's functions held to the pillar and
+  per-frame allocation rules. `prototype/shots.mjs`: the frontier section and
+  a fourth frame-time scene.
+
+## Unreleased — touch: a floating stick, two thumbs at once, and a page that holds still
 
 FW10, design D67 and D79 (the input rule in the design repo's FIELDWORKS.md).
 

@@ -17,7 +17,7 @@
     for (let i = 0; i < names.length; i++) {
       const at = L[names[i]]; if (!at) continue;
       const r = Math.max(minR, Math.min(PAD.w, PAD.h) * at.r);
-      PAD.zones.push({ key: names[i], x: PAD.w * at.x, y: PAD.h * at.y, r, id: -1, on: false, t: 0 });
+      PAD.zones.push({ key: names[i], x: PAD.w * at.x, y: PAD.h * at.y, r, id: -1, on: false, t: 0, edge: false });
     }
     PAD.dirty = true;
   }
@@ -45,7 +45,7 @@
   // Every held thing let go: the stick, the buttons and the keys they hold (a screen change, a blur, a card opening).
   function padRelease() {
     const s = PAD.stick; s.id = -1; s.ax = 0; s.ay = 0; s.up = false;
-    for (let i = 0; i < PAD.zones.length; i++) { PAD.zones[i].id = -1; PAD.zones[i].on = false; }
+    for (let i = 0; i < PAD.zones.length; i++) { PAD.zones[i].id = -1; PAD.zones[i].on = false; PAD.zones[i].edge = false; }
     padKeys(); PAD.dirty = true;
   }
   const padXY = (e) => { const r = PAD.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
@@ -65,7 +65,8 @@
       s.id = e.pointerId; s.ox = x; s.oy = y; s.x = x; s.y = y; s.ax = 0; s.ay = 0; s.up = false;
     } else {
       const z = padZoneAt(x, y); if (!z || z.id >= 0) return;
-      z.id = e.pointerId; z.on = true; z.t = 0;
+      if (PAD.layout !== 'pad' && Math.hypot(x - z.x, y - z.y) > z.r * RI.overlay_reach) return;   // over the scene, a touch far from every button is not a press
+      z.id = e.pointerId; z.on = true; z.t = 0; z.edge = true;
     }
     padKeys(); PAD.dirty = true;
   }
@@ -99,6 +100,9 @@
     if (jump && !keys.jump) tap.jump = true; if (fire && !keys.fire) tap.fire = true; if (dash && !keys.dash) tap.dash = true;
     keys.jump = jump; keys.fire = fire; keys.dash = dash; s.up = upNow;
   }
+  // The explorer's buttons by name: held now, and a press taken once (a tap shorter than a frame still counts).
+  function padHeld(key) { for (let i = 0; i < PAD.zones.length; i++) if (PAD.zones[i].key === key && PAD.zones[i].on) return true; return false; }
+  function padTake(key) { for (let i = 0; i < PAD.zones.length; i++) { const z = PAD.zones[i]; if (z.key === key && z.edge) { z.edge = false; return true; } } return false; }
   // Drawn only when something changed: a thumb landed, moved or lifted. Rings, never text a finger can select.
   function padDraw() {
     if (!PAD.on || !PAD.g || !PAD.dirty || PAD.layout !== 'pad') return;

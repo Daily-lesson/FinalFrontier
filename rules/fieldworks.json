@@ -974,6 +974,30 @@
       "bot": "BOT",
       "build": "BUILD",
       "label": "Controls: drag on the left to move, press on the right to act."
+    },
+    "frontier": {
+      "row": "The frontier",
+      "row_meta": "Out the gate on foot: the mid-angle explorer. {open} of {all} regions open.",
+      "regions": {
+        "gate_fields": "The Gate Fields",
+        "scrap_flats": "The Scrap Flats",
+        "ash_reach": "The Ash Reach",
+        "dead_works": "The Dead Works"
+      },
+      "enter": "{name}. The road runs north.",
+      "sealed": "{name} is sealed: {n} more castle pieces open it.",
+      "sealed_all": "Every region is open.",
+      "hp": "Hull",
+      "power": "Power",
+      "scrap": "Scrap {n}",
+      "score": "Score {n}",
+      "down": "The Keeper is down. Back at the gate; nothing is lost.",
+      "home": "Back through the gate. {scrap} scrap and {score} play score from the run.",
+      "next": "On into {name}.",
+      "back": "Back to the castle",
+      "label": "The frontier. Drag on the left to move; Fire, Dash, Bot and Build on the right.",
+      "bot": "Bot",
+      "build": "Build"
     }
   },
   "save": {
@@ -2107,12 +2131,250 @@
         "fire",
         "jump"
       ],
-      "explore": [
+      "frontier": [
         "fire",
         "dash",
         "bot",
         "build"
       ]
+    },
+    "overlay_reach": 1.7
+  },
+  "frontier": {
+    "$note": "The explorer out the gate (D66 rework 2, D85+, FW11). World units: 1 tile = 16. Every number the explorer reads; src/frontier.js holds no constant of its own.",
+    "camera": {
+      "tilt_deg": 62,
+      "lean": 0.0032,
+      "anchor": 0.56,
+      "view_units": 176,
+      "follow": 7
+    },
+    "step_hz": 60,
+    "max_steps": 4,
+    "tile": 16,
+    "cols": 24,
+    "rows": 64,
+    "road_w": 3,
+    "cell": 32,
+    "density_per_region": 0.18,
+    "castle": {
+      "yard_rows": 7
+    },
+    "regions": [
+      {
+        "slug": "gate_fields",
+        "at": 0
+      },
+      {
+        "slug": "scrap_flats",
+        "at": 6
+      },
+      {
+        "slug": "ash_reach",
+        "at": 16
+      },
+      {
+        "slug": "dead_works",
+        "at": 32
+      }
+    ],
+    "keeper": {
+      "radius": 6,
+      "speed": 72,
+      "dash_speed": 230,
+      "dash_s": 0.16,
+      "dash_cooldown_s": 0.35,
+      "dash_power": 22,
+      "power_max": 100,
+      "power_regen": 14,
+      "fire_per_s": 5,
+      "fire_power": 3,
+      "shot_speed": 240,
+      "shot_range": 150,
+      "shot_damage": 1,
+      "aim_cone_deg": 70,
+      "aim_range": 140,
+      "invulnerable_s": 1.0
+    },
+    "foes": {
+      "cap": 40,
+      "aggro": 120,
+      "per_region": [
+        8,
+        12,
+        16,
+        20
+      ],
+      "by_region": [
+        [
+          "crawler",
+          "crawler",
+          "drone"
+        ],
+        [
+          "crawler",
+          "drone",
+          "brute"
+        ],
+        [
+          "drone",
+          "brute",
+          "crawler",
+          "drone"
+        ],
+        [
+          "brute",
+          "drone",
+          "brute",
+          "crawler"
+        ]
+      ],
+      "kinds": {
+        "crawler": {
+          "hp": 3,
+          "speed": 38,
+          "radius": 6,
+          "touch": 1,
+          "score": 10,
+          "scrap": 1
+        },
+        "drone": {
+          "hp": 2,
+          "speed": 44,
+          "radius": 5,
+          "touch": 1,
+          "score": 14,
+          "scrap": 1,
+          "keep": 70,
+          "fire_s": 1.8,
+          "shot_speed": 110
+        },
+        "brute": {
+          "hp": 9,
+          "speed": 24,
+          "radius": 9,
+          "touch": 2,
+          "score": 30,
+          "scrap": 3
+        }
+      }
+    },
+    "shots": {
+      "cap": 48
+    },
+    "fx": {
+      "cap": 96
+    },
+    "props": {
+      "rock": {
+        "per100": 7,
+        "solid": true,
+        "r": [
+          4,
+          10
+        ],
+        "h": [
+          5,
+          12
+        ]
+      },
+      "rubble": {
+        "per100": 16,
+        "r": [
+          3,
+          8
+        ]
+      },
+      "ruin": {
+        "per100": 1.6,
+        "solid": true,
+        "w": [
+          22,
+          46
+        ],
+        "d": [
+          14,
+          28
+        ],
+        "h": [
+          16,
+          44
+        ]
+      },
+      "pylon": {
+        "per100": 0.6,
+        "solid": true,
+        "w": [
+          8,
+          10
+        ],
+        "d": [
+          8,
+          10
+        ],
+        "h": [
+          46,
+          70
+        ]
+      },
+      "crack": {
+        "per100": 3.5,
+        "w": [
+          14,
+          34
+        ],
+        "d": [
+          3,
+          8
+        ]
+      },
+      "vent": {
+        "per100": 1.4,
+        "w": [
+          10,
+          12
+        ],
+        "d": [
+          8,
+          10
+        ]
+      },
+      "debris": {
+        "per100": 9,
+        "w": [
+          6,
+          16
+        ],
+        "d": [
+          4,
+          10
+        ]
+      },
+      "crate": {
+        "per100": 0.7,
+        "w": [
+          10,
+          10
+        ],
+        "d": [
+          8,
+          8
+        ],
+        "h": [
+          8,
+          8
+        ],
+        "scrap": 2,
+        "score": 5
+      }
+    },
+    "render": {
+      "scale_max": 2
+    },
+    "hud": {
+      "mini_px_per_tile": 3,
+      "mini_h": 110,
+      "toast_s": 3
     }
   }
 }

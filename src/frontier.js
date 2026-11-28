@@ -1,0 +1,267 @@
+// FIELDWORKS — the explorer out the gate (design D66 rework 2, D85+: the merged design, work order FW11).
+// Pure, window-free, clock-free, storage-free; every number from rules.frontier. Like the castle module it is an
+// IIFE on globalThis, so a <script> tag and node's vm load it the same way, and the tests run it without a page.
+//   camOf / project   the mid-angle camera: ground on an axis-aligned grid running straight up the screen (no
+//                     diamonds), tilted ~62° down, heights rising up the screen and leaning a little away from the
+//                     screen's centre, so a building shows its roof, its front wall and the side that faces the middle
+//   regionOf          one region, grown from a seed: ground, the road straight up the middle, rocks, rubble, ruins,
+//                     pylons, glowing cracks, ember vents, debris, crates and where the machines wait
+//   regionsOpen       which regions are open: a pure function of the castle's pieces (evidence) and nothing a run does
+//   newRun / stepRun  a run as ONE fixed-step function over pooled arrays: it allocates nothing per step
+// Nothing here reads or writes the evidence. A run's score and scrap are play, kept by the page as play.
+(function () {
+  'use strict';
+  const TAU = Math.PI * 2;
+  function rngOf(seed) {
+    let a = seed >>> 0;
+    return function () { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  /** FNV-1a over a string: the seed of a region from its name and the run's number. */
+  function hashOf(s) { let h = 0x811c9dc5; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+  const between = (r, ab) => ab[0] + r() * (ab[1] - ab[0]);
+
+  // ── the camera ───────────────────────────────────────────────────────────
+  /**
+   * The mid-angle camera. World x runs right, world y runs DOWN the screen (south), z runs up out of the ground.
+   * Ground: screen y = (y - camY) × sin(tilt). Height: z × cos(tilt) up the screen. A raised point also moves away
+   * from the screen's centre by (x - camX) × z × lean, so a tall thing leans out and shows its inner side.
+   */
+  function camOf(rules) {
+    const C = rules.frontier.camera, t = C.tilt_deg * Math.PI / 180;
+    return { sin: Math.sin(t), cos: Math.cos(t), lean: C.lean, anchor: C.anchor, units: C.view_units, x: 0, y: 0, zoom: 1, vw: 1, vh: 1 };
+  }
+  /** Fit the camera to a surface of vw × vh pixels: view_units of world across the narrower side. */
+  function camFit(cam, vw, vh) { cam.vw = vw; cam.vh = vh; cam.zoom = Math.min(vw, vh * 1.25) / cam.units; return cam; }
+  /** Where a world point lands on the surface, written into `out` (no object made). */
+  function project(cam, x, y, z, out) {
+    const dx = x - cam.x, dy = y - cam.y;
+    out.x = cam.vw / 2 + (dx + dx * z * cam.lean) * cam.zoom;
+    out.y = cam.vh * cam.anchor + (dy * cam.sin - z * cam.cos) * cam.zoom;
+    return out;
+  }
+  /** Follow a point, eased, and never show past the region's edges. */
+  function camFollow(cam, x, y, dt, map, rules) {
+    const k = 1 - Math.exp(-dt * rules.frontier.camera.follow), halfW = cam.vw / 2 / cam.zoom;
+    cam.x += (x - cam.x) * k; cam.y += (y - cam.y) * k;
+    const w = map.cols * map.tile; cam.x = Math.max(halfW, Math.min(w - halfW, cam.x));
+    const below = cam.vh * (1 - cam.anchor) / (cam.sin * cam.zoom), above = cam.vh * cam.anchor / (cam.sin * cam.zoom), h = map.rows * map.tile;
+    cam.y = Math.max(Math.min(above, h / 2), Math.min(h - below, cam.y));   // never show past the region's south or north edge
+  }
+
+  // ── a region ─────────────────────────────────────────────────────────────
+  const KINDS = ['rock', 'rubble', 'ruin', 'pylon', 'crack', 'vent', 'debris', 'crate'];
+  /**
+   * One region from its seed. The road runs straight up the middle; the castle's gate sits at the south end of the
+   * first region. Props never sit on the road or in the gate's yard; solid ones go in a grid of cells for collision.
+   */
+  function regionOf(index, run, rules) {
+    const X = rules.frontier, R = X.regions[index], tile = X.tile, cols = X.cols, rows = X.rows;
+    const seed = hashOf(`${R.slug}/${run}`), r = rngOf(seed);
+    const roadC0 = Math.floor(cols / 2 - X.road_w / 2), roadC1 = roadC0 + X.road_w - 1;
+    const ground = new Uint8Array(cols * rows);
+    for (let i = 0; i < ground.length; i++) { const v = r(); ground[i] = v < .5 ? 0 : v < .75 ? 1 : v < .92 ? 2 : 3; }
+    const yard = index === 0 ? X.castle.yard_rows : 1;   // the first region's south end is the castle and its yard
+    const props = [];
+    const free = (c, rw, span) => c + span < roadC0 - 0 || c > roadC1 + 0 ? rw < rows - yard - 1 && rw > 1 : false;
+    for (const kind of KINDS) {
+      const P = X.props[kind], n = Math.round(P.per100 * cols * rows / 100 * (1 + index * X.density_per_region));
+      for (let i = 0; i < n; i++) {
+        for (let tries = 0; tries < 8; tries++) {
+          const w = P.w ? between(r, P.w) : P.r ? between(r, P.r) * 2 : tile, span = Math.ceil(w / tile);
+          const c = Math.floor(r() * (cols - span)), rw = Math.floor(r() * rows);
+          if (!free(c, rw, span)) continue;
+          const d = P.d ? between(r, P.d) : w, h = P.h ? between(r, P.h) : 0;
+          props.push({ kind, x: c * tile + r() * (tile - 1), y: rw * tile + r() * (tile - 1), w, d, h, solid: !!P.solid, seed: (r() * 1e9) | 0, hp: P.hp || 0, open: false });
+          break;
+        }
+      }
+    }
+    // the first region's south end: the castle's wall across, solid but for the gate on the road (drawn by the page)
+    const gateY = (rows - 2) * tile;
+    if (index === 0) {
+      props.push({ kind: 'wall', x: 0, y: gateY, w: roadC0 * tile, d: tile * 1.2, h: 1, solid: true, seed: 0, hp: 0, open: false });
+      props.push({ kind: 'wall', x: (roadC1 + 1) * tile, y: gateY, w: (cols - roadC1 - 1) * tile, d: tile * 1.2, h: 1, solid: true, seed: 0, hp: 0, open: false });
+    }
+    props.sort((a, b) => a.y - b.y);
+    // the solid grid: each cell lists the solid props that touch it
+    const cell = X.cell, gw = Math.ceil(cols * tile / cell), gh = Math.ceil(rows * tile / cell), grid = Array.from({ length: gw * gh }, () => []);
+    props.forEach((p, i) => {
+      if (!p.solid) return;
+      for (let gy = Math.max(0, Math.floor(p.y / cell)); gy <= Math.min(gh - 1, Math.floor((p.y + p.d) / cell)); gy++)
+        for (let gx = Math.max(0, Math.floor(p.x / cell)); gx <= Math.min(gw - 1, Math.floor((p.x + p.w) / cell)); gx++) grid[gy * gw + gx].push(i);
+    });
+    // where the machines wait: away from the road's south end, more the deeper the region
+    const spawns = [], nFoes = X.foes.per_region[Math.min(index, X.foes.per_region.length - 1)];
+    for (let i = 0; i < nFoes; i++) {
+      const y = between(r, [tile * 3, (rows - yard - 6) * tile]), x = between(r, [tile, (cols - 1) * tile]);
+      const kinds = X.foes.by_region[Math.min(index, X.foes.by_region.length - 1)];
+      spawns.push({ x, y, type: kinds[Math.floor(r() * kinds.length)] });
+    }
+    return { index, slug: R.slug, seed, tile, cols, rows, roadC0, roadC1, ground, props, grid, gw, gh, cell, spawns,
+      start: { x: cols * tile / 2, y: (rows - yard + 1) * tile }, gate: { x: cols * tile / 2, y: gateY }, north: tile };
+  }
+
+  /** The regions open now: the first always (D80), each next one at its castle-piece count. Evidence opens the map; play never does. */
+  function regionsOpen(pieces, rules) {
+    let n = 0; const list = rules.frontier.regions;
+    for (let i = 0; i < list.length; i++) if (i === 0 || pieces >= list[i].at) n = i + 1; else break;
+    return n;
+  }
+  /** What the next sealed region needs: its index and how many more pieces, or null when every region is open. */
+  function nextSeal(pieces, rules) {
+    const open = regionsOpen(pieces, rules), R = rules.frontier.regions[open];
+    return R ? { index: open, need: R.at - pieces } : null;
+  }
+
+  // ── a run ────────────────────────────────────────────────────────────────
+  /** A run: `sealed` when the region past the north edge is not open yet. The Keeper, the pools (machines, shots, effects) made once at their caps, the region and its camera. */
+  function newRun(index, run, hp, sealed, rules) {
+    const X = rules.frontier, K = X.keeper, map = regionOf(index, run, rules);
+    const foes = Array.from({ length: X.foes.cap }, () => ({ on: false, type: '', x: 0, y: 0, vx: 0, vy: 0, hp: 0, max: 0, r: 0, t: 0, hit: 0, cd: 0, face: 1, wake: false }));
+    const shots = Array.from({ length: X.shots.cap }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, foe: false, dmg: 0 }));
+    const fx = Array.from({ length: X.fx.cap }, () => ({ t: 0, kind: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 }));
+    const W = { map, index, run, sealed: !!sealed, bump: 0, time: 0, acc: 0, score: 0, scrap: 0, kills: 0, over: false, won: false, exit: 0,
+      k: { x: map.start.x, y: map.start.y, vx: 0, vy: 0, fx: 0, fy: -1, r: K.radius, hp, max: hp, power: K.power_max, pmax: K.power_max, dash: 0, dashCd: 0, cd: 0, inv: 0, step: 0, aim: -1 },
+      foes, shots, fx, fxAt: 0, hits: 0, shake: 0 };
+    for (let i = 0; i < map.spawns.length && i < foes.length; i++) wake(W, i, map.spawns[i], rules);
+    return W;
+  }
+  function wake(W, i, s, rules) {
+    const F = rules.frontier.foes.kinds[s.type], f = W.foes[i];
+    f.on = true; f.type = s.type; f.x = s.x; f.y = s.y; f.vx = 0; f.vy = 0; f.hp = F.hp; f.max = F.hp; f.r = F.radius; f.t = (i * 0.37) % 1; f.hit = 0; f.cd = F.fire_s || 0; f.wake = false;
+  }
+  function emit(W, kind, x, y, z, vx, vy, vz, t) {
+    const e = W.fx[W.fxAt]; W.fxAt = (W.fxAt + 1) % W.fx.length;
+    e.kind = kind; e.x = x; e.y = y; e.z = z; e.vx = vx; e.vy = vy; e.vz = vz; e.t = t;
+  }
+  /** Push a circle out of every solid prop near it. */
+  function collide(map, o) {
+    const gx = Math.floor(o.x / map.cell), gy = Math.floor(o.y / map.cell);
+    for (let yy = gy - 1; yy <= gy + 1; yy++) for (let xx = gx - 1; xx <= gx + 1; xx++) {
+      if (xx < 0 || yy < 0 || xx >= map.gw || yy >= map.gh) continue;
+      const list = map.grid[yy * map.gw + xx];
+      for (let j = 0; j < list.length; j++) {
+        const p = map.props[list[j]]; if (p.open) continue;
+        const nx = Math.max(p.x, Math.min(o.x, p.x + p.w)), ny = Math.max(p.y, Math.min(o.y, p.y + p.d));
+        const dx = o.x - nx, dy = o.y - ny, d2 = dx * dx + dy * dy;
+        if (d2 >= o.r * o.r) continue;
+        if (d2 > 1e-6) { const d = Math.sqrt(d2), push = o.r - d; o.x += dx / d * push; o.y += dy / d * push; }
+        else { const l = o.x - p.x, rr = p.x + p.w - o.x, t = o.y - p.y, b = p.y + p.d - o.y, m = Math.min(l, rr, t, b);
+          if (m === l) o.x = p.x - o.r; else if (m === rr) o.x = p.x + p.w + o.r; else if (m === t) o.y = p.y - o.r; else o.y = p.y + p.d + o.r; }
+      }
+    }
+    const w = map.cols * map.tile, h = map.rows * map.tile;
+    if (o.x < o.r) o.x = o.r; if (o.x > w - o.r) o.x = w - o.r; if (o.y > h - o.r) o.y = h - o.r; if (o.y < o.r) o.y = o.r;
+  }
+  /** The nearest awake machine inside the aim cone of the facing (or anywhere in range when none is in the cone). */
+  function aimAt(W, rules) {
+    const K = rules.frontier.keeper, k = W.k, cone = Math.cos(K.aim_cone_deg * Math.PI / 360);
+    let best = -1, bd = K.aim_range * K.aim_range, loose = -1, ld = bd;
+    for (let i = 0; i < W.foes.length; i++) {
+      const f = W.foes[i]; if (!f.on) continue;
+      const dx = f.x - k.x, dy = f.y - k.y, d2 = dx * dx + dy * dy; if (d2 > bd && d2 > ld) continue;
+      const d = Math.sqrt(d2) || 1, dot = (dx * k.fx + dy * k.fy) / d;
+      if (dot >= cone && d2 < bd) { bd = d2; best = i; }
+      if (d2 < ld) { ld = d2; loose = i; }
+    }
+    return best >= 0 ? best : loose;
+  }
+  function shoot(W, x, y, dx, dy, speed, life, dmg, foe) {
+    for (let i = 0; i < W.shots.length; i++) {
+      const s = W.shots[i]; if (s.on) continue;
+      const d = Math.hypot(dx, dy) || 1; s.on = true; s.x = x; s.y = y; s.vx = dx / d * speed; s.vy = dy / d * speed; s.life = life; s.dmg = dmg; s.foe = foe;
+      return true;
+    }
+    return false;
+  }
+  function hurtKeeper(W, n, rules) {
+    const k = W.k; if (k.inv > 0 || W.over) return;
+    k.hp -= n; k.inv = rules.frontier.keeper.invulnerable_s; W.shake = .25; W.hits++;
+    if (k.hp <= 0) { k.hp = 0; W.over = true; W.won = false; }
+  }
+  function killFoe(W, f, rules) {
+    const F = rules.frontier.foes.kinds[f.type];
+    f.on = false; W.kills++; W.score += F.score; W.scrap += F.scrap;
+    for (let j = 0; j < 8; j++) emit(W, 1, f.x, f.y, 6, Math.cos(j * .785) * 40, Math.sin(j * .785) * 40, 30 + (j % 3) * 20, .5);
+  }
+  /**
+   * One step of a run. `input` is { ax, ay, fire, dash } (the stick's push, -1..1, and two held buttons); `pressed`
+   * holds the press edges { dash }. Fixed step inside, so a slow frame plays the same game as a fast one.
+   */
+  function stepRun(W, input, pressed, dt, rules) {
+    const X = rules.frontier, STEP = 1 / X.step_hz;
+    W.acc = Math.min(W.acc + dt, STEP * X.max_steps);
+    let dashEdge = !!(pressed && pressed.dash);
+    while (W.acc >= STEP - 1e-9) { W.acc -= STEP; tick(W, input, dashEdge, STEP, rules); dashEdge = false; }
+    for (let i = 0; i < W.fx.length; i++) { const e = W.fx[i]; if (e.t <= 0) continue; e.t -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.max(0, e.z + e.vz * dt); e.vz -= 140 * dt; }
+    if (W.shake > 0) W.shake = Math.max(0, W.shake - dt);
+    if (W.bump > 0) W.bump = Math.max(0, W.bump - dt);
+  }
+  function tick(W, input, dashEdge, dt, rules) {
+    const X = rules.frontier, K = X.keeper, k = W.k, map = W.map;
+    W.time += dt; if (W.over) return;
+    // move: the stick's push, or a dash along the facing
+    const ax = input.ax || 0, ay = input.ay || 0, m = Math.hypot(ax, ay);
+    if (m > .05) { k.fx = ax / m; k.fy = ay / m; }
+    if (dashEdge && k.dash <= 0 && k.dashCd <= 0 && k.power >= K.dash_power) { k.dash = K.dash_s; k.dashCd = K.dash_cooldown_s; k.power -= K.dash_power; k.inv = Math.max(k.inv, K.dash_s); emit(W, 2, k.x, k.y, 2, 0, 0, 0, .3); }
+    const sp = k.dash > 0 ? K.dash_speed : K.speed * Math.min(1, m);
+    k.vx = k.dash > 0 ? k.fx * sp : ax / (m || 1) * sp; k.vy = k.dash > 0 ? k.fy * sp : ay / (m || 1) * sp;
+    k.x += k.vx * dt; k.y += k.vy * dt; collide(map, k);
+    if (m > .05 || k.dash > 0) k.step += dt * (k.dash > 0 ? 14 : 9);
+    k.dash = Math.max(0, k.dash - dt); k.dashCd = Math.max(0, k.dashCd - dt); k.inv = Math.max(0, k.inv - dt); k.cd = Math.max(0, k.cd - dt);
+    k.power = Math.min(k.pmax, k.power + K.power_regen * dt);
+    // fire: at the nearest machine in the cone, else straight along the facing
+    k.aim = aimAt(W, rules);
+    if (input.fire && k.cd <= 0 && k.power >= K.fire_power) {
+      const f = k.aim >= 0 ? W.foes[k.aim] : null, dx = f ? f.x - k.x : k.fx, dy = f ? f.y - k.y : k.fy;
+      if (shoot(W, k.x, k.y, dx, dy, K.shot_speed, K.shot_range / K.shot_speed, K.shot_damage, false)) { k.cd = 1 / K.fire_per_s; k.power -= K.fire_power; emit(W, 3, k.x + k.fx * 6, k.y + k.fy * 6, 8, 0, 0, 0, .08); }
+    }
+    // the machines: they wake when the Keeper comes near, then chase; drones keep their distance and fire
+    for (let i = 0; i < W.foes.length; i++) {
+      const f = W.foes[i]; if (!f.on) continue; const F = X.foes.kinds[f.type];
+      f.t += dt; f.hit = Math.max(0, f.hit - dt);
+      const dx = k.x - f.x, dy = k.y - f.y, d = Math.hypot(dx, dy) || 1;
+      if (!f.wake && d < X.foes.aggro) f.wake = true;
+      if (!f.wake) continue;
+      const want = F.keep ? (d > F.keep ? 1 : d < F.keep * .7 ? -1 : 0) : 1;
+      f.vx = dx / d * F.speed * want; f.vy = dy / d * F.speed * want; f.face = dx >= 0 ? 1 : -1;
+      f.x += f.vx * dt; f.y += f.vy * dt; collide(map, f);
+      if (F.fire_s) { f.cd -= dt; if (f.cd <= 0 && d < X.foes.aggro) { f.cd = F.fire_s; shoot(W, f.x, f.y, dx, dy, F.shot_speed, X.foes.aggro / F.shot_speed, 1, true); } }
+      if (d < f.r + k.r) hurtKeeper(W, F.touch, rules);
+    }
+    // the shots
+    for (let i = 0; i < W.shots.length; i++) {
+      const s = W.shots[i]; if (!s.on) continue;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+      if (s.life <= 0 || solidAt(map, s.x, s.y)) { s.on = false; emit(W, 4, s.x, s.y, 6, 0, 0, 20, .15); continue; }
+      if (s.foe) { if (Math.hypot(s.x - k.x, s.y - k.y) < k.r + 2) { s.on = false; hurtKeeper(W, s.dmg, rules); } continue; }
+      for (let j = 0; j < W.foes.length; j++) {
+        const f = W.foes[j]; if (!f.on || Math.hypot(s.x - f.x, s.y - f.y) > f.r + 2) continue;
+        s.on = false; f.hp -= s.dmg; f.hit = .12; f.wake = true; emit(W, 4, s.x, s.y, 6, 0, 0, 20, .15);
+        if (f.hp <= 0) killFoe(W, f, rules);
+        break;
+      }
+    }
+    // crates: walk into one and it opens for scrap
+    const near = Math.floor(k.y / map.cell);
+    for (let i = 0; i < map.props.length; i++) {
+      const p = map.props[i]; if (p.kind !== 'crate' || p.open) continue;
+      if (Math.abs(Math.floor(p.y / map.cell) - near) > 1) continue;
+      if (k.x > p.x - k.r && k.x < p.x + p.w + k.r && k.y > p.y - k.r && k.y < p.y + p.d + k.r) { p.open = true; W.scrap += X.props.crate.scrap; W.score += X.props.crate.score; for (let j = 0; j < 6; j++) emit(W, 5, p.x + p.w / 2, p.y + p.d / 2, 6, Math.cos(j) * 30, Math.sin(j) * 30, 50, .6); }
+    }
+    // the region's ends: back through the gate at the south, on to the next region at the north
+    if (k.y <= map.north && W.sealed) { k.y = map.north + 1; W.bump = .6; }   // the next region is sealed until the castle has its pieces
+    else if (k.y <= map.north) { W.exit = 1; W.over = true; W.won = true; }
+    else if (W.index === 0 ? k.y > map.gate.y + map.tile * 1.4 : k.y > map.rows * map.tile - map.tile) { W.exit = -1; W.over = true; W.won = true; }
+  }
+  function solidAt(map, x, y) {
+    const gx = Math.floor(x / map.cell), gy = Math.floor(y / map.cell);
+    if (gx < 0 || gy < 0 || gx >= map.gw || gy >= map.gh) return true;
+    const list = map.grid[gy * map.gw + gx];
+    for (let j = 0; j < list.length; j++) { const p = map.props[list[j]]; if (!p.open && x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.d) return true; }
+    return false;
+  }
+
+  const api = { TAU, rngOf, hashOf, camOf, camFit, project, camFollow, KINDS, regionOf, regionsOpen, nextSeal, newRun, stepRun, solidAt, collide, aimAt };
+  if (typeof globalThis !== 'undefined') globalThis.FieldworksFrontier = api;
+})();
