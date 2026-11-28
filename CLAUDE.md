@@ -41,7 +41,7 @@ There is **no build step for the engine and no `package.json`**: `src/` and
 | Sim tests | `node --test sim/economy.test.mjs` (needs an alys checkout beside this one; skips with the reason otherwise) |
 | Both | `node --test tests/check.mjs sim/economy.test.mjs` |
 | Economy sim → `sim/REPORT.md` | `node sim/economy.mjs --alys ../alys` (refuses to run without the flag, and on a shallow alys checkout: `git -C ../alys fetch --unshallow origin main` first) |
-| Rebuild the prototype and the embed | `node prototype/build.mjs` (joins `prototype/game/*.js` into the page and inlines `src/engine.js`, `src/castle.js` + `rules/fieldworks.json` → `prototype/index.html`, `art-sheet.html`, and `embed/play.html`, `play.js`, `play.css`) |
+| Rebuild the prototype and the embed | `node prototype/build.mjs` (joins `prototype/game/*.js` into the page and inlines `src/engine.js`, `src/castle.js`, `src/frontier.js` + `rules/fieldworks.json` → `prototype/index.html`, `art-sheet.html`, and `embed/play.html`, `play.js`, `play.css`) |
 | Assemble the Pages site | `node prototype/site.mjs _site` (the game at the root, the art sheet, `version.json`, `fonts/`; nothing else) |
 | The walk: shots, checks, frame time, art sheet, the signed-out site, the embed in a host frame | `node prototype/shots.mjs` (Playwright; writes `prototype/shots/`; about five minutes) |
 | Workflow lint | `node .github/scripts/workflow-lint.mjs` |
@@ -90,6 +90,7 @@ design's D32 (how the game feeds SocialOS). Neither workflow runs the walk.
 ```
 src/engine.js          # the fold: pure, window-free, every number from the rules (and, since FW2, gearOf / loadout / bounty)
 src/castle.js          # the castle from the fold's log, the horde's clock, the fight as one stepping function
+src/frontier.js        # the explorer out the gate: the mid-angle camera, a seeded region, the gates, a run as one stepping function
 rules/fieldworks.json  # the owner's instance of the rules: every number and sentence the game reads
 sim/                   # the economy sim (economy.mjs), its test and fixture, REPORT.md (generated)
 prototype/             # prototype.src.html (the shell and styles) + game/*.js (the game script, in fragments) → build.mjs → index.html; art-sheet.html; shots.mjs; shots/; site.mjs + fonts/ → the Pages site

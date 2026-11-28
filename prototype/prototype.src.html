@@ -60,6 +60,10 @@ b { font-weight: 500; }
 canvas.game { display: block; touch-action: none; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 1px var(--line); background: #1b2023; }
 /* FW10 (design D67, D79): the controls are one canvas. A stick floats where the left thumb lands; the right side is drawn
    buttons with no gap between them. Nothing in it is a DOM button, so nothing can zoom, select or call out under a thumb. */
+.stage.xstage { padding: 0; align-items: stretch; justify-content: stretch; }
+canvas.xcv { width: 100%; height: 100%; image-rendering: auto; box-shadow: none; background: #141210; }
+.xback { position: absolute; right: 8px; bottom: 8px; width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(232,236,239,.25); background: rgba(12,12,14,.6); color: #e8ecef; display: inline-flex; align-items: center; justify-content: center; }
+html.playing .phone .xback { touch-action: manipulation; }
 .padcv { display: block; width: 100%; height: 120px; flex: none; background: #15181b; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 /* While a game screen is up (the castle, a stage): the page is the screen. No scroll under the game, no double-tap or pinch
    zoom, no text selection, no long-press callout and no tap highlight anywhere on the play surface (the 2026-11-26
@@ -214,6 +218,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
 <script id="rules" type="application/json">/*__RULES__*/</script>
 <script>/*__ENGINE__*/</script>
 <script>/*__CASTLE__*/</script>
+<script>/*__FRONTIER__*/</script>
 <script>
 (() => {
   'use strict';

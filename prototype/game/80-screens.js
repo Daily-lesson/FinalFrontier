@@ -37,6 +37,7 @@
     padMount(document.getElementById('padcv'), RI.pads.side, 'pad');   // the floating stick and the drawn buttons (15-input.js)
   }
   function resize() {
+    if (S.screen === 'frontier') { sizeExplore(); return; }   // the frontier sizes its own canvas
     const st = document.getElementById('stage'); if (!st || !cv) return;
     const w = st.clientWidth - 12, sc = Math.max(1, Math.round(w / RS.view_w)); VW = clamp(Math.floor(w / sc), 150, 220); VH = clamp(Math.floor((st.clientHeight - 4) / sc), 110, 232);
     bgKey = ''; cv.width = VW; cv.height = VH; cv.style.width = VW * sc + 'px'; cv.style.height = VH * sc + 'px'; ctx.imageSmoothingEnabled = false;
@@ -56,7 +57,8 @@
     const switches = `<section class="card" id="switches"><div class="row"><div class="t"><div class="name">${esc(B.hard)}</div><div class="meta">${esc(fill(B.hard_note, { x: RS.hard.score }))}</div></div><button class="switch" data-hard="1" role="switch" aria-checked="${S.play.hard}" aria-label="${esc(B.hard)}"><i></i></button></div><div class="row"><div class="t"><div class="name">${esc(BANK.sound.label)}</div><div class="meta">${esc(BANK.sound.note)}</div></div><button class="switch" data-mute="1" role="switch" aria-checked="${!S.play.mute}" aria-label="${esc(BANK.sound.label)}"><i></i></button></div></section>`;
     const track = `<section class="card" id="metacard"><h2>${esc(M.heading)} <span class="more">${esc(fill(M.total, { score: life }))}</span></h2><div class="empty">${esc(next ? fill(M.next, { at: next.at, what: M.names[next.slug] }) : M.all)}</div><div class="unlocks">${RS.meta.unlocks.map((u) => `<span class="chip ${life >= u.at ? 'g g-fine' : 'dash'}" data-unlock="${u.slug}" data-open="${life >= u.at}">${esc(M.names[u.slug])}${life >= u.at ? '' : ` · ${u.at}`}</span>`).join('')}</div><div class="empty" style="margin-top:6px">${esc(M.note)}</div></section>`;
     const hostCard = EMBED && !OUT ? `<section class="card" id="hostcard"><h2>${esc(BANK.embed.where)}</h2>${['workorders', 'learning', 'health'].map((to) => `<button class="row" data-host="${to}"><div class="t"><div class="name">${esc(BANK.embed.places[to])}</div><div class="meta">${esc(BANK.embed.place_notes[to])}</div></div></button>`).join('')}</section>` : '';
-    const wildsCard = `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)} ${esc(fill(B.wilds_biomes, { n: wildsBiomes().length, of: RS.biomes.list.length }))}</div></div></button></section>`;
+    const xo = XE.regionsOpen(CAS.pieces, RULES), frontier = `<section class="card" id="frontiercard"><button class="row" data-go="frontier"><span class="chip g g-fine">↑</span><div class="t"><div class="name">${esc(BX.row)}</div><div class="meta">${esc(fill(BX.row_meta, { open: xo, all: RX.regions.length }))}</div></div></button></section>`;
+    const wildsCard = frontier + `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)} ${esc(fill(B.wilds_biomes, { n: wildsBiomes().length, of: RS.biomes.list.length }))}</div></div></button></section>`;
     if (OUT) return `${wildsCard}${switches}${track}<div class="empty">${esc(EMBED ? BANK.embed[EMB.state] : BANK.castle.signed_out)}</div><div class="empty">${esc(B.score_note)}</div>`;   // the roadmap's weeks are the account's
     const roadmap = PLAN.weeks.length ? `<section class="card"><h2>${esc(B.roadmap)} <span class="more">${esc(fill(B.roadmap_meta, { n: x.mapped, rank: x.rank.label }))}</span></h2>${rows}</section>` : `<div class="empty" id="noplan">${esc(BANK.embed.no_plan)}</div>`;
     return `${wildsCard}${switches}${roadmap}${track}${hostCard}<div class="empty">${esc(B.score_note)}</div>`;
@@ -69,8 +71,9 @@
     if ($home) $home.setAttribute('aria-current', S.screen === 'home' ? 'page' : 'false');
     let html = '';
     if (S.screen === 'stage' && !ST) S.screen = 'castle';
-    if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
+    if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper', 'frontier'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
     if (S.screen !== 'stage') music(S.screen === 'castle' && (CS.fight || (S.horde.clock.due && S.state !== 'unlit')) ? 'warning' : 'castle');
+    if (S.screen === 'frontier') { playing(true); $screen.innerHTML = exploreShell(); mountExplore(); renderOverlay(); return; }   // the frontier (72-frontier.js)
     if (S.screen === 'castle' || S.screen === 'stage') {
       playing(true); $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
       if (S.screen === 'castle' && CS.fight) document.getElementById('skipFight').hidden = false;

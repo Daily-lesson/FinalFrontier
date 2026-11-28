@@ -76,7 +76,7 @@ test('c4: the stack it states is the stack the repo runs', () => {
 
 test('c4: the built page carries the engine and the castle module byte for byte', () => {
   const page = read('prototype/index.html');
-  for (const f of ['src/engine.js', 'src/castle.js']) assert.ok(page.includes(read(f).trim()), `${f} inlined`);
+  for (const f of ['src/engine.js', 'src/castle.js', 'src/frontier.js']) assert.ok(page.includes(read(f).trim()), `${f} inlined`);
 });
 
 test('c4: the save is on the device and the game makes no network call', () => {

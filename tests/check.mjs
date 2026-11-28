@@ -23,6 +23,8 @@ vm.runInNewContext(read('src/engine.js'), ctx);
 const E = ctx.FieldworksEngine;
 vm.runInNewContext(read('src/castle.js'), ctx);
 const C = ctx.FieldworksCastle;
+vm.runInNewContext(read('src/frontier.js'), ctx);
+const F = ctx.FieldworksFrontier;
 const TODAY = '2026-11-09';
 const ev = (o) => ({ tier: 'public', evidence: { kind: 'commit', ref: 'abc' }, at: '2026-11-08', ...o });
 
@@ -168,6 +170,7 @@ test('prototype/index.html inlines src/engine.js, src/castle.js and rules/fieldw
   const html = read('prototype/index.html');
   assert.ok(html.includes(read('src/engine.js')), 'engine.js is inlined unchanged');
   assert.ok(html.includes(read('src/castle.js')), 'castle.js is inlined unchanged');
+  assert.ok(html.includes(read('src/frontier.js')), 'frontier.js is inlined unchanged');
   assert.ok(html.includes(read('rules/fieldworks.json').trim()), 'the rules are inlined unchanged');
 });
 
@@ -401,6 +404,81 @@ test('the superseded blocks are gone: no fortress map, no cells, no third-person
   assert.ok(!/"cells"/.test(JSON.stringify(RULES)), 'no cells anywhere: a piece is laid, never bought');
 });
 
+// ── the frontier (src/frontier.js, FW11): the mid-angle camera, a region, the gates, a run ──
+test('the frontier camera: an axis-aligned ground grid running up the screen, tilted 60–65°, heights lean away from the middle', () => {
+  const X = RULES.frontier, cam = F.camFit(F.camOf(RULES), 360, 640), a = { x: 0, y: 0 }, b = { x: 0, y: 0 };
+  assert.ok(X.camera.tilt_deg >= 60 && X.camera.tilt_deg <= 65, 'the owner\'s mid-angle: about 60–65° down from the horizon');
+  cam.x = 100; cam.y = 100;
+  F.project(cam, 80, 100, 0, a); F.project(cam, 80, 200, 0, b); assert.equal(a.x, b.x, 'a line running north on the ground stays vertical on the screen: no diamonds');
+  F.project(cam, 80, 100, 0, a); F.project(cam, 180, 100, 0, b); assert.equal(a.y, b.y, 'a line running east stays level');
+  const dx = b.x - a.x; F.project(cam, 80, 116, 0, b); assert.ok(b.y - a.y < dx * 16 / 100 && b.y - a.y > dx * 16 / 100 * .8, 'a tile is a little shorter than it is wide: the tilt foreshortens it');
+  F.project(cam, 150, 100, 0, a); F.project(cam, 150, 100, 40, b); assert.ok(b.y < a.y && b.x > a.x, 'a tall thing right of the middle rises and leans right, showing its west side');
+  F.project(cam, 50, 100, 0, a); F.project(cam, 50, 100, 40, b); assert.ok(b.x < a.x, 'and one left of the middle leans left');
+  F.project(cam, 100, 100, 0, a); F.project(cam, 100, 100, 40, b); assert.equal(a.x, b.x, 'straight up in the middle');
+});
+test('a frontier region: seeded, a clear road straight up the middle, dense props, solids in the grid', () => {
+  const X = RULES.frontier, m = F.regionOf(0, 0, RULES), again = F.regionOf(0, 0, RULES);
+  assert.deepEqual(m.props.map((p) => [p.kind, p.x, p.y]), again.props.map((p) => [p.kind, p.x, p.y]), 'the same seed grows the same region');
+  assert.notDeepEqual(F.regionOf(0, 1, RULES).props.slice(0, 5).map((p) => p.x), m.props.slice(0, 5).map((p) => p.x), 'the next run grows another');
+  for (const p of m.props) assert.ok(p.x + p.w <= m.roadC0 * m.tile || p.x >= (m.roadC1 + 1) * m.tile - m.tile, `nothing on the road: ${p.kind} at ${Math.round(p.x)}`);
+  for (const k of F.KINDS) assert.ok(m.props.some((p) => p.kind === k), `the region has ${k}`);
+  assert.ok(m.props.length / (m.cols * m.rows) > .3, 'dense: a third of a prop or more per tile');
+  for (let i = 1; i < m.props.length; i++) assert.ok(m.props[i].y >= m.props[i - 1].y, 'props are kept in depth order');
+  for (let y = m.north; y < m.gate.y; y += 4) assert.ok(!F.solidAt(m, m.start.x, y), `the road is open at y ${y}`);
+  assert.ok(m.grid.some((c) => c.length), 'solid things are in the grid');
+  assert.ok(F.regionOf(3, 0, RULES).props.length > m.props.length, 'deeper regions are denser');
+});
+test('frontier gates: a pure function of the castle\'s pieces. The first region is always open; play never opens one', () => {
+  const R = RULES.frontier.regions;
+  assert.equal(F.regionsOpen(0, RULES), 1); assert.equal(R[0].at, 0);
+  assert.equal(F.regionsOpen(R[1].at - 1, RULES), 1); assert.equal(F.regionsOpen(R[1].at, RULES), 2); assert.equal(F.regionsOpen(1e6, RULES), R.length);
+  assert.deepEqual(F.nextSeal(0, RULES), { index: 1, need: R[1].at }); assert.equal(F.nextSeal(1e6, RULES), null);
+  assert.equal(F.regionsOpen.length, 2, 'it takes the pieces and the rules: no run, score or scrap');
+  for (let i = 1; i < R.length; i++) assert.ok(R[i].at > R[i - 1].at, 'each region needs more pieces than the one before');
+});
+test('a frontier run: one fixed-step function over pooled arrays; it moves, collides, fires, takes hits, opens crates, seals the north', () => {
+  const run = F.newRun(0, 0, 4, true, RULES), K = RULES.frontier.keeper;
+  const foes = run.foes, shots = run.shots, fx = run.fx, y0 = run.k.y;
+  for (let i = 0; i < 60; i++) F.stepRun(run, { ax: 0, ay: -1, fire: false }, null, 1 / 60, RULES);
+  assert.ok(Math.abs(y0 - run.k.y - K.speed) < K.speed * .1, `a second of stick north walks speed units north: ${Math.round(y0 - run.k.y)}`);
+  assert.equal(run.foes, foes); assert.equal(run.shots, shots); assert.equal(run.fx, fx); assert.equal(run.foes.length, RULES.frontier.foes.cap, 'pools made once at their caps');
+  const p0 = run.k.power; F.stepRun(run, { ax: 0, ay: -1 }, { dash: true }, 1 / 60, RULES); assert.ok(run.k.dash > 0 && run.k.power < p0, 'a dash spends power');
+  // a slow frame plays the same as fast ones
+  const a = F.newRun(0, 5, 4, true, RULES), b = F.newRun(0, 5, 4, true, RULES);
+  for (let i = 0; i < 3; i++) F.stepRun(a, { ax: .5, ay: -1, fire: true }, null, 1 / 60, RULES);   // up to max_steps per frame; a longer stall is dropped, never spiralled
+  F.stepRun(b, { ax: .5, ay: -1, fire: true }, null, 3 / 60, RULES);
+  assert.ok(Math.abs(a.k.x - b.k.x) < 1.5 && Math.abs(a.k.y - b.k.y) < 1.5, 'fixed step');
+  // walk into a solid and stop at its face
+  const m = run.map, rock = m.props.find((p) => p.solid && p.kind === 'ruin');
+  run.k.x = rock.x + rock.w / 2; run.k.y = rock.y + rock.d + 20; run.k.dash = 0;
+  for (let i = 0; i < 90; i++) F.stepRun(run, { ax: 0, ay: -1 }, null, 1 / 60, RULES);
+  assert.ok(run.k.y >= rock.y + rock.d + run.k.r - .5, 'the Keeper stops at a wall');
+  // fire at a machine: it wakes, takes the shots, and its kill pays score and scrap
+  const r2 = F.newRun(0, 0, 4, true, RULES); for (const f of r2.foes) f.on = false;
+  const f = r2.foes[0]; Object.assign(f, { on: true, type: 'crawler', x: r2.k.x, y: r2.k.y - 50, hp: 2, max: 2, r: 6, wake: true });
+  for (let i = 0; i < 120 && f.on; i++) F.stepRun(r2, { ax: 0, ay: 0, fire: true }, null, 1 / 60, RULES);
+  assert.ok(!f.on && r2.kills === 1 && r2.score === RULES.frontier.foes.kinds.crawler.score && r2.scrap === RULES.frontier.foes.kinds.crawler.scrap, 'a kill pays play score and scrap, nothing else');
+  // a touch hurts once, then the Keeper is safe for a moment
+  const r3 = F.newRun(0, 0, 4, true, RULES); for (const q of r3.foes) q.on = false;
+  Object.assign(r3.foes[0], { on: true, type: 'brute', x: r3.k.x, y: r3.k.y, hp: 9, max: 9, r: 9, wake: true });
+  F.stepRun(r3, { ax: 0, ay: 0 }, null, 1 / 60, RULES); const hp = r3.k.hp; F.stepRun(r3, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.equal(hp, 4 - RULES.frontier.foes.kinds.brute.touch); assert.equal(r3.k.hp, hp, 'one hit, then a moment of safety');
+  // the sealed north edge holds; an open one leads on
+  const r4 = F.newRun(0, 0, 4, true, RULES); for (const q of r4.foes) q.on = false; r4.k.y = r4.map.north + 3;
+  F.stepRun(r4, { ax: 0, ay: -1 }, null, .1, RULES); assert.ok(!r4.over && r4.bump > 0, 'sealed: the Keeper bumps the light');
+  const r5 = F.newRun(0, 0, 4, false, RULES); for (const q of r5.foes) q.on = false; r5.k.y = r5.map.north + 3;
+  F.stepRun(r5, { ax: 0, ay: -1 }, null, .1, RULES); assert.ok(r5.over && r5.exit === 1, 'open: on into the next region');
+  // a crate opens for scrap
+  const r6 = F.newRun(0, 0, 4, true, RULES), crate = r6.map.props.find((p) => p.kind === 'crate'); for (const q of r6.foes) q.on = false;
+  r6.k.x = crate.x + crate.w / 2; r6.k.y = crate.y + crate.d / 2; F.stepRun(r6, { ax: 0, ay: 0 }, null, 1 / 60, RULES);
+  assert.ok(crate.open && r6.scrap === RULES.frontier.props.crate.scrap, 'a crate opens for scrap');
+});
+test('the frontier module is pure: no window, no clock, no storage, no randomness of its own, no evidence', () => {
+  const src = read('src/frontier.js').replace(/\/\/.*$/gm, '');
+  assert.ok(!/window|document|localStorage|Date\.now|performance|Math\.random|fetch\(|XMLHttpRequest/.test(src), 'nothing from the page or the clock');
+  assert.ok(!/events|evaluate|castleOf|\.xp\b|closeEvent/.test(src), 'it never reads or writes the evidence');
+});
+
 // ── prototype 4: the page itself ────────────────────────────────────────────
 const BUILD = await import('../prototype/build.mjs');
 const SRC = BUILD.source();   // the page's source with the game's fragments (prototype/game/*.js) joined in, as build.mjs joins them
@@ -415,7 +493,7 @@ test('the built pages parse: every inline script of index.html and art-sheet.htm
     assert.ok(!/\/\*__[A-Z]+__\*\//.test(read(f)), `${f}: no inline marker left`);
   }
   const art = read('prototype/art-sheet.html');
-  assert.ok(art.includes(read('src/engine.js')) && art.includes(read('src/castle.js')) && art.includes(read('rules/fieldworks.json').trim()), 'the art sheet inlines the same engine, castle module and rules');
+  assert.ok(art.includes(read('src/engine.js')) && art.includes(read('src/castle.js')) && art.includes(read('src/frontier.js')) && art.includes(read('rules/fieldworks.json').trim()), 'the art sheet inlines the same engine, castle module and rules');
 });
 
 test('pillar 1 in the page: the castle comes from the evidence log in one place, and evidence enters in three', () => {
@@ -444,7 +522,8 @@ test('pillar 1 in the page: the castle comes from the evidence log in one place,
 
 // Everything a run does: the stage, the machines, the bosses, the upgrades, what play score opens. None of it may touch the evidence.
 const PLAY_FNS = ['updateStage', 'finishStage', 'updateCastle', 'endFight', 'hurt', 'die', 'grow', 'arena', 'cache', 'newStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'startBoss', 'bossDown', 'bossReset',
-  'award', 'kill', 'strike', 'shoot', 'crackHit', 'reachPost', 'relicFound', 'recalc', 'takeUpgrade', 'offerUpgrade', 'wildsBiomes'];
+  'award', 'kill', 'strike', 'shoot', 'crackHit', 'reachPost', 'relicFound', 'recalc', 'takeUpgrade', 'offerUpgrade', 'wildsBiomes',
+  'mountExplore', 'updateExplore', 'exploreOver', 'endExplore'];
 test('pillar 1 in the page: score is play. No line carries it into the evidence, XP or the castle', () => {
   const lines = SRC.split('\n');
   for (const l of lines) if (/score/i.test(l) && !/^\s*(\/\/|\/\*|\*)/.test(l)) assert.ok(!/S\.events|closeEvent|lessonEvent|liftEvent|setState\(|castleOf/.test(l) || /function |\/\/ /.test(l) && !/score[^;]*S\.events\.push/.test(l), `a score line touches the evidence: ${l.trim().slice(0, 90)}`);
@@ -477,7 +556,8 @@ test('the save holds no map and nothing the evidence can rebuild', () => {
 
 test('the update and render paths allocate nothing per frame (the HUD, four times a second, builds its strings)', () => {
   assert.match(fn('backdrop'), /if \(bg && bgKey\) return bg;/, 'the backdrop is painted once per theme and size');
-  for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'renderBoss', 'drawWorld', 'drawAir', 'drawCastle', 'ground', 'tuft', 'text', 'stone', 'crenels', 'frame', 'burst', 'puff', 'pop', 'emit', 'ebullet', 'aim', 'strike', 'kill', 'hurt', 'shoot', 'jolt']) {
+  for (const f of ['updateCastle', 'renderCastle', 'updateStage', 'renderStage', 'updateFoes', 'updateBullets', 'updateMovers', 'updateBoss', 'bossHauler', 'bossEye', 'bossUndertow', 'renderBoss', 'drawWorld', 'drawAir', 'drawCastle', 'ground', 'tuft', 'text', 'stone', 'crenels', 'frame', 'burst', 'puff', 'pop', 'emit', 'ebullet', 'aim', 'strike', 'kill', 'hurt', 'shoot', 'jolt',
+    'updateExplore', 'renderExplore', 'xflat', 'xprop', 'xactor', 'xkeeper', 'xcastle', 'xseal', 'xhud', 'xbox', 'xq', 'xquad', 'xtri', 'xell', 'xfill']) {
     const src = fn(f).replace(/\/\/.*$/gm, ''), body = src.slice(src.indexOf('{') + 1);
     const bad = body.match(/\.(map|filter|slice|concat|flatMap|reduce|forEach|split|join|find|some|every|includes)\(|\bnew \w|Array\.from|\[[^\]]*,[^\]]*\]\s*[;)]|=>|`|\bString\(|\.toUpperCase\(|\{ ?\w+: /g) || [];
     // the few allowed, each exactly as often as it stands today: the cached score and horde count, and a ticked-post lookup
@@ -743,7 +823,7 @@ test('embed/play.js: one classic script carrying the flag, the body, the rules, 
   const js = read('embed/play.js');
   assert.doesNotThrow(() => new vm.Script(js));
   assert.ok(js.indexOf('globalThis.FIELDWORKS_EMBED = true;') >= 0 && js.indexOf('globalThis.FIELDWORKS_EMBED = true;') < js.indexOf('(function () {'), 'the flag is set at its top, before any code runs');
-  assert.ok(js.includes(read('src/engine.js').trimEnd()) && js.includes(read('src/castle.js').trimEnd()) && js.includes(`globalThis.FIELDWORKS_RULES = ${read('rules/fieldworks.json').trim()};`), 'the engine, the castle module and the rules, byte for byte');
+  assert.ok(js.includes(read('src/engine.js').trimEnd()) && js.includes(read('src/castle.js').trimEnd()) && js.includes(read('src/frontier.js').trimEnd()) && js.includes(`globalThis.FIELDWORKS_RULES = ${read('rules/fieldworks.json').trim()};`), 'the engine, the castle module and the rules, byte for byte');
   const game = /<script>\n(\(\(\) => \{\n[\s\S]*?\n\}\)\(\);)\n<\/script>\s*$/.exec(SRC)[1]; assert.ok(js.includes(game), 'and the page\'s own game script, unchanged');
   // the body it builds: the page's, without the DEMO's chrome
   const body = JSON.parse(/globalThis\.FIELDWORKS_BODY = (".*");\n/.exec(js)[1]);
@@ -806,7 +886,7 @@ test('signed out (the public site): the page starts empty and hides what reads a
   { const ls = fn('loadSave'), at = ls.indexOf('if (OUT) {'), branch = ls.slice(at, ls.indexOf("return 'loaded';", at));
     assert.ok(at > 0 && at < ls.indexOf('for (const id of j.closed)') && !/S\.events|S\.horde|S\.ticks|S\.liftsLogged|S\.closed/.test(branch), 'a signed-out save returns before the journal and the horde, touching neither'); }
   assert.match(fn('stageRows'), /if \(OUT\) return `\$\{wildsCard\}/, 'the Wilds only: the roadmap is the account\'s');
-  assert.match(SRC, /if \(\(OUT \|\| EMBED\) && !\['castle', 'stage', 'stages', 'keeper'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
+  assert.match(SRC, /if \(\(OUT \|\| EMBED\) && !\['castle', 'stage', 'stages', 'keeper', 'frontier'\]\.includes\(S\.screen\)\) S\.screen = 'castle';/, 'no backlog, Home, skills or archive');
   assert.match(SRC, /if \(OUT && n !== 0\) return;/, 'no roadmap stage by click either');
   assert.ok(RULES.bank.castle.signed_out && RULES.bank.castle.signed_out_short, 'the sentences are in the bank');
   // what hides the account's chrome, held here because CI never runs the walk

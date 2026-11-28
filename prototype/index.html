@@ -60,6 +60,10 @@ b { font-weight: 500; }
 canvas.game { display: block; touch-action: none; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 1px var(--line); background: #1b2023; }
 /* FW10 (design D67, D79): the controls are one canvas. A stick floats where the left thumb lands; the right side is drawn
    buttons with no gap between them. Nothing in it is a DOM button, so nothing can zoom, select or call out under a thumb. */
+.stage.xstage { padding: 0; align-items: stretch; justify-content: stretch; }
+canvas.xcv { width: 100%; height: 100%; image-rendering: auto; box-shadow: none; background: #141210; }
+.xback { position: absolute; right: 8px; bottom: 8px; width: 40px; height: 40px; border-radius: 12px; border: 1px solid rgba(232,236,239,.25); background: rgba(12,12,14,.6); color: #e8ecef; display: inline-flex; align-items: center; justify-content: center; }
+html.playing .phone .xback { touch-action: manipulation; }
 .padcv { display: block; width: 100%; height: 120px; flex: none; background: #15181b; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 /* While a game screen is up (the castle, a stage): the page is the screen. No scroll under the game, no double-tap or pinch
    zoom, no text selection, no long-press callout and no tap highlight anywhere on the play surface (the 2026-11-26
@@ -1187,6 +1191,30 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       "bot": "BOT",
       "build": "BUILD",
       "label": "Controls: drag on the left to move, press on the right to act."
+    },
+    "frontier": {
+      "row": "The frontier",
+      "row_meta": "Out the gate on foot: the mid-angle explorer. {open} of {all} regions open.",
+      "regions": {
+        "gate_fields": "The Gate Fields",
+        "scrap_flats": "The Scrap Flats",
+        "ash_reach": "The Ash Reach",
+        "dead_works": "The Dead Works"
+      },
+      "enter": "{name}. The road runs north.",
+      "sealed": "{name} is sealed: {n} more castle pieces open it.",
+      "sealed_all": "Every region is open.",
+      "hp": "Hull",
+      "power": "Power",
+      "scrap": "Scrap {n}",
+      "score": "Score {n}",
+      "down": "The Keeper is down. Back at the gate; nothing is lost.",
+      "home": "Back through the gate. {scrap} scrap and {score} play score from the run.",
+      "next": "On into {name}.",
+      "back": "Back to the castle",
+      "label": "The frontier. Drag on the left to move; Fire, Dash, Bot and Build on the right.",
+      "bot": "Bot",
+      "build": "Build"
     }
   },
   "save": {
@@ -2320,12 +2348,250 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
         "fire",
         "jump"
       ],
-      "explore": [
+      "frontier": [
         "fire",
         "dash",
         "bot",
         "build"
       ]
+    },
+    "overlay_reach": 1.7
+  },
+  "frontier": {
+    "$note": "The explorer out the gate (D66 rework 2, D85+, FW11). World units: 1 tile = 16. Every number the explorer reads; src/frontier.js holds no constant of its own.",
+    "camera": {
+      "tilt_deg": 62,
+      "lean": 0.0032,
+      "anchor": 0.56,
+      "view_units": 176,
+      "follow": 7
+    },
+    "step_hz": 60,
+    "max_steps": 4,
+    "tile": 16,
+    "cols": 24,
+    "rows": 64,
+    "road_w": 3,
+    "cell": 32,
+    "density_per_region": 0.18,
+    "castle": {
+      "yard_rows": 7
+    },
+    "regions": [
+      {
+        "slug": "gate_fields",
+        "at": 0
+      },
+      {
+        "slug": "scrap_flats",
+        "at": 6
+      },
+      {
+        "slug": "ash_reach",
+        "at": 16
+      },
+      {
+        "slug": "dead_works",
+        "at": 32
+      }
+    ],
+    "keeper": {
+      "radius": 6,
+      "speed": 72,
+      "dash_speed": 230,
+      "dash_s": 0.16,
+      "dash_cooldown_s": 0.35,
+      "dash_power": 22,
+      "power_max": 100,
+      "power_regen": 14,
+      "fire_per_s": 5,
+      "fire_power": 3,
+      "shot_speed": 240,
+      "shot_range": 150,
+      "shot_damage": 1,
+      "aim_cone_deg": 70,
+      "aim_range": 140,
+      "invulnerable_s": 1.0
+    },
+    "foes": {
+      "cap": 40,
+      "aggro": 120,
+      "per_region": [
+        8,
+        12,
+        16,
+        20
+      ],
+      "by_region": [
+        [
+          "crawler",
+          "crawler",
+          "drone"
+        ],
+        [
+          "crawler",
+          "drone",
+          "brute"
+        ],
+        [
+          "drone",
+          "brute",
+          "crawler",
+          "drone"
+        ],
+        [
+          "brute",
+          "drone",
+          "brute",
+          "crawler"
+        ]
+      ],
+      "kinds": {
+        "crawler": {
+          "hp": 3,
+          "speed": 38,
+          "radius": 6,
+          "touch": 1,
+          "score": 10,
+          "scrap": 1
+        },
+        "drone": {
+          "hp": 2,
+          "speed": 44,
+          "radius": 5,
+          "touch": 1,
+          "score": 14,
+          "scrap": 1,
+          "keep": 70,
+          "fire_s": 1.8,
+          "shot_speed": 110
+        },
+        "brute": {
+          "hp": 9,
+          "speed": 24,
+          "radius": 9,
+          "touch": 2,
+          "score": 30,
+          "scrap": 3
+        }
+      }
+    },
+    "shots": {
+      "cap": 48
+    },
+    "fx": {
+      "cap": 96
+    },
+    "props": {
+      "rock": {
+        "per100": 7,
+        "solid": true,
+        "r": [
+          4,
+          10
+        ],
+        "h": [
+          5,
+          12
+        ]
+      },
+      "rubble": {
+        "per100": 16,
+        "r": [
+          3,
+          8
+        ]
+      },
+      "ruin": {
+        "per100": 1.6,
+        "solid": true,
+        "w": [
+          22,
+          46
+        ],
+        "d": [
+          14,
+          28
+        ],
+        "h": [
+          16,
+          44
+        ]
+      },
+      "pylon": {
+        "per100": 0.6,
+        "solid": true,
+        "w": [
+          8,
+          10
+        ],
+        "d": [
+          8,
+          10
+        ],
+        "h": [
+          46,
+          70
+        ]
+      },
+      "crack": {
+        "per100": 3.5,
+        "w": [
+          14,
+          34
+        ],
+        "d": [
+          3,
+          8
+        ]
+      },
+      "vent": {
+        "per100": 1.4,
+        "w": [
+          10,
+          12
+        ],
+        "d": [
+          8,
+          10
+        ]
+      },
+      "debris": {
+        "per100": 9,
+        "w": [
+          6,
+          16
+        ],
+        "d": [
+          4,
+          10
+        ]
+      },
+      "crate": {
+        "per100": 0.7,
+        "w": [
+          10,
+          10
+        ],
+        "d": [
+          8,
+          8
+        ],
+        "h": [
+          8,
+          8
+        ],
+        "scrap": 2,
+        "score": 5
+      }
+    },
+    "render": {
+      "scale_max": 2
+    },
+    "hud": {
+      "mini_px_per_tile": 3,
+      "mini_h": 110,
+      "toast_s": 3
     }
   }
 }</script>
@@ -2820,6 +3086,274 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   if (typeof globalThis !== 'undefined') globalThis.FieldworksCastle = api;
 })();
 </script>
+<script>// FIELDWORKS — the explorer out the gate (design D66 rework 2, D85+: the merged design, work order FW11).
+// Pure, window-free, clock-free, storage-free; every number from rules.frontier. Like the castle module it is an
+// IIFE on globalThis, so a <script> tag and node's vm load it the same way, and the tests run it without a page.
+//   camOf / project   the mid-angle camera: ground on an axis-aligned grid running straight up the screen (no
+//                     diamonds), tilted ~62° down, heights rising up the screen and leaning a little away from the
+//                     screen's centre, so a building shows its roof, its front wall and the side that faces the middle
+//   regionOf          one region, grown from a seed: ground, the road straight up the middle, rocks, rubble, ruins,
+//                     pylons, glowing cracks, ember vents, debris, crates and where the machines wait
+//   regionsOpen       which regions are open: a pure function of the castle's pieces (evidence) and nothing a run does
+//   newRun / stepRun  a run as ONE fixed-step function over pooled arrays: it allocates nothing per step
+// Nothing here reads or writes the evidence. A run's score and scrap are play, kept by the page as play.
+(function () {
+  'use strict';
+  const TAU = Math.PI * 2;
+  function rngOf(seed) {
+    let a = seed >>> 0;
+    return function () { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  /** FNV-1a over a string: the seed of a region from its name and the run's number. */
+  function hashOf(s) { let h = 0x811c9dc5; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+  const between = (r, ab) => ab[0] + r() * (ab[1] - ab[0]);
+
+  // ── the camera ───────────────────────────────────────────────────────────
+  /**
+   * The mid-angle camera. World x runs right, world y runs DOWN the screen (south), z runs up out of the ground.
+   * Ground: screen y = (y - camY) × sin(tilt). Height: z × cos(tilt) up the screen. A raised point also moves away
+   * from the screen's centre by (x - camX) × z × lean, so a tall thing leans out and shows its inner side.
+   */
+  function camOf(rules) {
+    const C = rules.frontier.camera, t = C.tilt_deg * Math.PI / 180;
+    return { sin: Math.sin(t), cos: Math.cos(t), lean: C.lean, anchor: C.anchor, units: C.view_units, x: 0, y: 0, zoom: 1, vw: 1, vh: 1 };
+  }
+  /** Fit the camera to a surface of vw × vh pixels: view_units of world across the narrower side. */
+  function camFit(cam, vw, vh) { cam.vw = vw; cam.vh = vh; cam.zoom = Math.min(vw, vh * 1.25) / cam.units; return cam; }
+  /** Where a world point lands on the surface, written into `out` (no object made). */
+  function project(cam, x, y, z, out) {
+    const dx = x - cam.x, dy = y - cam.y;
+    out.x = cam.vw / 2 + (dx + dx * z * cam.lean) * cam.zoom;
+    out.y = cam.vh * cam.anchor + (dy * cam.sin - z * cam.cos) * cam.zoom;
+    return out;
+  }
+  /** Follow a point, eased, and never show past the region's edges. */
+  function camFollow(cam, x, y, dt, map, rules) {
+    const k = 1 - Math.exp(-dt * rules.frontier.camera.follow), halfW = cam.vw / 2 / cam.zoom;
+    cam.x += (x - cam.x) * k; cam.y += (y - cam.y) * k;
+    const w = map.cols * map.tile; cam.x = Math.max(halfW, Math.min(w - halfW, cam.x));
+    const below = cam.vh * (1 - cam.anchor) / (cam.sin * cam.zoom), above = cam.vh * cam.anchor / (cam.sin * cam.zoom), h = map.rows * map.tile;
+    cam.y = Math.max(Math.min(above, h / 2), Math.min(h - below, cam.y));   // never show past the region's south or north edge
+  }
+
+  // ── a region ─────────────────────────────────────────────────────────────
+  const KINDS = ['rock', 'rubble', 'ruin', 'pylon', 'crack', 'vent', 'debris', 'crate'];
+  /**
+   * One region from its seed. The road runs straight up the middle; the castle's gate sits at the south end of the
+   * first region. Props never sit on the road or in the gate's yard; solid ones go in a grid of cells for collision.
+   */
+  function regionOf(index, run, rules) {
+    const X = rules.frontier, R = X.regions[index], tile = X.tile, cols = X.cols, rows = X.rows;
+    const seed = hashOf(`${R.slug}/${run}`), r = rngOf(seed);
+    const roadC0 = Math.floor(cols / 2 - X.road_w / 2), roadC1 = roadC0 + X.road_w - 1;
+    const ground = new Uint8Array(cols * rows);
+    for (let i = 0; i < ground.length; i++) { const v = r(); ground[i] = v < .5 ? 0 : v < .75 ? 1 : v < .92 ? 2 : 3; }
+    const yard = index === 0 ? X.castle.yard_rows : 1;   // the first region's south end is the castle and its yard
+    const props = [];
+    const free = (c, rw, span) => c + span < roadC0 - 0 || c > roadC1 + 0 ? rw < rows - yard - 1 && rw > 1 : false;
+    for (const kind of KINDS) {
+      const P = X.props[kind], n = Math.round(P.per100 * cols * rows / 100 * (1 + index * X.density_per_region));
+      for (let i = 0; i < n; i++) {
+        for (let tries = 0; tries < 8; tries++) {
+          const w = P.w ? between(r, P.w) : P.r ? between(r, P.r) * 2 : tile, span = Math.ceil(w / tile);
+          const c = Math.floor(r() * (cols - span)), rw = Math.floor(r() * rows);
+          if (!free(c, rw, span)) continue;
+          const d = P.d ? between(r, P.d) : w, h = P.h ? between(r, P.h) : 0;
+          props.push({ kind, x: c * tile + r() * (tile - 1), y: rw * tile + r() * (tile - 1), w, d, h, solid: !!P.solid, seed: (r() * 1e9) | 0, hp: P.hp || 0, open: false });
+          break;
+        }
+      }
+    }
+    // the first region's south end: the castle's wall across, solid but for the gate on the road (drawn by the page)
+    const gateY = (rows - 2) * tile;
+    if (index === 0) {
+      props.push({ kind: 'wall', x: 0, y: gateY, w: roadC0 * tile, d: tile * 1.2, h: 1, solid: true, seed: 0, hp: 0, open: false });
+      props.push({ kind: 'wall', x: (roadC1 + 1) * tile, y: gateY, w: (cols - roadC1 - 1) * tile, d: tile * 1.2, h: 1, solid: true, seed: 0, hp: 0, open: false });
+    }
+    props.sort((a, b) => a.y - b.y);
+    // the solid grid: each cell lists the solid props that touch it
+    const cell = X.cell, gw = Math.ceil(cols * tile / cell), gh = Math.ceil(rows * tile / cell), grid = Array.from({ length: gw * gh }, () => []);
+    props.forEach((p, i) => {
+      if (!p.solid) return;
+      for (let gy = Math.max(0, Math.floor(p.y / cell)); gy <= Math.min(gh - 1, Math.floor((p.y + p.d) / cell)); gy++)
+        for (let gx = Math.max(0, Math.floor(p.x / cell)); gx <= Math.min(gw - 1, Math.floor((p.x + p.w) / cell)); gx++) grid[gy * gw + gx].push(i);
+    });
+    // where the machines wait: away from the road's south end, more the deeper the region
+    const spawns = [], nFoes = X.foes.per_region[Math.min(index, X.foes.per_region.length - 1)];
+    for (let i = 0; i < nFoes; i++) {
+      const y = between(r, [tile * 3, (rows - yard - 6) * tile]), x = between(r, [tile, (cols - 1) * tile]);
+      const kinds = X.foes.by_region[Math.min(index, X.foes.by_region.length - 1)];
+      spawns.push({ x, y, type: kinds[Math.floor(r() * kinds.length)] });
+    }
+    return { index, slug: R.slug, seed, tile, cols, rows, roadC0, roadC1, ground, props, grid, gw, gh, cell, spawns,
+      start: { x: cols * tile / 2, y: (rows - yard + 1) * tile }, gate: { x: cols * tile / 2, y: gateY }, north: tile };
+  }
+
+  /** The regions open now: the first always (D80), each next one at its castle-piece count. Evidence opens the map; play never does. */
+  function regionsOpen(pieces, rules) {
+    let n = 0; const list = rules.frontier.regions;
+    for (let i = 0; i < list.length; i++) if (i === 0 || pieces >= list[i].at) n = i + 1; else break;
+    return n;
+  }
+  /** What the next sealed region needs: its index and how many more pieces, or null when every region is open. */
+  function nextSeal(pieces, rules) {
+    const open = regionsOpen(pieces, rules), R = rules.frontier.regions[open];
+    return R ? { index: open, need: R.at - pieces } : null;
+  }
+
+  // ── a run ────────────────────────────────────────────────────────────────
+  /** A run: `sealed` when the region past the north edge is not open yet. The Keeper, the pools (machines, shots, effects) made once at their caps, the region and its camera. */
+  function newRun(index, run, hp, sealed, rules) {
+    const X = rules.frontier, K = X.keeper, map = regionOf(index, run, rules);
+    const foes = Array.from({ length: X.foes.cap }, () => ({ on: false, type: '', x: 0, y: 0, vx: 0, vy: 0, hp: 0, max: 0, r: 0, t: 0, hit: 0, cd: 0, face: 1, wake: false }));
+    const shots = Array.from({ length: X.shots.cap }, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, foe: false, dmg: 0 }));
+    const fx = Array.from({ length: X.fx.cap }, () => ({ t: 0, kind: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 }));
+    const W = { map, index, run, sealed: !!sealed, bump: 0, time: 0, acc: 0, score: 0, scrap: 0, kills: 0, over: false, won: false, exit: 0,
+      k: { x: map.start.x, y: map.start.y, vx: 0, vy: 0, fx: 0, fy: -1, r: K.radius, hp, max: hp, power: K.power_max, pmax: K.power_max, dash: 0, dashCd: 0, cd: 0, inv: 0, step: 0, aim: -1 },
+      foes, shots, fx, fxAt: 0, hits: 0, shake: 0 };
+    for (let i = 0; i < map.spawns.length && i < foes.length; i++) wake(W, i, map.spawns[i], rules);
+    return W;
+  }
+  function wake(W, i, s, rules) {
+    const F = rules.frontier.foes.kinds[s.type], f = W.foes[i];
+    f.on = true; f.type = s.type; f.x = s.x; f.y = s.y; f.vx = 0; f.vy = 0; f.hp = F.hp; f.max = F.hp; f.r = F.radius; f.t = (i * 0.37) % 1; f.hit = 0; f.cd = F.fire_s || 0; f.wake = false;
+  }
+  function emit(W, kind, x, y, z, vx, vy, vz, t) {
+    const e = W.fx[W.fxAt]; W.fxAt = (W.fxAt + 1) % W.fx.length;
+    e.kind = kind; e.x = x; e.y = y; e.z = z; e.vx = vx; e.vy = vy; e.vz = vz; e.t = t;
+  }
+  /** Push a circle out of every solid prop near it. */
+  function collide(map, o) {
+    const gx = Math.floor(o.x / map.cell), gy = Math.floor(o.y / map.cell);
+    for (let yy = gy - 1; yy <= gy + 1; yy++) for (let xx = gx - 1; xx <= gx + 1; xx++) {
+      if (xx < 0 || yy < 0 || xx >= map.gw || yy >= map.gh) continue;
+      const list = map.grid[yy * map.gw + xx];
+      for (let j = 0; j < list.length; j++) {
+        const p = map.props[list[j]]; if (p.open) continue;
+        const nx = Math.max(p.x, Math.min(o.x, p.x + p.w)), ny = Math.max(p.y, Math.min(o.y, p.y + p.d));
+        const dx = o.x - nx, dy = o.y - ny, d2 = dx * dx + dy * dy;
+        if (d2 >= o.r * o.r) continue;
+        if (d2 > 1e-6) { const d = Math.sqrt(d2), push = o.r - d; o.x += dx / d * push; o.y += dy / d * push; }
+        else { const l = o.x - p.x, rr = p.x + p.w - o.x, t = o.y - p.y, b = p.y + p.d - o.y, m = Math.min(l, rr, t, b);
+          if (m === l) o.x = p.x - o.r; else if (m === rr) o.x = p.x + p.w + o.r; else if (m === t) o.y = p.y - o.r; else o.y = p.y + p.d + o.r; }
+      }
+    }
+    const w = map.cols * map.tile, h = map.rows * map.tile;
+    if (o.x < o.r) o.x = o.r; if (o.x > w - o.r) o.x = w - o.r; if (o.y > h - o.r) o.y = h - o.r; if (o.y < o.r) o.y = o.r;
+  }
+  /** The nearest awake machine inside the aim cone of the facing (or anywhere in range when none is in the cone). */
+  function aimAt(W, rules) {
+    const K = rules.frontier.keeper, k = W.k, cone = Math.cos(K.aim_cone_deg * Math.PI / 360);
+    let best = -1, bd = K.aim_range * K.aim_range, loose = -1, ld = bd;
+    for (let i = 0; i < W.foes.length; i++) {
+      const f = W.foes[i]; if (!f.on) continue;
+      const dx = f.x - k.x, dy = f.y - k.y, d2 = dx * dx + dy * dy; if (d2 > bd && d2 > ld) continue;
+      const d = Math.sqrt(d2) || 1, dot = (dx * k.fx + dy * k.fy) / d;
+      if (dot >= cone && d2 < bd) { bd = d2; best = i; }
+      if (d2 < ld) { ld = d2; loose = i; }
+    }
+    return best >= 0 ? best : loose;
+  }
+  function shoot(W, x, y, dx, dy, speed, life, dmg, foe) {
+    for (let i = 0; i < W.shots.length; i++) {
+      const s = W.shots[i]; if (s.on) continue;
+      const d = Math.hypot(dx, dy) || 1; s.on = true; s.x = x; s.y = y; s.vx = dx / d * speed; s.vy = dy / d * speed; s.life = life; s.dmg = dmg; s.foe = foe;
+      return true;
+    }
+    return false;
+  }
+  function hurtKeeper(W, n, rules) {
+    const k = W.k; if (k.inv > 0 || W.over) return;
+    k.hp -= n; k.inv = rules.frontier.keeper.invulnerable_s; W.shake = .25; W.hits++;
+    if (k.hp <= 0) { k.hp = 0; W.over = true; W.won = false; }
+  }
+  function killFoe(W, f, rules) {
+    const F = rules.frontier.foes.kinds[f.type];
+    f.on = false; W.kills++; W.score += F.score; W.scrap += F.scrap;
+    for (let j = 0; j < 8; j++) emit(W, 1, f.x, f.y, 6, Math.cos(j * .785) * 40, Math.sin(j * .785) * 40, 30 + (j % 3) * 20, .5);
+  }
+  /**
+   * One step of a run. `input` is { ax, ay, fire, dash } (the stick's push, -1..1, and two held buttons); `pressed`
+   * holds the press edges { dash }. Fixed step inside, so a slow frame plays the same game as a fast one.
+   */
+  function stepRun(W, input, pressed, dt, rules) {
+    const X = rules.frontier, STEP = 1 / X.step_hz;
+    W.acc = Math.min(W.acc + dt, STEP * X.max_steps);
+    let dashEdge = !!(pressed && pressed.dash);
+    while (W.acc >= STEP - 1e-9) { W.acc -= STEP; tick(W, input, dashEdge, STEP, rules); dashEdge = false; }
+    for (let i = 0; i < W.fx.length; i++) { const e = W.fx[i]; if (e.t <= 0) continue; e.t -= dt; e.x += e.vx * dt; e.y += e.vy * dt; e.z = Math.max(0, e.z + e.vz * dt); e.vz -= 140 * dt; }
+    if (W.shake > 0) W.shake = Math.max(0, W.shake - dt);
+    if (W.bump > 0) W.bump = Math.max(0, W.bump - dt);
+  }
+  function tick(W, input, dashEdge, dt, rules) {
+    const X = rules.frontier, K = X.keeper, k = W.k, map = W.map;
+    W.time += dt; if (W.over) return;
+    // move: the stick's push, or a dash along the facing
+    const ax = input.ax || 0, ay = input.ay || 0, m = Math.hypot(ax, ay);
+    if (m > .05) { k.fx = ax / m; k.fy = ay / m; }
+    if (dashEdge && k.dash <= 0 && k.dashCd <= 0 && k.power >= K.dash_power) { k.dash = K.dash_s; k.dashCd = K.dash_cooldown_s; k.power -= K.dash_power; k.inv = Math.max(k.inv, K.dash_s); emit(W, 2, k.x, k.y, 2, 0, 0, 0, .3); }
+    const sp = k.dash > 0 ? K.dash_speed : K.speed * Math.min(1, m);
+    k.vx = k.dash > 0 ? k.fx * sp : ax / (m || 1) * sp; k.vy = k.dash > 0 ? k.fy * sp : ay / (m || 1) * sp;
+    k.x += k.vx * dt; k.y += k.vy * dt; collide(map, k);
+    if (m > .05 || k.dash > 0) k.step += dt * (k.dash > 0 ? 14 : 9);
+    k.dash = Math.max(0, k.dash - dt); k.dashCd = Math.max(0, k.dashCd - dt); k.inv = Math.max(0, k.inv - dt); k.cd = Math.max(0, k.cd - dt);
+    k.power = Math.min(k.pmax, k.power + K.power_regen * dt);
+    // fire: at the nearest machine in the cone, else straight along the facing
+    k.aim = aimAt(W, rules);
+    if (input.fire && k.cd <= 0 && k.power >= K.fire_power) {
+      const f = k.aim >= 0 ? W.foes[k.aim] : null, dx = f ? f.x - k.x : k.fx, dy = f ? f.y - k.y : k.fy;
+      if (shoot(W, k.x, k.y, dx, dy, K.shot_speed, K.shot_range / K.shot_speed, K.shot_damage, false)) { k.cd = 1 / K.fire_per_s; k.power -= K.fire_power; emit(W, 3, k.x + k.fx * 6, k.y + k.fy * 6, 8, 0, 0, 0, .08); }
+    }
+    // the machines: they wake when the Keeper comes near, then chase; drones keep their distance and fire
+    for (let i = 0; i < W.foes.length; i++) {
+      const f = W.foes[i]; if (!f.on) continue; const F = X.foes.kinds[f.type];
+      f.t += dt; f.hit = Math.max(0, f.hit - dt);
+      const dx = k.x - f.x, dy = k.y - f.y, d = Math.hypot(dx, dy) || 1;
+      if (!f.wake && d < X.foes.aggro) f.wake = true;
+      if (!f.wake) continue;
+      const want = F.keep ? (d > F.keep ? 1 : d < F.keep * .7 ? -1 : 0) : 1;
+      f.vx = dx / d * F.speed * want; f.vy = dy / d * F.speed * want; f.face = dx >= 0 ? 1 : -1;
+      f.x += f.vx * dt; f.y += f.vy * dt; collide(map, f);
+      if (F.fire_s) { f.cd -= dt; if (f.cd <= 0 && d < X.foes.aggro) { f.cd = F.fire_s; shoot(W, f.x, f.y, dx, dy, F.shot_speed, X.foes.aggro / F.shot_speed, 1, true); } }
+      if (d < f.r + k.r) hurtKeeper(W, F.touch, rules);
+    }
+    // the shots
+    for (let i = 0; i < W.shots.length; i++) {
+      const s = W.shots[i]; if (!s.on) continue;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+      if (s.life <= 0 || solidAt(map, s.x, s.y)) { s.on = false; emit(W, 4, s.x, s.y, 6, 0, 0, 20, .15); continue; }
+      if (s.foe) { if (Math.hypot(s.x - k.x, s.y - k.y) < k.r + 2) { s.on = false; hurtKeeper(W, s.dmg, rules); } continue; }
+      for (let j = 0; j < W.foes.length; j++) {
+        const f = W.foes[j]; if (!f.on || Math.hypot(s.x - f.x, s.y - f.y) > f.r + 2) continue;
+        s.on = false; f.hp -= s.dmg; f.hit = .12; f.wake = true; emit(W, 4, s.x, s.y, 6, 0, 0, 20, .15);
+        if (f.hp <= 0) killFoe(W, f, rules);
+        break;
+      }
+    }
+    // crates: walk into one and it opens for scrap
+    const near = Math.floor(k.y / map.cell);
+    for (let i = 0; i < map.props.length; i++) {
+      const p = map.props[i]; if (p.kind !== 'crate' || p.open) continue;
+      if (Math.abs(Math.floor(p.y / map.cell) - near) > 1) continue;
+      if (k.x > p.x - k.r && k.x < p.x + p.w + k.r && k.y > p.y - k.r && k.y < p.y + p.d + k.r) { p.open = true; W.scrap += X.props.crate.scrap; W.score += X.props.crate.score; for (let j = 0; j < 6; j++) emit(W, 5, p.x + p.w / 2, p.y + p.d / 2, 6, Math.cos(j) * 30, Math.sin(j) * 30, 50, .6); }
+    }
+    // the region's ends: back through the gate at the south, on to the next region at the north
+    if (k.y <= map.north && W.sealed) { k.y = map.north + 1; W.bump = .6; }   // the next region is sealed until the castle has its pieces
+    else if (k.y <= map.north) { W.exit = 1; W.over = true; W.won = true; }
+    else if (W.index === 0 ? k.y > map.gate.y + map.tile * 1.4 : k.y > map.rows * map.tile - map.tile) { W.exit = -1; W.over = true; W.won = true; }
+  }
+  function solidAt(map, x, y) {
+    const gx = Math.floor(x / map.cell), gy = Math.floor(y / map.cell);
+    if (gx < 0 || gy < 0 || gx >= map.gw || gy >= map.gh) return true;
+    const list = map.grid[gy * map.gw + gx];
+    for (let j = 0; j < list.length; j++) { const p = map.props[list[j]]; if (!p.open && x >= p.x && x <= p.x + p.w && y >= p.y && y <= p.y + p.d) return true; }
+    return false;
+  }
+
+  const api = { TAU, rngOf, hashOf, camOf, camFit, project, camFollow, KINDS, regionOf, regionsOpen, nextSeal, newRun, stepRun, solidAt, collide, aimAt };
+  if (typeof globalThis !== 'undefined') globalThis.FieldworksFrontier = api;
+})();
+</script>
 <script>
 (() => {
   'use strict';
@@ -2883,7 +3417,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     for (let i = 0; i < names.length; i++) {
       const at = L[names[i]]; if (!at) continue;
       const r = Math.max(minR, Math.min(PAD.w, PAD.h) * at.r);
-      PAD.zones.push({ key: names[i], x: PAD.w * at.x, y: PAD.h * at.y, r, id: -1, on: false, t: 0 });
+      PAD.zones.push({ key: names[i], x: PAD.w * at.x, y: PAD.h * at.y, r, id: -1, on: false, t: 0, edge: false });
     }
     PAD.dirty = true;
   }
@@ -2911,7 +3445,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   // Every held thing let go: the stick, the buttons and the keys they hold (a screen change, a blur, a card opening).
   function padRelease() {
     const s = PAD.stick; s.id = -1; s.ax = 0; s.ay = 0; s.up = false;
-    for (let i = 0; i < PAD.zones.length; i++) { PAD.zones[i].id = -1; PAD.zones[i].on = false; }
+    for (let i = 0; i < PAD.zones.length; i++) { PAD.zones[i].id = -1; PAD.zones[i].on = false; PAD.zones[i].edge = false; }
     padKeys(); PAD.dirty = true;
   }
   const padXY = (e) => { const r = PAD.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
@@ -2931,7 +3465,8 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
       s.id = e.pointerId; s.ox = x; s.oy = y; s.x = x; s.y = y; s.ax = 0; s.ay = 0; s.up = false;
     } else {
       const z = padZoneAt(x, y); if (!z || z.id >= 0) return;
-      z.id = e.pointerId; z.on = true; z.t = 0;
+      if (PAD.layout !== 'pad' && Math.hypot(x - z.x, y - z.y) > z.r * RI.overlay_reach) return;   // over the scene, a touch far from every button is not a press
+      z.id = e.pointerId; z.on = true; z.t = 0; z.edge = true;
     }
     padKeys(); PAD.dirty = true;
   }
@@ -2965,6 +3500,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     if (jump && !keys.jump) tap.jump = true; if (fire && !keys.fire) tap.fire = true; if (dash && !keys.dash) tap.dash = true;
     keys.jump = jump; keys.fire = fire; keys.dash = dash; s.up = upNow;
   }
+  // The explorer's buttons by name: held now, and a press taken once (a tap shorter than a frame still counts).
+  function padHeld(key) { for (let i = 0; i < PAD.zones.length; i++) if (PAD.zones[i].key === key && PAD.zones[i].on) return true; return false; }
+  function padTake(key) { for (let i = 0; i < PAD.zones.length; i++) { const z = PAD.zones[i]; if (z.key === key && z.edge) { z.edge = false; return true; } } return false; }
   // Drawn only when something changed: a thumb landed, moved or lifted. Rings, never text a finger can select.
   function padDraw() {
     if (!PAD.on || !PAD.g || !PAD.dirty || PAD.layout !== 'pad') return;
@@ -3547,7 +4085,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function tuft(x, y, c, t) { const s = Math.sin(t * 2.2 + c * 1.3) > .2 ? 1 : 0; px(x + 2 + s, y - 2, 1, 2, BIO.def.top2); px(x + 8 + s, y - 3, 1, 3, BIO.def.top); if (c % 5 === 2) { px(x + 5, y - 3, 1, 3, BIO.def.top2); px(x + 5 + s, y - 4, 1, 1, BIO.def.bloom); } }
 
   // ══════════════════════ THE CASTLE SCREEN: it defends itself; the horde comes to it ══════════════════════
-  const keys = { left: false, right: false, jump: false, fire: false, dash: false };
+  const keys = { left: false, right: false, jump: false, down: false, fire: false, dash: false };
   const tap = { jump: false, fire: false, dash: false };   // a press shorter than a frame still counts once
   let CS = null;
   const fieldX = (x) => (x >= 0 ? FACE + 3 + x * (VW - FACE - 6) / RH.approach : FACE + x);
@@ -4307,6 +4845,295 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     el.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (!b) return; el.remove(); for (const kk in keys) keys[kk] = false; if (b.dataset.act === 'again') { newStage(S.stage); render(); } else leaveStage(); });
   }
 
+  // ══════════════════════ the explorer out the gate (FW11, design D66 rework 2 and D85+) ══════════════════════
+  // The mid-angle view: the ground is an axis-aligned grid running straight up the screen, tilted about 62° down, so
+  // a road reads as ground and runs north; a building shows its roof, its front wall and the side facing the middle;
+  // the Keeper and the machines stand upright. The rules of a run live in src/frontier.js (FieldworksFrontier), the
+  // numbers in rules.frontier and every word in bank.explore. This file is the screen: mounting, input, drawing.
+  // The canvas is drawn at its CSS size times a whole-number render scale (1 or 2), with no image asset.
+  // Nothing here reads or writes the evidence; the castle is read to draw it and to know which regions are open.
+  const XE = FieldworksFrontier, RX = RULES.frontier, BX = BANK.frontier;
+  let XR = null, XRUN = 0, XRS = 1, XW = 1, XH = 1;
+  const XCAM = XE.camOf(RULES), XP = { x: 0, y: 0 }, XQ = { x: 0, y: 0 }, XA = { x: 0, y: 0 }, XB = { x: 0, y: 0 };
+  const XIN = { ax: 0, ay: 0, fire: false, dash: false }, XPR = { dash: false };
+  const XSORT = new Int32Array(RX.foes.cap + 2), XSY = new Float32Array(RX.foes.cap + 2);   // the upright actors, drawn in depth order with the props
+  const XG = ['#2b2723', '#312c27', '#28241f', '#36302a'], XGL = ['#332e29', '#39332d', '#2f2a25', '#3e3730'];   // ground: ash, grit, scorched plate, gravel
+  const XTXT = { scrap: '', score: '', seal: '', sealN: -1, scrapN: -1, scoreN: -1, toast: '', toastT: 0 };
+  let XMINI = null, XMKEY = '';
+
+  /** The screen's markup: one canvas that is the scene and the controls, and a way home. */
+  function exploreShell() {
+    return `<div class="stage xstage" id="stage"><canvas class="game xcv" id="game" role="application" aria-label="${esc(BX.label)}"></canvas><button class="xback" data-go="castle" aria-label="${esc(BX.back)}">${icon('fort')}</button></div>`;
+  }
+  /** Mount: a run in the region asked for (the first by default), the canvas sized, the overlay's buttons on it. */
+  function mountExplore(index) {
+    cv = document.getElementById('game'); if (!cv) return; ctx = cv.getContext('2d'); hudEls = null;
+    const open = XE.regionsOpen(CAS.pieces, RULES), i = clamp(index == null ? (XR ? XR.index : 0) : index, 0, open - 1);
+    if (!XR || XR.over || XR.index !== i) XR = XE.newRun(i, XRUN++, hearts(), i + 1 >= open, RULES);
+    XMKEY = ''; sizeExplore(); stageObs.disconnect(); stageObs.observe(document.getElementById('stage'));
+    padMount(cv, RI.pads.frontier, 'overlay');
+    XCAM.x = XR.k.x; XCAM.y = XR.k.y; XE.camFollow(XCAM, XR.k.x, XR.k.y, 0, XR.map, RULES);
+    xsay(fill(BX.enter, { name: BX.regions[XR.map.slug] })); xhudText();
+  }
+  /** A line on the scene for a few seconds, and for a screen reader. */
+  function xsay(s) { XTXT.toast = s; XTXT.toastT = RX.hud.toast_s; $live.textContent = s; }
+  /** The canvas at its box's CSS size times the render scale; the camera fitted to it. */
+  function sizeExplore() {
+    const st = document.getElementById('stage'); if (!st || !cv) return;
+    XW = Math.max(1, Math.round(st.clientWidth)); XH = Math.max(1, Math.round(st.clientHeight));
+    XRS = clamp(Math.round(globalThis.devicePixelRatio || 1), 1, RX.render.scale_max);
+    cv.width = XW * XRS; cv.height = XH * XRS; cv.style.width = XW + 'px'; cv.style.height = XH + 'px';
+    XE.camFit(XCAM, XW, XH);
+    if (PAD.on && PAD.layout === 'overlay') { padSize(); padLayout(PAD.names, 'overlay'); }
+  }
+  /** Leave the frontier. Returns the line that says what the run found, for the castle's ticker (empty when nothing). */
+  function endExplore() {
+    if (!XR) return '';
+    const r = XR; XR = null; PAD.on = false;
+    return r.score > 0 || r.scrap > 0 ? fill(BX.home, { scrap: r.scrap, score: r.score }) : '';
+  }
+  // ── one frame ──
+  function updateExplore(dt) {
+    const s = PAD.stick, k = XR.k;
+    XIN.ax = s.id >= 0 ? s.ax : (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    XIN.ay = s.id >= 0 ? s.ay : (keys.down ? 1 : 0) - (keys.jump ? 1 : 0);
+    XIN.fire = padHeld('fire') || keys.fire;
+    XPR.dash = padTake('dash') || tap.dash; tap.dash = false; tap.jump = false; tap.fire = false;
+    XE.stepRun(XR, XIN, XPR, dt, RULES);
+    XE.camFollow(XCAM, k.x, k.y, dt, XR.map, RULES);
+    if (XTXT.toastT > 0) XTXT.toastT -= dt;
+    if (XR.over) exploreOver();
+  }
+  function exploreOver() {
+    const r = XR, open = XE.regionsOpen(CAS.pieces, RULES);
+    if (!r.won) { xsay(BX.down); XR = XE.newRun(0, XRUN++, hearts(), open <= 1, RULES); XCAM.x = XR.k.x; XCAM.y = XR.k.y; XMKEY = ''; return; }
+    if (r.exit < 0 && r.index === 0) { const msg = endExplore(); S.screen = 'castle'; render(); if (msg) ticker(msg, ''); return; }
+    const next = clamp(r.index + r.exit, 0, open - 1), keep = r.k.hp;
+    XR = XE.newRun(next, XRUN++, hearts(), next + 1 >= open, RULES); XR.k.hp = Math.max(1, Math.min(keep, XR.k.max)); XR.score = r.score; XR.scrap = r.scrap; XR.kills = r.kills;
+    if (r.exit < 0) { XR.k.y = XR.map.north + XR.map.tile * 2; }   // walked back south: arrive at the north edge of the region before
+    XCAM.x = XR.k.x; XCAM.y = XR.k.y; XMKEY = '';
+    xsay(fill(BX.next, { name: BX.regions[XR.map.slug] }));
+  }
+
+  // ── drawing: small helpers that make nothing ──
+  function xq(x, y, z) { return XE.project(XCAM, x, y, z, XP); }
+  function xfill(c) { ctx.fillStyle = c; }
+  function xquad(ax, ay, bx, by, cx, cy, dx, dy) { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.lineTo(dx, dy); ctx.closePath(); ctx.fill(); }
+  function xtri(ax, ay, bx, by, cx, cy) { ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath(); ctx.fill(); }
+  function xell(x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, 6.2832); ctx.fill(); }
+  /**
+   * A box on the ground at (x, y), w across, d deep (north to south), h tall: its roof, its south wall and the side
+   * that faces the middle of the screen (the lean shows it). Colours: roof, front, side.
+   */
+  function xbox(x, y, w, d, h, roof, front, side) {
+    const Z = XCAM.zoom;
+    xq(x, y + d, 0); const fax = XP.x, fay = XP.y; xq(x + w, y + d, 0); const fbx = XP.x, fby = XP.y;
+    xq(x + w, y + d, h); const ftx = XP.x, fty = XP.y; xq(x, y + d, h); const fux = XP.x, fuy = XP.y;
+    xq(x, y, h); const bax = XP.x, bay = XP.y; xq(x + w, y, h); const bbx = XP.x, bby = XP.y;
+    const left = x + w / 2 > XCAM.x;   // right of the middle: its west side faces the middle
+    xfill(side);
+    if (left) { xq(x, y, 0); xquad(fax, fay, fux, fuy, bax, bay, XP.x, XP.y); }
+    else { xq(x + w, y, 0); xquad(fbx, fby, ftx, fty, bbx, bby, XP.x, XP.y); }
+    xfill(front); xquad(fax, fay, fbx, fby, ftx, fty, fux, fuy);
+    xfill(roof); xquad(fux, fuy, ftx, fty, bbx, bby, bax, bay);
+    return Z;
+  }
+
+  /** The frame: ground, flat things, then everything upright in depth order, the air, the HUD and the controls. */
+  function renderExplore(t) {
+    const W = XR, M = W.map, T = M.tile, Z = XCAM.zoom, sh = W.shake > 0 && !CALM ? (((t * 60) | 0) % 2 ? 1.5 : -1.5) : 0;
+    ctx.setTransform(XRS, 0, 0, XRS, sh * XRS, 0);
+    xfill('#141210'); ctx.fillRect(-4, -4, XW + 8, XH + 8);
+    // what of the ground is in view: the rows between the top and bottom edges, the columns between the sides
+    const r0 = Math.max(0, Math.floor((XCAM.y - XH * XCAM.anchor / (XCAM.sin * Z)) / T) - 1), r1 = Math.min(M.rows - 1, Math.ceil((XCAM.y + XH * (1 - XCAM.anchor) / (XCAM.sin * Z)) / T) + 1);
+    const c0 = Math.max(0, Math.floor((XCAM.x - XW / 2 / Z) / T) - 1), c1 = Math.min(M.cols - 1, Math.ceil((XCAM.x + XW / 2 / Z) / T) + 1);
+    for (let r = r0; r <= r1; r++) {
+      xq(0, r * T, 0); const y0 = XP.y; xq(0, (r + 1) * T, 0); const y1 = XP.y;
+      for (let c = c0; c <= c1; c++) {
+        xq(c * T, r * T, 0); const x0 = XP.x; xq((c + 1) * T, r * T, 0);
+        const g = M.ground[r * M.cols + c], road = c >= M.roadC0 && c <= M.roadC1;
+        xfill(road ? (c === M.roadC0 || c === M.roadC1 ? '#3d3a35' : '#46423c') : XG[g]); ctx.fillRect(x0, y0, XP.x - x0 + .6, y1 - y0 + .6);
+        if (!road && ((r * 7 + c * 13) & 3) === 0) { xfill(XGL[g]); ctx.fillRect(x0 + (XP.x - x0) * .2, y0 + (y1 - y0) * .3, (XP.x - x0) * .35, (y1 - y0) * .25); }
+        if (road && c === M.roadC0 + 1 && (r & 1) === 0) { xfill('#8a6a2c'); ctx.fillRect(x0 + (XP.x - x0) * .46, y0 + (y1 - y0) * .1, (XP.x - x0) * .08, (y1 - y0) * .55); }
+        if (road) { xfill('#2f2c28'); ctx.fillRect(x0, y0, XP.x - x0, Math.max(.6, (y1 - y0) * .05)); }
+      }
+    }
+    // flat things: cracks that glow, vents that breathe embers, debris and rubble lying on the ground
+    const yTop = XCAM.y - XH * XCAM.anchor / (XCAM.sin * Z) - 80, yBot = XCAM.y + XH * (1 - XCAM.anchor) / (XCAM.sin * Z) + 20;
+    let p0 = 0, lo = 0, hi = M.props.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (M.props[mid].y < yTop) lo = mid + 1; else hi = mid; } p0 = lo;
+    for (let i = p0; i < M.props.length; i++) { const p = M.props[i]; if (p.y > yBot) break; if (p.h === 0 || p.kind === 'rubble') xflat(p, t); }
+    // upright: props with height and the actors, merged in order of their southern edge
+    let na = 0;
+    XSORT[na] = -1; XSY[na] = W.k.y; na++;
+    for (let i = 0; i < W.foes.length; i++) { const f = W.foes[i]; if (!f.on || f.y < yTop || f.y > yBot) continue; let j = na++; while (j > 0 && XSY[j - 1] > f.y) { XSY[j] = XSY[j - 1]; XSORT[j] = XSORT[j - 1]; j--; } XSY[j] = f.y; XSORT[j] = i; }
+    { let j = 0; while (j + 1 < na && XSY[j + 1] < XSY[j]) { const ty = XSY[j], ts = XSORT[j]; XSY[j] = XSY[j + 1]; XSORT[j] = XSORT[j + 1]; XSY[j + 1] = ty; XSORT[j + 1] = ts; j++; } }
+    let a = 0;
+    for (let i = p0; i < M.props.length; i++) {
+      const p = M.props[i]; if (p.y > yBot) break; if (p.h === 0 || p.kind === 'rubble') continue;
+      while (a < na && XSY[a] < p.y + p.d) { xactor(XSORT[a], t); a++; }
+      xprop(p, t);
+    }
+    while (a < na) { xactor(XSORT[a], t); a++; }
+    if (W.index === 0) xcastle(M, t);
+    if (W.sealed) xseal(M, t);
+    // shots and sparks
+    for (let i = 0; i < W.shots.length; i++) { const s = W.shots[i]; if (!s.on) continue; xq(s.x, s.y, 7); xfill(s.foe ? '#ff4d5e' : '#9ff0d8'); xell(XP.x, XP.y, 2.2 * Z * .5 + 1, 2.2 * Z * .5 + 1); xfill('#ffffff'); xell(XP.x, XP.y, Z * .5, Z * .5); }
+    for (let i = 0; i < W.fx.length; i++) { const e = W.fx[i]; if (e.t <= 0) continue; xq(e.x, e.y, e.z); xfill(e.kind === 5 ? '#e9b949' : e.kind === 2 ? '#9ff0d8' : e.kind === 1 ? (i & 1 ? '#ff9a3c' : '#ffe08a') : '#ffffff'); const rr = (e.kind === 2 ? 5 : 1.4) * Z * Math.min(1, e.t * 4); ctx.globalAlpha = e.kind === 2 ? .35 : 1; xell(XP.x, XP.y, rr, e.kind === 2 ? rr * .5 : rr); ctx.globalAlpha = 1; }
+    ctx.setTransform(XRS, 0, 0, XRS, 0, 0);
+    xhud(t);
+    padPaint(ctx, .72);
+  }
+  function xflat(p, t) {
+    const Z = XCAM.zoom;
+    if (p.kind === 'crack') {
+      xq(p.x, p.y + p.d / 2, 0); const ax = XP.x, ay = XP.y; xq(p.x + p.w, p.y + p.d / 2, 0);
+      const pulse = .55 + .45 * Math.sin(t * 2 + (p.seed & 7));
+      xfill('#1a1311'); xquad(ax, ay - Z * .9, XP.x, XP.y - Z * .4, XP.x, XP.y + Z * .6, ax, ay + Z * .9);
+      ctx.globalAlpha = pulse; xfill('#ff6a2a'); xquad(ax + Z, ay - Z * .3, XP.x - Z, XP.y - Z * .15, XP.x - Z, XP.y + Z * .2, ax + Z, ay + Z * .35);
+      xfill('#ffd27a'); ctx.fillRect((ax + XP.x) / 2 - Z, ay - Z * .15, Z * 2, Z * .3); ctx.globalAlpha = 1;
+    } else if (p.kind === 'vent') {
+      xq(p.x, p.y, 0); const ax = XP.x, ay = XP.y; xq(p.x + p.w, p.y + p.d, 0);
+      xfill('#1a1716'); ctx.fillRect(ax, ay, XP.x - ax, XP.y - ay);
+      xfill('#3c3530'); for (let k = 1; k < 4; k++) ctx.fillRect(ax + (XP.x - ax) * k / 4 - Z * .25, ay, Z * .5, XP.y - ay);
+      const glow = .35 + .3 * Math.sin(t * 3 + (p.seed & 15)); ctx.globalAlpha = glow; xfill('#ff7a2e'); ctx.fillRect(ax + Z * .5, ay + Z * .5, XP.x - ax - Z, XP.y - ay - Z); ctx.globalAlpha = 1;
+      for (let k = 0; k < 3; k++) { const ph = (t * .7 + k / 3 + (p.seed & 7) / 7) % 1; xq(p.x + p.w * (.3 + .2 * k), p.y + p.d / 2, ph * 26); ctx.globalAlpha = 1 - ph; xfill(k & 1 ? '#ffd27a' : '#ff9a3c'); ctx.fillRect(XP.x, XP.y, Z * .6, Z * .6); }
+      ctx.globalAlpha = 1;
+    } else if (p.kind === 'debris') {
+      xq(p.x, p.y, 0); const ax = XP.x, ay = XP.y; xq(p.x + p.w, p.y + p.d, 0);
+      xfill(p.seed & 1 ? '#4a5560' : '#5b4a3a'); xtri(ax, XP.y, (ax + XP.x) / 2, ay, XP.x, XP.y - (XP.y - ay) * .3);
+      xfill('#2a2420'); ctx.fillRect(ax + (XP.x - ax) * .3, XP.y - Z * .4, (XP.x - ax) * .5, Z * .4);
+    } else if (p.kind === 'rubble') {
+      const n = 2 + (p.seed & 3);
+      for (let k = 0; k < n; k++) { const ox = ((p.seed >> (k * 3)) & 7) / 7 * p.w, oy = ((p.seed >> (k * 3 + 9)) & 7) / 7 * p.w * .6, s = p.w * (.2 + ((p.seed >> k) & 3) * .08);
+        xq(p.x + ox, p.y + oy, 0); xfill('#4d463e'); xtri(XP.x - s * Z, XP.y, XP.x, XP.y - s * Z * .9, XP.x + s * Z * .8, XP.y); xfill('#615950'); xtri(XP.x - s * Z * .3, XP.y - s * Z * .2, XP.x, XP.y - s * Z * .9, XP.x + s * Z * .5, XP.y - s * Z * .15); }
+    }
+  }
+  function xprop(p, t) {
+    if (p.kind === 'rock') {
+      const Z = XCAM.zoom, r = p.w / 2; xq(p.x + r, p.y + r, 0); const bx = XP.x, by = XP.y;
+      xfill('rgba(0,0,0,.35)'); xell(bx, by + Z, r * Z * 1.05, r * Z * .55);
+      xq(p.x + r, p.y + r, p.h); const tx = XP.x, ty = XP.y;
+      xfill('#3a352f'); xquad(bx - r * Z, by, tx - r * Z * .55, ty + r * Z * .3, tx, ty - r * Z * .1, bx, by + r * Z * .45);
+      xfill('#4a443c'); xquad(bx, by + r * Z * .45, tx, ty - r * Z * .1, tx + r * Z * .6, ty + r * Z * .25, bx + r * Z, by);
+      xfill('#625a50'); xtri(tx - r * Z * .55, ty + r * Z * .3, tx, ty - r * Z * .45, tx + r * Z * .6, ty + r * Z * .25);
+    } else if (p.kind === 'ruin') {
+      xbox(p.x, p.y, p.w, p.d, p.h, '#6f6a62', '#57524b', '#48443e');
+      const Z = XCAM.zoom; xq(p.x + p.w * .2, p.y + p.d, p.h * .55); xfill('#2b2825'); ctx.fillRect(XP.x, XP.y, p.w * .18 * Z, p.h * .22 * Z * XCAM.cos);
+      xq(p.x + p.w * .62, p.y + p.d, p.h * .55); ctx.fillRect(XP.x, XP.y, p.w * .18 * Z, p.h * .22 * Z * XCAM.cos);
+      xq(p.x + p.w * .7, p.y + p.d * .4, p.h); const rx = XP.x, ry = XP.y; xq(p.x + p.w * .76, p.y + p.d * .4, p.h + 9);
+      ctx.strokeStyle = '#7a4a2c'; ctx.lineWidth = Math.max(1, Z * .5); ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(XP.x, XP.y); ctx.stroke();
+    } else if (p.kind === 'pylon') {
+      xbox(p.x, p.y, p.w, p.d, p.h, '#5d6a75', '#4a5560', '#3a434c');
+      const on = ((t * 1.5 + (p.seed & 3)) | 0) % 2; xq(p.x + p.w / 2, p.y + p.d / 2, p.h + 2); xfill(on ? '#ff4d5e' : '#5a2228'); xell(XP.x, XP.y, XCAM.zoom * 1.4, XCAM.zoom * 1.4);
+    } else if (p.kind === 'crate') {
+      if (p.open) { xbox(p.x, p.y, p.w, p.d, 2, '#3a2c1a', '#2e2315', '#261d12'); return; }
+      xbox(p.x, p.y, p.w, p.d, p.h, '#9a7a44', '#7a5e32', '#654d29');
+      xq(p.x, p.y + p.d, p.h * .5); xfill('#c8932a'); ctx.fillRect(XP.x, XP.y - XCAM.zoom * .4, p.w * XCAM.zoom, XCAM.zoom * .8);
+    }
+  }
+  /** An actor: -1 is the Keeper, else a machine by its slot. */
+  function xactor(i, t) {
+    if (i < 0) { xkeeper(t); return; }
+    const f = XR.foes[i], Z = XCAM.zoom; xq(f.x, f.y, 0); const x = XP.x, y = XP.y, hit = f.hit > 0 && !CALM;
+    xfill('rgba(0,0,0,.38)'); xell(x, y, f.r * Z * 1.1, f.r * Z * .5);
+    if (f.type === 'crawler') {
+      const leg = Math.sin(f.t * 14) * Z * 1.2; xfill('#2a2e33');
+      for (let k = -1; k <= 1; k += 2) { xtri(x + k * f.r * Z * .4, y - Z * 3, x + k * f.r * Z * 1.25, y - Z + leg * k, x + k * f.r * Z * .9, y + Z * .3); xtri(x + k * f.r * Z * .3, y - Z * 2, x + k * f.r * Z * 1.1, y + Z + leg * -k, x + k * f.r * Z * .6, y + Z * 1.2); }
+      xfill(hit ? '#ffffff' : '#6b6f74'); xell(x, y - Z * 4, f.r * Z * .85, f.r * Z * .55);
+      xfill(hit ? '#ffffff' : '#8a8f94'); xell(x, y - Z * 4.8, f.r * Z * .55, f.r * Z * .3);
+      xfill('#ff4d5e'); xell(x + f.face * f.r * Z * .45, y - Z * 4, Z * .9, Z * .7);
+    } else if (f.type === 'drone') {
+      const hov = Math.sin(f.t * 5) * Z * 1.2, hy = y - Z * 11 + hov;
+      xfill(hit ? '#ffffff' : '#3c4a56'); xell(x, hy, f.r * Z * 1.1, f.r * Z * .55);
+      xfill(hit ? '#ffffff' : '#56687a'); xell(x, hy - Z * 1.2, f.r * Z * .7, f.r * Z * .35);
+      ctx.globalAlpha = .5; xfill('#c8d3dc'); const sp = (f.t * 40) % 6.28; xell(x - f.r * Z * 1.1, hy - Z * 2, f.r * Z * .7 * Math.abs(Math.cos(sp)) + Z * .3, Z * .5); xell(x + f.r * Z * 1.1, hy - Z * 2, f.r * Z * .7 * Math.abs(Math.sin(sp)) + Z * .3, Z * .5); ctx.globalAlpha = 1;
+      xfill(f.cd < .35 && ((t * 16) | 0) % 2 ? '#ffe08a' : '#ff4d5e'); xell(x, hy + Z * .8, Z * 1.1, Z * .8);
+    } else {
+      const sway = Math.sin(f.t * 5) * Z; xfill('#2a2e33');
+      ctx.fillRect(x - f.r * Z * .7, y - Z * 7 + sway, Z * 3, Z * 7 - sway); ctx.fillRect(x + f.r * Z * .7 - Z * 3, y - Z * 7 - sway, Z * 3, Z * 7 + sway);
+      xfill(hit ? '#ffffff' : '#7a4a36'); xquad(x - f.r * Z, y - Z * 7, x + f.r * Z, y - Z * 7, x + f.r * Z * .8, y - Z * 17, x - f.r * Z * .8, y - Z * 17);
+      xfill(hit ? '#ffffff' : '#9a5e42'); xquad(x - f.r * Z * .8, y - Z * 17, x + f.r * Z * .8, y - Z * 17, x + f.r * Z * .5, y - Z * 20, x - f.r * Z * .5, y - Z * 20);
+      xfill('#ffe08a'); ctx.fillRect(x - Z * 2.5 + f.face * Z * 2, y - Z * 15.5, Z * 5, Z * 1.2);
+    }
+    if (f.hp < f.max) { xfill('#14161a'); ctx.fillRect(x - Z * 5, y - Z * 23, Z * 10, Z * 1.2); xfill('#ff4d5e'); ctx.fillRect(x - Z * 5, y - Z * 23, Z * 10 * f.hp / f.max, Z * 1.2); }
+  }
+  /** The Keeper, upright: shadow, legs in step, a plated body in its paint, a helmet with a lit visor, the arm on the aim. */
+  function xkeeper(t) {
+    const k = XR.k, Z = XCAM.zoom; if (k.inv > 0 && k.dash <= 0 && ((t * 16) | 0) % 2) return;
+    xq(k.x, k.y, 0); const x = XP.x, y = XP.y, face = k.fx >= 0 ? 1 : -1, sw = Math.sin(k.step) * Z * 1.6, paint = XPAINT.c;
+    xfill('rgba(0,0,0,.4)'); xell(x, y, Z * 6, Z * 2.6);
+    if (k.dash > 0) { ctx.globalAlpha = .3; xfill('#9ff0d8'); xell(x - k.fx * Z * 8, y - Z * 8 - k.fy * Z * 4, Z * 4, Z * 7); ctx.globalAlpha = 1; }
+    xfill('#22262b'); ctx.fillRect(x - Z * 3, y - Z * 8 + sw * .3, Z * 2.4, Z * 8 - sw * .3); ctx.fillRect(x + Z * .6, y - Z * 8 - sw * .3, Z * 2.4, Z * 8 + sw * .3);
+    xfill('#3a4048'); xquad(x - Z * 4.5, y - Z * 8, x + Z * 4.5, y - Z * 8, x + Z * 5, y - Z * 16, x - Z * 5, y - Z * 16);
+    xfill(paint); xquad(x - Z * 3.5, y - Z * 9.5, x + Z * 3.5, y - Z * 9.5, x + Z * 4, y - Z * 15, x - Z * 4, y - Z * 15);
+    xfill('#59616b'); xell(x - Z * 5, y - Z * 15.5, Z * 2.2, Z * 1.6); xell(x + Z * 5, y - Z * 15.5, Z * 2.2, Z * 1.6);
+    xfill('#2f353c'); xell(x, y - Z * 19, Z * 3.6, Z * 3.4);
+    xfill('#9ff0d8'); ctx.fillRect(x - Z * 2.6 + face * Z * .8, y - Z * 19.8, Z * 4.2, Z * 1.3);
+    // the arm and its blaster, on the aim (a machine in the cone) or along the facing
+    let dx = k.fx, dy = k.fy; if (k.aim >= 0) { const f = XR.foes[k.aim]; dx = f.x - k.x; dy = f.y - k.y; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d; }
+    const hx = x + face * Z * 4, hy = y - Z * 13, ex = hx + dx * Z * 7, ey = hy + dy * Z * 7 * XCAM.sin;
+    ctx.strokeStyle = '#4a5560'; ctx.lineWidth = Z * 2.2; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(ex, ey); ctx.stroke();
+    xfill(XR.k.cd > 0 ? '#ffe08a' : '#14161a'); xell(ex, ey, Z * 1.2, Z * 1.2);
+  }
+  /** The castle from above at the first region's south end: a wall across with a gate on the road, towers at its ends. */
+  function xcastle(M, t) {
+    const T = M.tile, y = M.gate.y, w = M.cols * T, gx0 = M.roadC0 * T, gx1 = (M.roadC1 + 1) * T;
+    const n = CAS.count, wallH = 10 + Math.min(18, n.course * .6 + n.wall * .5), dim = S.horde.dim;
+    const roof = dim ? '#4a4640' : '#8a8378', front = dim ? '#3a3631' : '#6e675d', side = dim ? '#2e2b27' : '#5a544c';
+    xbox(0, y, gx0, T * 1.2, wallH, roof, front, side); xbox(gx1, y, w - gx1, T * 1.2, wallH, roof, front, side);
+    for (let x = 4; x < w; x += 12) { if (x > gx0 - 6 && x < gx1 + 2) continue; xbox(x, y, 5, T * .5, wallH + 4, roof, front, side); }   // the crenels
+    const towers = CAS.towers;
+    for (let i = 0; i < towers.length; i++) { const tx = i === 0 ? T * .4 : i === 1 ? w - T * 2.4 : i === 2 ? gx0 - T * 2.2 : gx1 + T * .2, th = wallH + 10 + towers[i] * 5; xbox(tx, y - T * .4, T * 2, T * 2, th, roof, front, side); if (n.lamp > i) { xq(tx + T, y + T * .6, th + 3); xfill(dim ? '#5a4a2a' : '#ffd27a'); xell(XP.x, XP.y, XCAM.zoom * 2, XCAM.zoom * 2); } }
+    xq(gx0, y + T * 1.2, 0); const gax = XP.x, gay = XP.y; xq(gx1, y + T * 1.2, wallH); xfill('rgba(20,18,16,.6)'); ctx.fillRect(gax, XP.y, XP.x - gax, gay - XP.y);
+  }
+  /** The north edge while the next region is sealed: a line of light across the road, and a word when the Keeper bumps it. */
+  function xseal(M, t) {
+    xq(0, M.north, 0); const y = XP.y, x0 = XP.x; xq(M.cols * M.tile, M.north, 0);
+    ctx.globalAlpha = .45 + .25 * Math.sin(t * 4) + (XR.bump > 0 ? .3 : 0); xfill('#9b7bff'); ctx.fillRect(x0, y - XCAM.zoom * 14, XP.x - x0, XCAM.zoom * 14); ctx.globalAlpha = 1;
+  }
+  const XPAINT = { c: '#3DBFA6', slug: '' };
+  /** The HUD's words and the minimap: rebuilt only when what they show changes (never each frame). */
+  function xhudText() {
+    const W = XR;
+    if (XPAINT.slug !== S.play.paint) { XPAINT.slug = S.play.paint; XPAINT.c = paintOf(S.play.paint).colour; }
+    if (W.scrap !== XTXT.scrapN) { XTXT.scrapN = W.scrap; XTXT.scrap = fill(BX.scrap, { n: W.scrap }); }
+    if (W.score !== XTXT.scoreN) { XTXT.scoreN = W.score; XTXT.score = fill(BX.score, { n: W.score }); }
+    const seal = XE.nextSeal(CAS.pieces, RULES), key = seal ? seal.index * 1000 + seal.need : -1;
+    if (key !== XTXT.sealN) { XTXT.sealN = key; XTXT.seal = seal ? fill(BX.sealed, { name: BX.regions[RX.regions[seal.index].slug], n: seal.need }) : BX.sealed_all; }
+    const mk = `${W.map.seed}/${W.run}`; if (mk !== XMKEY) { XMKEY = mk; XMINI = xminiBake(W.map); }
+  }
+  /** The minimap's ground, painted once per region: the road, the solid things, the gate. */
+  function xminiBake(M) {
+    const c = document.createElement('canvas'), s = RX.hud.mini_px_per_tile; c.width = M.cols * s; c.height = M.rows * s;
+    const g = c.getContext('2d'); g.fillStyle = 'rgba(20,18,16,.82)'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#46423c'; g.fillRect(M.roadC0 * s, 0, (M.roadC1 - M.roadC0 + 1) * s, c.height);
+    for (const p of M.props) { if (!p.solid && p.kind !== 'crack') continue; g.fillStyle = p.kind === 'crack' ? '#ff6a2a' : p.kind === 'crate' ? '#c8932a' : '#6f6a62'; g.fillRect(p.x / M.tile * s, p.y / M.tile * s, Math.max(1, p.w / M.tile * s), Math.max(1, p.d / M.tile * s)); }
+    return c;
+  }
+  function xhud(t) {
+    const W = XR, k = W.k, pad = 10, bw = Math.min(150, XW * .38);
+    // hull and power, top left
+    xfill('rgba(12,12,14,.7)'); ctx.fillRect(pad - 4, pad - 4, bw + 8, 30);
+    xfill('#3a1d22'); ctx.fillRect(pad, pad, bw, 9); xfill('#ff4d5e'); ctx.fillRect(pad, pad, bw * k.hp / k.max, 9);
+    xfill('#14161a'); for (let i = 1; i < k.max; i++) ctx.fillRect(pad + bw * i / k.max - .5, pad, 1, 9);
+    xfill('#1b2a33'); ctx.fillRect(pad, pad + 13, bw, 7); xfill(k.power >= RX.keeper.dash_power ? '#8fd3ff' : '#4a7a96'); ctx.fillRect(pad, pad + 13, bw * k.power / k.pmax, 7);
+    ctx.font = '700 9px Silkscreen, ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    xfill('#e8ecef'); ctx.fillText(XTXT.scrap, pad, pad + 30); ctx.fillText(XTXT.score, pad, pad + 42);
+    // the minimap, top right: the region, the Keeper, the machines that are awake
+    if (XMINI) {
+      const s = RX.hud.mini_px_per_tile, mw = XMINI.width, mh = Math.min(XMINI.height, RX.hud.mini_h), M = W.map;
+      const top = clamp(k.y / M.tile * s - mh / 2, 0, XMINI.height - mh), mx = XW - mw - pad, my = pad + 34;
+      ctx.drawImage(XMINI, 0, top, mw, mh, mx, my, mw, mh);
+      xfill('#ff4d5e'); for (let i = 0; i < W.foes.length; i++) { const f = W.foes[i]; if (!f.on || !f.wake) continue; const fy = f.y / M.tile * s - top; if (fy < 0 || fy > mh) continue; ctx.fillRect(mx + f.x / M.tile * s - 1, my + fy - 1, 2, 2); }
+      xfill('#9ff0d8'); ctx.fillRect(mx + k.x / M.tile * s - 1.5, my + k.y / M.tile * s - top - 1.5, 3, 3);
+      ctx.strokeStyle = 'rgba(232,236,239,.35)'; ctx.lineWidth = 1; ctx.strokeRect(mx - .5, my - .5, mw + 1, mh + 1);
+    }
+    ctx.textAlign = 'center';
+    if (W.sealed && (W.bump > 0 || k.y < W.map.north + W.map.tile * 6)) { xfill('#e8ecef'); ctx.fillText(XTXT.seal, XW / 2, XH * .22); }
+    if (XTXT.toastT > 0) { ctx.globalAlpha = Math.min(1, XTXT.toastT); xfill('rgba(12,12,14,.7)'); ctx.fillRect(XW * .1, XH * .3 - 4, XW * .8, 18); xfill('#e8ecef'); ctx.fillText(XTXT.toast, XW / 2, XH * .3); ctx.globalAlpha = 1; }
+  }
+
   // ══════════════════════ rendering the screens ══════════════════════
   const $screen = document.getElementById('screen'), $overlay = document.getElementById('overlay'), $live = document.getElementById('live'), $mode = document.getElementById('modepill'), $home = document.getElementById('homebtn');
   function head(title, sub, back) { return `<div class="shead">${back ? `<button class="back" data-go="${back}" aria-label="Back">${icon('back')}</button>` : ''}<span class="mark" aria-hidden="true"></span><div class="grow"><h1>${esc(title)}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div></div>`; }
@@ -4346,6 +5173,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     padMount(document.getElementById('padcv'), RI.pads.side, 'pad');   // the floating stick and the drawn buttons (15-input.js)
   }
   function resize() {
+    if (S.screen === 'frontier') { sizeExplore(); return; }   // the frontier sizes its own canvas
     const st = document.getElementById('stage'); if (!st || !cv) return;
     const w = st.clientWidth - 12, sc = Math.max(1, Math.round(w / RS.view_w)); VW = clamp(Math.floor(w / sc), 150, 220); VH = clamp(Math.floor((st.clientHeight - 4) / sc), 110, 232);
     bgKey = ''; cv.width = VW; cv.height = VH; cv.style.width = VW * sc + 'px'; cv.style.height = VH * sc + 'px'; ctx.imageSmoothingEnabled = false;
@@ -4365,7 +5193,8 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     const switches = `<section class="card" id="switches"><div class="row"><div class="t"><div class="name">${esc(B.hard)}</div><div class="meta">${esc(fill(B.hard_note, { x: RS.hard.score }))}</div></div><button class="switch" data-hard="1" role="switch" aria-checked="${S.play.hard}" aria-label="${esc(B.hard)}"><i></i></button></div><div class="row"><div class="t"><div class="name">${esc(BANK.sound.label)}</div><div class="meta">${esc(BANK.sound.note)}</div></div><button class="switch" data-mute="1" role="switch" aria-checked="${!S.play.mute}" aria-label="${esc(BANK.sound.label)}"><i></i></button></div></section>`;
     const track = `<section class="card" id="metacard"><h2>${esc(M.heading)} <span class="more">${esc(fill(M.total, { score: life }))}</span></h2><div class="empty">${esc(next ? fill(M.next, { at: next.at, what: M.names[next.slug] }) : M.all)}</div><div class="unlocks">${RS.meta.unlocks.map((u) => `<span class="chip ${life >= u.at ? 'g g-fine' : 'dash'}" data-unlock="${u.slug}" data-open="${life >= u.at}">${esc(M.names[u.slug])}${life >= u.at ? '' : ` · ${u.at}`}</span>`).join('')}</div><div class="empty" style="margin-top:6px">${esc(M.note)}</div></section>`;
     const hostCard = EMBED && !OUT ? `<section class="card" id="hostcard"><h2>${esc(BANK.embed.where)}</h2>${['workorders', 'learning', 'health'].map((to) => `<button class="row" data-host="${to}"><div class="t"><div class="name">${esc(BANK.embed.places[to])}</div><div class="meta">${esc(BANK.embed.place_notes[to])}</div></div></button>`).join('')}</section>` : '';
-    const wildsCard = `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)} ${esc(fill(B.wilds_biomes, { n: wildsBiomes().length, of: RS.biomes.list.length }))}</div></div></button></section>`;
+    const xo = XE.regionsOpen(CAS.pieces, RULES), frontier = `<section class="card" id="frontiercard"><button class="row" data-go="frontier"><span class="chip g g-fine">↑</span><div class="t"><div class="name">${esc(BX.row)}</div><div class="meta">${esc(fill(BX.row_meta, { open: xo, all: RX.regions.length }))}</div></div></button></section>`;
+    const wildsCard = frontier + `<section class="card"><h2>${esc(B.wilds)} <span class="more">${esc(S.play.wilds.best ? fill(B.best, { score: S.play.wilds.best }) : B.unplayed)}</span></h2><button class="row" data-stage="0"><span class="chip dash">∞</span><div class="t"><div class="name">${esc(B.wilds)}</div><div class="meta">${esc(B.wilds_line)} ${esc(fill(B.wilds_biomes, { n: wildsBiomes().length, of: RS.biomes.list.length }))}</div></div></button></section>`;
     if (OUT) return `${wildsCard}${switches}${track}<div class="empty">${esc(EMBED ? BANK.embed[EMB.state] : BANK.castle.signed_out)}</div><div class="empty">${esc(B.score_note)}</div>`;   // the roadmap's weeks are the account's
     const roadmap = PLAN.weeks.length ? `<section class="card"><h2>${esc(B.roadmap)} <span class="more">${esc(fill(B.roadmap_meta, { n: x.mapped, rank: x.rank.label }))}</span></h2>${rows}</section>` : `<div class="empty" id="noplan">${esc(BANK.embed.no_plan)}</div>`;
     return `${wildsCard}${switches}${roadmap}${track}${hostCard}<div class="empty">${esc(B.score_note)}</div>`;
@@ -4378,8 +5207,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     if ($home) $home.setAttribute('aria-current', S.screen === 'home' ? 'page' : 'false');
     let html = '';
     if (S.screen === 'stage' && !ST) S.screen = 'castle';
-    if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
+    if ((OUT || EMBED) && !['castle', 'stage', 'stages', 'keeper', 'frontier'].includes(S.screen)) S.screen = 'castle';   // the backlog, Home, skills and the archive read an account; embedded, the host has its own
     if (S.screen !== 'stage') music(S.screen === 'castle' && (CS.fight || (S.horde.clock.due && S.state !== 'unlit')) ? 'warning' : 'castle');
+    if (S.screen === 'frontier') { playing(true); $screen.innerHTML = exploreShell(); mountExplore(); renderOverlay(); return; }   // the frontier (72-frontier.js)
     if (S.screen === 'castle' || S.screen === 'stage') {
       playing(true); $screen.innerHTML = gameShell(S.screen); mountCanvas(); tickHold = 0; updateHud(); updateCard();
       if (S.screen === 'castle' && CS.fight) document.getElementById('skipFight').hidden = false;
@@ -4506,7 +5336,8 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     if (t.dataset.hard) { S.play.hard = !S.play.hard; saveNow(); render(); return; }
     if (t.dataset.go) { if (CS.fight && t.dataset.go !== 'castle') skipFight();
       if (S.screen === 'stage' && ST && !ST.done && ST.score > 0 && t.dataset.go !== 'stage') { finishStage(false); return; }   // a run walked away from still banks its play score
-      S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); return; }
+      const said = S.screen === 'frontier' && t.dataset.go !== 'frontier' ? endExplore() : '';   // leaving the frontier says what the run found
+      S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); if (said) ticker(said, ''); return; }
     if (t.dataset.stage) { const n = Number(t.dataset.stage); if (OUT && n !== 0) return; if (n > 1 && !S.play.best[`w${n - 1}`]) return;   // a week opens when the one before it is cleared
       S.stage = n; newStage(S.stage); S.screen = 'stage'; render(); ticker(ST.wilds ? BANK.stage.wilds_enter : fill(BANK.stage.enter, { n: ST.week }), ''); return; }
     if (t.dataset.gear) { const [slot, v] = t.dataset.gear.split(':'); if (!RULES.gear.order.includes(slot)) return;   // equipping chooses a view of the archive: it consumes nothing
@@ -4528,7 +5359,7 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     if (t.id === 'reset') { store.del(KEYS.save); $overlay.innerHTML = ''; reset(); S.play.mute = !!(AU.master && AU.master.gain.value === 0); newCastleScene(); paintKeeper(); ST = null; S.started = false; S.screen = 'castle'; render(); saveNow(); }
   });
   document.addEventListener('input', (e) => { if (e.target.id === 'proof') { S.proof = e.target.value; const b = document.querySelector('[data-done]'); if (b) b.disabled = !S.proof.trim(); } });
-  const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
+  const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', arrowdown: 'down', s: 'down', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
   addEventListener('keydown', (e) => { if (e.target.matches('input')) return; auUnlock(); const key = e.key.toLowerCase();
     if (key >= '1' && key <= '3') { const ups = $overlay.querySelectorAll('[data-up]'); if (ups[key - 1]) { ups[key - 1].click(); return; } }   /* an upgrade by its number */
     if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
@@ -4543,7 +5374,12 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
   function frame(now) {
     if (document.hidden) { running = false; return; }
     const dt = Math.min(.034, (now - last) / 1000); last = now;
-    if (cv && (S.screen === 'castle' || (S.screen === 'stage' && ST))) {
+    if (cv && S.screen === 'frontier' && XR) {   // the frontier: its own update and drawing, the controls drawn over the scene
+      if (!blocking()) { updateExplore(dt); TEL.session_seconds += dt; }
+      if (XR) renderExplore(now / 1000);
+      hudTick += dt; if (hudTick > .25) { hudTick = 0; if (XR) xhudText(); }
+      if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
+    } else if (cv && (S.screen === 'castle' || (S.screen === 'stage' && ST))) {
       if (!blocking()) { if (S.screen === 'castle') updateCastle(dt); else updateStage(dt); TEL.session_seconds += dt; }
       else tap.jump = tap.fire = tap.dash = false;
       if (cv && S.screen === 'castle') renderCastle(now / 1000); else if (cv && ST) renderStage(now / 1000);
@@ -4611,7 +5447,9 @@ html.signed-out .wrap > .dev, html.signed-out .bar-nav, html.signed-out .ribbon 
     ride() { if (!ST || !ST.movers.length) return null; const m = ST.movers[0], k = ST.k; k.x = m.x + 6; k.y = m.y - KH - 3; k.vx = 0; k.vy = 0; ST.camX = Math.max(0, k.x - 56); ST.camRow = ST.camTo = m.y / TILE; return { x: m.x, x0: m.x0, x1: m.x1 }; },
     far() { if (ST) { restand((ST.len - 6) * TILE); ST.camX = ST.k.x - 56; } },
     hurt() { if (ST) { ST.k.inv = 0; hurt(); } },
-    keys: () => ({ ...keys })
+    keys: () => ({ ...keys }),
+    // the frontier (FW11): where the Keeper is, what the run holds, what the camera sees; play only
+    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS] } : null)
   };
   function boot() {
     if (globalThis.FIELDWORKS_ART) { reset(); paintKeeper(); renderArtSheet(); return; }

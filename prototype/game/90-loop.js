@@ -8,7 +8,8 @@
     if (t.dataset.hard) { S.play.hard = !S.play.hard; saveNow(); render(); return; }
     if (t.dataset.go) { if (CS.fight && t.dataset.go !== 'castle') skipFight();
       if (S.screen === 'stage' && ST && !ST.done && ST.score > 0 && t.dataset.go !== 'stage') { finishStage(false); return; }   // a run walked away from still banks its play score
-      S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); return; }
+      const said = S.screen === 'frontier' && t.dataset.go !== 'frontier' ? endExplore() : '';   // leaving the frontier says what the run found
+      S.screen = t.dataset.go === 'stage' ? 'stages' : t.dataset.go; if (S.screen !== 'stage') { ST = null; S.stage = null; } S.order = null; for (const kk in keys) keys[kk] = false; render(); if (said) ticker(said, ''); return; }
     if (t.dataset.stage) { const n = Number(t.dataset.stage); if (OUT && n !== 0) return; if (n > 1 && !S.play.best[`w${n - 1}`]) return;   // a week opens when the one before it is cleared
       S.stage = n; newStage(S.stage); S.screen = 'stage'; render(); ticker(ST.wilds ? BANK.stage.wilds_enter : fill(BANK.stage.enter, { n: ST.week }), ''); return; }
     if (t.dataset.gear) { const [slot, v] = t.dataset.gear.split(':'); if (!RULES.gear.order.includes(slot)) return;   // equipping chooses a view of the archive: it consumes nothing
@@ -30,7 +31,7 @@
     if (t.id === 'reset') { store.del(KEYS.save); $overlay.innerHTML = ''; reset(); S.play.mute = !!(AU.master && AU.master.gain.value === 0); newCastleScene(); paintKeeper(); ST = null; S.started = false; S.screen = 'castle'; render(); saveNow(); }
   });
   document.addEventListener('input', (e) => { if (e.target.id === 'proof') { S.proof = e.target.value; const b = document.querySelector('[data-done]'); if (b) b.disabled = !S.proof.trim(); } });
-  const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
+  const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', arrowdown: 'down', s: 'down', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
   addEventListener('keydown', (e) => { if (e.target.matches('input')) return; auUnlock(); const key = e.key.toLowerCase();
     if (key >= '1' && key <= '3') { const ups = $overlay.querySelectorAll('[data-up]'); if (ups[key - 1]) { ups[key - 1].click(); return; } }   /* an upgrade by its number */
     if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
@@ -45,7 +46,12 @@
   function frame(now) {
     if (document.hidden) { running = false; return; }
     const dt = Math.min(.034, (now - last) / 1000); last = now;
-    if (cv && (S.screen === 'castle' || (S.screen === 'stage' && ST))) {
+    if (cv && S.screen === 'frontier' && XR) {   // the frontier: its own update and drawing, the controls drawn over the scene
+      if (!blocking()) { updateExplore(dt); TEL.session_seconds += dt; }
+      if (XR) renderExplore(now / 1000);
+      hudTick += dt; if (hudTick > .25) { hudTick = 0; if (XR) xhudText(); }
+      if (now - savedAt > RULES.save.autosave_seconds * 1000) { saveNow(); teleSave(); }
+    } else if (cv && (S.screen === 'castle' || (S.screen === 'stage' && ST))) {
       if (!blocking()) { if (S.screen === 'castle') updateCastle(dt); else updateStage(dt); TEL.session_seconds += dt; }
       else tap.jump = tap.fire = tap.dash = false;
       if (cv && S.screen === 'castle') renderCastle(now / 1000); else if (cv && ST) renderStage(now / 1000);
@@ -113,7 +119,9 @@
     ride() { if (!ST || !ST.movers.length) return null; const m = ST.movers[0], k = ST.k; k.x = m.x + 6; k.y = m.y - KH - 3; k.vx = 0; k.vy = 0; ST.camX = Math.max(0, k.x - 56); ST.camRow = ST.camTo = m.y / TILE; return { x: m.x, x0: m.x0, x1: m.x1 }; },
     far() { if (ST) { restand((ST.len - 6) * TILE); ST.camX = ST.k.x - 56; } },
     hurt() { if (ST) { ST.k.inv = 0; hurt(); } },
-    keys: () => ({ ...keys })
+    keys: () => ({ ...keys }),
+    // the frontier (FW11): where the Keeper is, what the run holds, what the camera sees; play only
+    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS] } : null)
   };
   function boot() {
     if (globalThis.FIELDWORKS_ART) { reset(); paintKeeper(); renderArtSheet(); return; }
