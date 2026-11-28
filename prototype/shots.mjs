@@ -308,22 +308,39 @@ async function behaviours() {
   check('… and read again it gathers, inside the gap rule', hl.clock.gather > g0 || hl.clock.due !== null, `${hl.line}`);
   await ctx.close();
 
-  // 10. touch: the pad's buttons drive the Keeper on a phone
+  // 10. touch: one pad canvas, a floating stick on the left and drawn buttons on the right, drive the Keeper on a phone
   ctx = await chromium.newContext({ viewport: VIEW, hasTouch: true, isMobile: true, timezoneId: 'UTC' });
   p = await open(ctx); await clearCards(p);
   await go(p, 'stages'); await p.click('[data-stage="1"]'); await wait(p, 300);
-  await p.locator('.pad').scrollIntoViewIfNeeded(); await wait(p, 200);
+  const pad = await p.locator('#padcv').boundingBox();
+  const at = (fx, fy) => ({ x: Math.round(pad.x + pad.width * fx), y: Math.round(pad.y + pad.height * fy) });
+  const cdp = await ctx.newCDPSession(p);
+  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map((q, i) => ({ ...q, id: i })) });
   const x0 = (await D(p, 'stage')).x;
-  const right = await p.locator('[data-key="right"]').boundingBox(), jump = await p.locator('[data-key="jump"]').boundingBox();
-  const hold = async (b, ms) => { const cdp = await ctx.newCDPSession(p); const pt = { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) }; await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] }); await wait(p, ms); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); };
-  await hold(right, 700); const x1t = (await D(p, 'stage')).x; const y0 = (await D(p, 'stage')).y;
-  const cdp2 = await ctx.newCDPSession(p); await cdp2.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: Math.round(jump.x + jump.width / 2), y: Math.round(jump.y + jump.height / 2) }] }); await wait(p, 180); const yUp = (await D(p, 'stage')).y; await cdp2.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  check('touch: holding the pad\'s right button runs the Keeper, and jump lifts it', x1t > x0 + 20 && yUp < y0 - 4 && right.height >= 44 && jump.height >= 44, `x ${Math.round(x0)} → ${Math.round(x1t)}; y ${Math.round(y0)} → ${Math.round(yUp)}; buttons ${Math.round(right.width)} × ${Math.round(right.height)} px`);
+  // the stick: the thumb lands anywhere on the left and slides right; the Keeper runs
+  const s0 = at(.2, .5), s1 = { x: s0.x + 60, y: s0.y };
+  await touch('touchStart', [s0]); await touch('touchMove', [s1]); await wait(p, 700);
+  const x1t = (await D(p, 'stage')).x, y0 = (await D(p, 'stage')).y;
+  // a second thumb presses Jump while the first still holds the stick
+  const jb = at(.89, .62);
+  await touch('touchMove', [s1, jb]); await wait(p, 180); const yUp = (await D(p, 'stage')).y; const xMid = (await D(p, 'stage')).x;
+  await touch('touchEnd', []); await wait(p, 200);
+  const held = await p.evaluate(() => FieldworksDebug.keys());
+  check('touch: the stick runs the Keeper, a second thumb jumps while it runs, and lifting both lets go', x1t > x0 + 20 && yUp < y0 - 4 && xMid >= x1t && !held.left && !held.right && !held.jump, `x ${Math.round(x0)} → ${Math.round(x1t)} → ${Math.round(xMid)}; y ${Math.round(y0)} → ${Math.round(yUp)}; held after ${JSON.stringify(held)}`);
+  // a tap in the space between buttons still presses the nearest one: here Dash
+  const xd0 = (await D(p, 'stage')).x;
+  await touch('touchStart', [at(.6, .95)]); await wait(p, 50); await touch('touchEnd', []); await wait(p, 200);
+  check('touch: the right side has no dead gaps, so a tap between the buttons dashes', (await D(p, 'stage')).x > xd0 + 25, `x ${Math.round(xd0)} → ${Math.round((await D(p, 'stage')).x)}`);
+  // the page does not move under a thumb: no zoom on a quick double tap, no scroll, no selection, no DOM buttons in play
+  const zoom0 = await p.evaluate(() => [visualViewport.scale, scrollY]);
+  for (let i = 0; i < 2; i++) { await touch('touchStart', [at(.72, .42)]); await touch('touchEnd', []); await wait(p, 60); }
+  await touch('touchStart', [at(.2, .5)]); await touch('touchMove', [at(.2, .1)]); await touch('touchMove', [at(.2, -2)]); await touch('touchEnd', []); await wait(p, 200);
+  const lock = await p.evaluate(() => ({ scale: visualViewport.scale, y: scrollY, sel: String(getSelection()), ta: getComputedStyle(document.getElementById('padcv')).touchAction, btns: document.querySelectorAll('.phone button:not([hidden])').length, playing: document.documentElement.classList.contains('playing') }));
+  check('touch: a double tap and a thumb dragged off the pad move nothing: no zoom, no scroll, no selection', lock.scale === zoom0[0] && lock.y === zoom0[1] && lock.sel === '' && lock.ta === 'none' && lock.playing, JSON.stringify(lock));
+  check('touch: the pad is big enough for two thumbs', pad.height >= 100 && pad.width >= 300, `${Math.round(pad.width)} × ${Math.round(pad.height)} px`);
   const view = (await D(p, 'stage')).view; const css = await p.locator('#game').evaluate((c) => [c.clientWidth, c.clientHeight, c.width, c.height]);
-  const dashB = await p.locator('[data-key="dash"]').boundingBox(); const xd0 = (await D(p, 'stage')).x;
-  { const cdp = await ctx.newCDPSession(p); await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: Math.round(dashB.x + dashB.width / 2), y: Math.round(dashB.y + dashB.height / 2) }] }); await wait(p, 50); await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await wait(p, 200); }
-  check('touch: the pad has a Dash button, and a tap dashes', dashB.height >= 44 && dashB.width >= 44 && (await D(p, 'stage')).x > xd0 + 25 && (await p.locator('.pad [data-key]').count()) === 5, `x ${Math.round(xd0)} → ${Math.round((await D(p, 'stage')).x)}; ${Math.round(dashB.width)} × ${Math.round(dashB.height)} px`);
   check('the pixels are whole: the canvas is drawn at a whole-number scale', css[0] % css[2] === 0 && css[0] / css[2] === css[1] / css[3] && css[2] === view[0], `${css[2]} × ${css[3]} drawn at ${css[0]} × ${css[1]} (×${css[0] / css[2]})`);
+  await phoneShot(p, 'touch-pad');
   await ctx.close();
 
   // 11. reduced motion: no shake, no flash, no hit-stop

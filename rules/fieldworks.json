@@ -966,6 +966,14 @@
       "bonus": "Finish it today and its drop is better.",
       "none": "No open order qualifies today.",
       "note": "Oldest first, then highest priority, then quickest."
+    },
+    "input": {
+      "fire": "FIRE",
+      "dash": "DASH",
+      "jump": "JUMP",
+      "bot": "BOT",
+      "build": "BUILD",
+      "label": "Controls: drag on the left to move, press on the right to act."
     }
   },
   "save": {
@@ -2029,5 +2037,82 @@
     ],
     "min_age_days": 0,
     "score_bonus": 10
+  },
+  "input": {
+    "$note": "FW10 (design D67, D79): the touch input. One canvas takes every pointer; a stick floats where the left thumb lands; the right side is drawn buttons that tile it with no gap. Sizes in CSS pixels; positions as fractions of the surface.",
+    "stick_side": 0.45,
+    "stick_radius_px": 42,
+    "stick_follow": 1.15,
+    "dead_zone": 0.16,
+    "side_threshold": 0.28,
+    "jump_threshold": 0.62,
+    "stick_rest": {
+      "x": 0.2,
+      "y": 0.55
+    },
+    "button_min_px": 48,
+    "label_px": 10,
+    "layouts": {
+      "pad": {
+        "dash": {
+          "x": 0.54,
+          "y": 0.62,
+          "r": 0.26
+        },
+        "fire": {
+          "x": 0.72,
+          "y": 0.42,
+          "r": 0.3
+        },
+        "jump": {
+          "x": 0.89,
+          "y": 0.62,
+          "r": 0.26
+        }
+      },
+      "overlay": {
+        "fire": {
+          "x": 0.84,
+          "y": 0.86,
+          "r": 0.085
+        },
+        "dash": {
+          "x": 0.66,
+          "y": 0.9,
+          "r": 0.065
+        },
+        "bot": {
+          "x": 0.7,
+          "y": 0.77,
+          "r": 0.06
+        },
+        "build": {
+          "x": 0.88,
+          "y": 0.72,
+          "r": 0.06
+        }
+      }
+    },
+    "colours": {
+      "fire": "#d8462e",
+      "dash": "#4a5560",
+      "jump": "#2f7d8c",
+      "bot": "#7a5cc4",
+      "build": "#c8932a",
+      "on": "#ffe08a"
+    },
+    "pads": {
+      "side": [
+        "dash",
+        "fire",
+        "jump"
+      ],
+      "explore": [
+        "fire",
+        "dash",
+        "bot",
+        "build"
+      ]
+    }
   }
 }
