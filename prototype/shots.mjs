@@ -368,9 +368,22 @@ async function behaviours() {
   const pinned = (await D(p, 'frontier')).lod; await p.evaluate(() => FieldworksDebug.frontierLevel(2)); await wait(p, 120); await phoneShot(p, 'frontier-plain');
   const plain = (await D(p, 'frontier')).lod; await p.evaluate(() => FieldworksDebug.frontierLevel(-1));
   check('a pinned level holds: the dense tier at the top, the plain tier below it', pinned.tier === 2 && plain.tier === 1 && plain.scale === 1, `${JSON.stringify(pinned)} · ${JSON.stringify(plain)}`);
+  // FW13: the partner follows the Keeper; Bot switches it to hunting, Build has it place a turret
+  const pa0 = (await D(p, 'frontier')).partner, fr3 = await D(p, 'frontier');
+  check('the partner walks with the Keeper', pa0 && pa0.up !== undefined && Math.hypot(pa0.x - fr3.x, pa0.y - fr3.y) < 120, JSON.stringify(pa0));
+  await p.keyboard.press('b'); await wait(p, 120); const pa1 = (await D(p, 'frontier')).partner;
+  await p.keyboard.press('v'); await wait(p, 120); const pa2 = (await D(p, 'frontier')).partner; await phoneShot(p, 'frontier-partner');
+  check('Bot switches the partner between follow and hunt; Build places a turret', pa1.mode !== pa0.mode && (pa2.turrets >= 1 || !pa2.up), `${JSON.stringify(pa1)} · ${JSON.stringify(pa2)}`);
   check('the keyboard walks the frontier too, and nothing the run does touches the evidence', fr2.y < fr0.y - 150 && (await D(p, 'events')) === ev0 && (await D(p, 'xp')) === lv0, `y ${Math.round(fr2.y)}; scrap ${fr2.scrap}; score ${fr2.score}`);
   await p.click('.xback'); await wait(p, 200);
   check('the way home: back to the castle', (await p.evaluate(() => FieldworksDebug.screen())) === 'castle');
+  // the partner bay: four slots, each part's words, a code that imports only parts
+  await go(p, 'stages'); await p.click('[data-go="partner"]'); await wait(p, 200);
+  check('the partner bay: four slots and every part', (await p.locator('[data-pslot]').count()) === 4 && (await p.locator('[data-part]').count()) >= 10);
+  await p.click('[data-part="base:wheels"]'); await wait(p, 100);
+  await p.fill('#pimport', 'inspection-ugv cobot-arm gimbal-camera battery brand-x-unit-9'); await p.click('[data-pimp]'); await wait(p, 100);
+  const pb = await D(p, 'play'); await phoneShot(p, 'partner-bay');
+  check('a SOAR-style code imports its generic kinds and classes as parts; anything else is ignored', pb.partner === 'FF1 tracks arm thermal cell', JSON.stringify(pb));
   await ctx.close();
 
   // 11. reduced motion: no shake, no flash, no hit-stop

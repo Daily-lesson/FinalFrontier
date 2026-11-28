@@ -1,6 +1,6 @@
   // ══════════════════════ THE CASTLE SCREEN: it defends itself; the horde comes to it ══════════════════════
-  const keys = { left: false, right: false, jump: false, down: false, fire: false, dash: false };
-  const tap = { jump: false, fire: false, dash: false };   // a press shorter than a frame still counts once
+  const keys = { left: false, right: false, jump: false, down: false, fire: false, dash: false, bot: false, build: false };
+  const tap = { jump: false, fire: false, dash: false, bot: false, build: false };   // a press shorter than a frame still counts once
   let CS = null;
   const fieldX = (x) => (x >= 0 ? FACE + 3 + x * (VW - FACE - 6) / RH.approach : FACE + x);
   function newCastleScene() {

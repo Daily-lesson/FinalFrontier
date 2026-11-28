@@ -71,7 +71,7 @@
   }
   const LEAD = Math.round(RH.warning_hours / 24);
   // The play record: scores, the lifetime play score that unlocks things for play (never for the castle), the paint and two switches.
-  const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0, life: 0, mute: false, hard: false, bosses: 0, caches: 0, gear: {} });
+  const PLAY0 = () => ({ best: {}, wilds: { best: 0, runs: 0 }, paint: RS.paints[0].slug, wall: 0, life: 0, mute: false, hard: false, bosses: 0, caches: 0, gear: {}, scrap: 0, partner: FieldworksFrontier.partnerOf(null, RULES) });   // scrap and the partner: the frontier's play (FW13)
   // The DEMO opens with its first horde already announced, so the warning is the first thing seen. `fresh` is the castle's size at the warning: pieces landed since then rally it.
   const HORDE0 = () => ({ day: 0, clock: { gather: 0, warned: TODAY, due: iso(utc(TODAY) + LEAD * DAY), count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
   const HORDE_NONE = () => ({ day: 0, clock: { gather: 0, warned: null, due: null, count: 0, last: null, horde: null }, history: [], dim: false, arrived: null, fresh: null });
@@ -136,7 +136,7 @@
   function gearChoice(g) { const out = {}; if (g && typeof g === 'object') for (const slot of RULES.gear.order) { const v = g[slot]; if (v === 'off' || (Number.isInteger(v) && v >= 0 && v <= 0xffffffff)) out[slot] = v; } return out; }
   /** A read play record under today's shape: a save from before lifetime score starts it at its bests. Only known fields are kept. */
   function playOf(p) {
-    const q = { ...PLAY0(), best: p.best, wilds: p.wilds, paint: p.paint, wall: p.wall, mute: p.mute === true, hard: p.hard === true, bosses: isInt(p.bosses) ? p.bosses : 0, caches: isInt(p.caches) ? p.caches : 0, gear: gearChoice(p.gear) };
+    const q = { ...PLAY0(), best: p.best, wilds: p.wilds, paint: p.paint, wall: p.wall, mute: p.mute === true, hard: p.hard === true, bosses: isInt(p.bosses) ? p.bosses : 0, caches: isInt(p.caches) ? p.caches : 0, gear: gearChoice(p.gear), scrap: isInt(p.scrap) ? Math.min(p.scrap, RULES.frontier.partner.scrap_max) : 0, partner: FieldworksFrontier.partnerOf(p.partner, RULES) };
     q.life = Math.max(isInt(p.life) ? p.life : 0, Object.values(q.best).reduce((a, b) => a + b.score, 0) + q.wilds.best + q.wall);
     return q;
   }

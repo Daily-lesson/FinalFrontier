@@ -1,6 +1,6 @@
   // ══════════════════════ events and the loop ══════════════════════
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],[data-gear],[data-host],[data-mute],[data-hard],#reset,#replayOnboarding,#skipFight,#fwClose');
+    const t = e.target.closest('[data-go],[data-order],[data-close],[data-pick],[data-done],[data-lift],[data-name],[data-theme],[data-days],[data-state],[data-survey],[data-stage],[data-paint],[data-gear],[data-part],[data-pup],[data-prand],[data-pimp],[data-host],[data-mute],[data-hard],#reset,#replayOnboarding,#skipFight,#fwClose');
     if (!t) return;
     if (t.id === 'fwClose') { saveNow(); music(''); hostGo('close'); return; }
     if (t.dataset.host) { hostGo(t.dataset.host); return; }   // where the evidence is made: the host's own screen
@@ -15,6 +15,7 @@
     if (t.dataset.gear) { const [slot, v] = t.dataset.gear.split(':'); if (!RULES.gear.order.includes(slot)) return;   // equipping chooses a view of the archive: it consumes nothing
       if (v === 'auto') delete S.play.gear[slot]; else if (v === 'off') S.play.gear[slot] = 'off'; else if (/^\d+$/.test(v)) S.play.gear[slot] = Number(v); else return;
       saveNow(); render(); return; }
+    if (t.dataset.part || t.dataset.pup || t.dataset.prand || t.dataset.pimp) { partnerClick(t); return; }   // the partner bay (FW13): play, kept on this device
     if (t.dataset.paint) { S.play.paint = t.dataset.paint; paintKeeper(); saveNow(); render(); return; }
     if (t.dataset.order) { S.order = t.dataset.order; S.picked = null; S.proof = ''; renderOverlay(); return; }
     if (t.dataset.close) { if (e.target === t || e.target.closest('[data-close]') === t) { S.order = null; renderOverlay(); } return; }
@@ -30,8 +31,17 @@
     if (t.dataset.theme) { document.documentElement.setAttribute('data-theme', t.dataset.theme); document.querySelectorAll('#seg-theme button').forEach((b) => b.setAttribute('aria-pressed', String(b === t))); bgKey = ''; if (S.screen === 'home') drawMini(); return; }
     if (t.id === 'reset') { store.del(KEYS.save); $overlay.innerHTML = ''; reset(); S.play.mute = !!(AU.master && AU.master.gain.value === 0); newCastleScene(); paintKeeper(); ST = null; S.started = false; S.screen = 'castle'; render(); saveNow(); }
   });
+  /** A press in the partner bay: choose a part, upgrade one with banked scrap, randomize, or import a code. Only known parts are ever kept. */
+  function partnerClick(t) {
+    const P = RULES.frontier.partner, b = S.play.partner;
+    if (t.dataset.part) { const [slot, id] = t.dataset.part.split(':'); if (!P.slots.includes(slot) || !Object.prototype.hasOwnProperty.call(P.parts[slot], id)) return; b[slot] = id; }
+    else if (t.dataset.pup) { const slot = t.dataset.pup; if (!P.slots.includes(slot)) return; const cost = XE.upgradeCost(b, slot, RULES); if (!cost || S.play.scrap < cost) return; S.play.scrap -= cost; b.lv[b[slot]] = (b.lv[b[slot]] || 0) + 1; }
+    else if (t.dataset.prand) { const r = XE.partnerRandom((Math.random() * 0x100000000) >>> 0, RULES); for (const s of P.slots) b[s] = r[s]; }
+    else { const got = XE.partnerParse(document.getElementById('pimport')?.value || '', RULES); if (!got) { ticker(BANK.frontier.import_none, ''); return; } for (const s of P.slots) b[s] = got[s]; ticker(fill(BANK.frontier.imported, { name: partnerName(b) }), ''); }
+    S.play.partner = XE.partnerOf(b, RULES); saveNow(); render();
+  }
   document.addEventListener('input', (e) => { if (e.target.id === 'proof') { S.proof = e.target.value; const b = document.querySelector('[data-done]'); if (b) b.disabled = !S.proof.trim(); } });
-  const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', arrowdown: 'down', s: 'down', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash' };
+  const KEYMAP = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right', ' ': 'jump', arrowup: 'jump', w: 'jump', arrowdown: 'down', s: 'down', j: 'fire', x: 'fire', f: 'fire', shift: 'dash', k: 'dash', l: 'dash', c: 'dash', b: 'bot', e: 'bot', v: 'build', q: 'build' };
   addEventListener('keydown', (e) => { if (e.target.matches('input')) return; auUnlock(); const key = e.key.toLowerCase();
     if (key >= '1' && key <= '3') { const ups = $overlay.querySelectorAll('[data-up]'); if (ups[key - 1]) { ups[key - 1].click(); return; } }   /* an upgrade by its number */
     if (KEYMAP[key]) { keys[KEYMAP[key]] = true; if (KEYMAP[key] in tap && !e.repeat) tap[KEYMAP[key]] = true; e.preventDefault(); } if (key === 'escape' && S.order) { S.order = null; renderOverlay(); }
@@ -123,7 +133,9 @@
     hurt() { if (ST) { ST.k.inv = 0; hurt(); } },
     keys: () => ({ ...keys }),
     // the frontier (FW11): where the Keeper is, what the run holds, what the camera sees; play only
-    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS], lod: { level: XGOV.level, tier: XT, scale: XRS, ms: Math.round(XGOV.ms * 100) / 100, frame: Math.round(XGOV.frame * 100) / 100, pin: XGOV.pin } } : null),
+    frontier: () => (XR ? { region: XR.index, slug: XR.map.slug, x: XR.k.x, y: XR.k.y, hp: XR.k.hp, max: XR.k.max, power: XR.k.power, scrap: XR.scrap, score: XR.score, kills: XR.kills, sealed: XR.sealed, awake: XR.foes.filter((f) => f.on && f.wake).length, props: XR.map.props.length, open: XE.regionsOpen(CAS.pieces, RULES), cam: { x: XCAM.x, y: XCAM.y, zoom: XCAM.zoom, tilt: RX.camera.tilt_deg }, view: [XW, XH, XRS], lod: { level: XGOV.level, tier: XT, scale: XRS, ms: Math.round(XGOV.ms * 100) / 100, frame: Math.round(XGOV.frame * 100) / 100, pin: XGOV.pin },
+      partner: { up: XR.p.up, mode: XR.p.mode, hp: XR.p.hp, power: XR.p.power, x: XR.p.x, y: XR.p.y, kills: XR.p.kills, code: XE.partnerCode(XR.p.b, RULES), turrets: XR.turrets.filter((q) => q.on).length } } : null),
+    play: () => ({ scrap: S.play.scrap, partner: XE.partnerCode(S.play.partner, RULES) }),
     // pin the frontier's detail level (0 is the densest; -1 hands it back to the governor), for the walk and its frame times
     frontierLevel: (n) => { XGOV.pin = Number.isInteger(n) && n >= 0 && n < XGOV.levels ? n : -1; if (XGOV.pin >= 0 && XE.govern(XGOV, 0, 0, 0, RULES) && XR) xgovApply(); return XGOV.pin; }
   };

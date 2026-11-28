@@ -997,7 +997,50 @@
       "back": "Back to the castle",
       "label": "The frontier. Drag on the left to move; Fire, Dash, Bot and Build on the right.",
       "bot": "Bot",
-      "build": "Build"
+      "build": "Build",
+      "bot_follow": "Follow",
+      "bot_hunt": "Hunt",
+      "bot_down": "Rebooting",
+      "bot_follow_say": "Partner: following you.",
+      "bot_hunt_say": "Partner: hunting machines.",
+      "bot_downed": "Partner down: rebooting.",
+      "bot_back": "Partner back up.",
+      "built": "Partner built a turret.",
+      "build_low": "Partner needs more power to build.",
+      "build_full": "Every turret is out.",
+      "partner_row": "Partner bay",
+      "partner_meta": "Build your robot partner from parts: {name}.",
+      "partner_title": "Partner bay",
+      "partner_sub": "Four slots, one part each. Every part has a perk, a strength and a weakness: find them out in the field.",
+      "slot": {"base": "Base", "tool": "Tool", "head": "Sensor head", "core": "Power core"},
+      "perk": "Perk",
+      "strength": "Strength",
+      "weakness": "Weakness",
+      "level": "Level {n}",
+      "upgrade": "Upgrade · {cost} scrap",
+      "maxed": "Fully upgraded",
+      "bank": "Scrap banked: {n}",
+      "random": "Randomize",
+      "import": "Import",
+      "import_label": "A partner code: part names or robot kinds from a SOAR shortlist (lidar, quadruped, cobot-arm and the like)",
+      "imported": "Imported: {name}.",
+      "import_none": "Nothing in that code names a part.",
+      "code": "Your partner's code",
+      "code_note": "Kept on this device. A code carries only the four parts, never upgrades.",
+      "parts": {
+        "legs": {"name": "Walker legs", "perk": "Climbs over rocks", "strength": "Sure-footed on rough ground", "weakness": "Slow, and walking drains power"},
+        "tracks": {"name": "Track base", "perk": "Armour shrugs off part of every hit", "strength": "The toughest hull", "weakness": "The slowest base, and it can't climb"},
+        "wheels": {"name": "Wheel base", "perk": "Fast on the road", "strength": "Hauls extra scrap from crates", "weakness": "Bogs down on rough ground"},
+        "rotors": {"name": "Rotor pack", "perk": "Flies over everything; walkers can't reach it", "strength": "Fastest, and sees far", "weakness": "Fragile, carries almost nothing, drains power fast"},
+        "arm": {"name": "Six-joint arm", "perk": "Patches your hull while it stays close", "strength": "Hits hard; builds sturdy turrets", "weakness": "Slow to swing"},
+        "gripper": {"name": "Gripper", "perk": "Opens crates on its own", "strength": "Hauls extra scrap", "weakness": "Weak hits; flimsy turrets"},
+        "lidar": {"name": "Laser scanner", "perk": "Sleeping machines show on your map", "strength": "Long sight", "weakness": "The spinning scanner costs power"},
+        "camera": {"name": "Depth camera", "perk": "Locks on fast", "strength": "Quick attacks", "weakness": "Short sight"},
+        "thermal": {"name": "Heat camera", "perk": "Goes for the most damaged machine", "strength": "Sees far through the ash", "weakness": "Slow to lock on"},
+        "cell": {"name": "Battery cell", "perk": "A deep reserve", "strength": "Lasts through long fights", "weakness": "Slow to recharge"},
+        "cap": {"name": "Supercap", "perk": "Recharges in a flash", "strength": "Back to full fast", "weakness": "A shallow reserve"},
+        "swap": {"name": "Swap pack", "perk": "Reboots fast after going down", "strength": "A sturdier frame", "weakness": "Nothing else stands out"}
+      }
     }
   },
   "save": {
@@ -2390,7 +2433,136 @@
     "hud": {
       "mini_px_per_tile": 3,
       "mini_h": 110,
-      "toast_s": 3
+      "toast_s": 3,
+      "card_px": 7,
+      "card_lines": 5,
+      "card_w": [150, 240]
+    },
+    "partner": {
+      "$note": "FW13, the partner builder (FieldworksFrontier.partnerOf / partnerStats / partnerCode / partnerParse / partnerRandom). A robot assembled from four slots, one part each. Parts are generic and original, loosely based on real robot classes so a player learns what each is good and bad at by playing: legs climb but drain power, rotors fly and scout but carry little and break easily, tracks are tough but slow and can't climb, wheels are fast on the road and bog down off it. soar: the generic robot kinds and component classes (from the SOAR catalogue's taxonomy, never a brand's robot) an import code may name; each maps to this part. Each part's stats are added to base (road and rough multiply speed on and off the road); each upgrade level adds up once more (max_level levels, bought with banked scrap at upgrade_cost). Scrap is play: it opens nothing the evidence opens.",
+      "slots": ["base", "tool", "head", "core"],
+      "default": {"base": "legs", "tool": "arm", "head": "lidar", "core": "cell"},
+      "max_level": 3,
+      "upgrade_cost": [8, 16, 32],
+      "scrap_max": 99999,
+      "code_prefix": "FF1",
+      "code_max": 200,
+      "base": {"hp": 6, "speed": 64, "carry": 1, "pmax": 60, "regen": 8, "sight": 110, "attack_s": 0.7, "damage": 1, "reach": 16, "armour": 0, "drain": 0.5, "repair_s": 0, "reboot_s": 8, "turret_hp": 3, "road": 1, "rough": 0.85},
+      "limits": {
+        "hp": [2, 20],
+        "speed": [24, 120],
+        "carry": [0, 8],
+        "pmax": [20, 160],
+        "regen": [2, 30],
+        "sight": [60, 220],
+        "attack_s": [0.25, 2],
+        "damage": [0.5, 4],
+        "reach": [10, 30],
+        "armour": [0, 0.75],
+        "drain": [0, 8],
+        "repair_s": [0, 30],
+        "reboot_s": [2, 12],
+        "turret_hp": [1, 14],
+        "road": [0.5, 2],
+        "rough": [0.4, 1.5]
+      },
+      "parts": {
+        "base": {
+          "legs": {
+            "soar": ["quadruped", "humanoid"],
+            "stats": {"speed": -8, "hp": 1, "drain": 2.5, "rough": 0.15},
+            "up": {"hp": 1, "speed": 3},
+            "climb": true,
+            "colour": "#c8932a"
+          },
+          "tracks": {
+            "soar": ["inspection-ugv"],
+            "stats": {"speed": -16, "hp": 5, "armour": 0.4, "rough": 0.1},
+            "up": {"hp": 2, "armour": 0.08},
+            "colour": "#6f7d5a"
+          },
+          "wheels": {
+            "soar": ["amr-tugger", "amr-shelf", "amr-forklift", "agv", "mobile-manipulator"],
+            "stats": {"speed": 8, "carry": 2, "road": 0.4, "rough": -0.25, "drain": -0.3},
+            "up": {"speed": 4, "carry": 1},
+            "colour": "#4a90b8"
+          },
+          "rotors": {
+            "soar": ["quadcopter", "drone-dock"],
+            "stats": {"speed": 22, "hp": -3, "carry": -1, "sight": 60, "drain": 3.5, "rough": 0.15},
+            "up": {"hp": 1, "sight": 15},
+            "fly": true,
+            "colour": "#8fd3ff"
+          }
+        },
+        "tool": {
+          "arm": {
+            "soar": ["cobot-arm", "industrial-arm", "palletizer", "mobile-manipulator"],
+            "stats": {"damage": 1, "attack_s": 0.25, "repair_s": 10, "turret_hp": 4, "reach": 4},
+            "up": {"damage": 0.5, "repair_s": -2},
+            "colour": "#e9b949"
+          },
+          "gripper": {
+            "soar": ["gripper", "hand", "humanoid"],
+            "stats": {"carry": 2, "attack_s": -0.1, "turret_hp": 1},
+            "up": {"carry": 1, "damage": 0.25},
+            "pickup": true,
+            "colour": "#9ff0d8"
+          }
+        },
+        "head": {
+          "lidar": {
+            "soar": ["lidar"],
+            "stats": {"sight": 50, "drain": 0.8},
+            "up": {"sight": 20},
+            "scan": true,
+            "colour": "#7cf29a"
+          },
+          "camera": {
+            "soar": ["depth-camera", "camera"],
+            "stats": {"attack_s": -0.25, "sight": -20},
+            "up": {"attack_s": -0.06},
+            "colour": "#b9a7ff"
+          },
+          "thermal": {
+            "soar": ["gimbal-camera", "thermal"],
+            "stats": {"sight": 30, "attack_s": 0.1},
+            "up": {"sight": 12, "damage": 0.25},
+            "weakest": true,
+            "colour": "#ff9a3c"
+          }
+        },
+        "core": {
+          "cell": {
+            "soar": ["battery"],
+            "stats": {"pmax": 50, "regen": -3},
+            "up": {"pmax": 15},
+            "colour": "#e8ecef"
+          },
+          "cap": {
+            "soar": ["capacitor"],
+            "stats": {"pmax": -20, "regen": 10},
+            "up": {"regen": 3},
+            "colour": "#8fd3ff"
+          },
+          "swap": {
+            "soar": ["battery-swap"],
+            "stats": {"reboot_s": -4, "hp": 1},
+            "up": {"reboot_s": -1, "hp": 1},
+            "colour": "#ffe08a"
+          }
+        }
+      },
+      "radius": 5,
+      "follow_gap": 16,
+      "attack_power": 4,
+      "repair_range": 34,
+      "defend_range": 70,
+      "leash": 110,
+      "catch_up": 60,
+      "regroup": 260,
+      "turret": {"cap": 3, "power": 30, "life_s": 20, "fire_s": 0.6, "range": 110, "damage": 1, "shot_speed": 200, "radius": 5},
+      "card_line_s": 3
     }
   }
 }
