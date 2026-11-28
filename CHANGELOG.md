@@ -2,7 +2,41 @@
 
 Newest first. One entry per merged PR that changes behaviour, a command, a
 schema, or a convention. Heading: `## YYYY-MM-DD (PR #N) — <title>` once
-merged; `## Unreleased — the frontier: a mid-angle explorer out the gate
+merged; `## Unreleased — the frontier, denser: more parts on everything, and a governor that keeps phones smooth
+
+FW12, stacked on the frontier PR. The owner asked for more characteristics and more
+faces, for a heavier, grimmer feel with robots and partners in it; everything here is
+original and drawn in code.
+
+- The dense tier (`prototype/game/72-frontier.js`): the Keeper gets a reactor pack,
+  jointed legs with knee guards and toe caps, a belt with pouches, a plated chest in its
+  paint with a lit core and rivets, cabled shoulders, a crested helmet with a glowing
+  visor and an antenna, and a two-part arm to a blaster with a coil (54 faces against
+  11). Crawlers get six two-jointed legs, a plated carapace with spines, mandibles and a
+  cluster of eyes; drones four rotors on crossed arms, a banded hull, fins and a beam to
+  the ground; brutes bolted knees, a furnace behind a grille, spiked shoulders, fists,
+  horns and smoking stacks (four to six times the plain tier's faces). Rocks, ruins,
+  pylons and crates gain facets, broken wall tops, burning windows, struts, insulators,
+  planks, straps and corner irons (two and a half to three and a half times); the
+  castle's wall gains courses of stone and scorch, its towers slits and banners in the
+  Keeper's paint; ash and embers drift up through the view.
+- The ground atlas: each kind of ground in four variants (facets, grit, pebbles,
+  plate seams and rivets, hairline cracks) and the road's kerbs, aggregate and worn
+  stripe are painted once at one tile's size and drawn from there for every tile: flat
+  ground projects to the same rectangle everywhere, so one painting serves them all.
+- The frame governor (`src/frontier.js`: `govOf`, `govSet`, `govern`): the loop
+  measures each frame's own work and the governor steps down a level when it runs over
+  budget (the render scale first, then the plain tier, then the plain tier without the
+  ash), and back up when there has been room for a while. A step down soon after a step
+  up doubles the wait before the next one. A slow frame with little work of its own is
+  the device holding the page back and never steps down. Every number is in
+  `rules.frontier.govern`.
+- `FieldworksDebug.frontier()` reports the level; `FieldworksDebug.frontierLevel(n)`
+  pins one for the walk. `tests/check.mjs` counts each character and prop face by face
+  at both tiers and drives the governor; `prototype/shots.mjs` screenshots both tiers
+  and measures the walk pinned to each.
+
+## Unreleased — the frontier: a mid-angle explorer out the gate
 
 FW11, design D66 (rework 2) and D85+ (the merged design in the design repo's
 FIELDWORKS.md §19). Stacked on the touch PR.

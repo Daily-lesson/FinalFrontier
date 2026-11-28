@@ -2369,7 +2369,23 @@
       }
     },
     "render": {
-      "scale_max": 2
+      "$note": "FW12. The canvas is drawn at its CSS size times a whole-number render scale, never above the device's pixel ratio or scale_max. Ground tiles are painted once into an atlas at the current zoom and scale and drawn from it (one painting, hundreds of tiles). embers: the ash that drifts up through the view at the dense tier.",
+      "scale_max": 2,
+      "atlas_variants": 4,
+      "embers": 36
+    },
+    "govern": {
+      "$note": "FW12, the frame governor (FieldworksFrontier.govern). budget_ms: the frame's own work (update and drawing, measured) it aims under, leaving the rest of a 60 Hz frame (16.7 ms) to the browser. levels, best first: [detail tier, render scale]; tier 2 is the dense art, 1 the plain, 0 the plain without the drifting ash and vent sparks. It steps down after drop_after_s over budget (or frames slower than frame_ms_max while its own work is over own_share of the budget), and up after raise_after_s under raise_below of it; a step down soon after a step up doubles that wait, to backoff_max_s.",
+      "budget_ms": 10,
+      "frame_ms_max": 20,
+      "own_share": 0.5,
+      "ema": 0.08,
+      "warm_frames": 30,
+      "drop_after_s": 1,
+      "raise_after_s": 4,
+      "raise_below": 0.55,
+      "backoff_max_s": 30,
+      "levels": [[2, 2], [2, 1], [1, 1], [0, 1]]
     },
     "hud": {
       "mini_px_per_tile": 3,
